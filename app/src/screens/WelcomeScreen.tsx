@@ -6,6 +6,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 type RootStackParamList = {
   ForgotPassword: undefined;
   SignUp: undefined;
+  CreateAccountSuccess: undefined
 };
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
@@ -16,16 +17,22 @@ const WelcomeScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Chào mừng Quay lại!</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        keyboardType="email-address"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Nhập mật khẩu"
-        secureTextEntry
-      />
+      <View style={styles.inputContainer}>
+        <Image source={require('../images/UserActor.png')} style={styles.inputIcon} />
+        <TextInput
+          style={styles.textInput}
+          placeholder="Email"
+          keyboardType="email-address"
+        />
+      </View>
+      <View style={styles.inputContainer}>
+        <Image source={require('../images/keylock.png')} style={styles.inputIcon} />
+        <TextInput
+          style={styles.textInput}
+          placeholder="Nhập mật khẩu"
+          secureTextEntry
+        />
+      </View>
       <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
         <Text style={styles.forgotText}>Quên mật khẩu?</Text>
       </TouchableOpacity>
@@ -36,7 +43,7 @@ const WelcomeScreen: React.FC = () => {
       <View style={styles.socialButtons}>
 
         {/* icon Google, Apple, Facebook*/}
-       <TouchableOpacity>
+        <TouchableOpacity>
           <Image source={require('../images/google-icon.png')} style={styles.socialIcon} />
         </TouchableOpacity>
         <TouchableOpacity>
@@ -48,7 +55,7 @@ const WelcomeScreen: React.FC = () => {
       </View>
       <View style={styles.footer}>
         <Text style={styles.footerText}>Tạo tài khoản </Text>
-        <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
+        <TouchableOpacity onPress={() => navigation.navigate('CreateAccountSuccess')}>
           <Text style={styles.footerLink}>Đăng ký</Text>
         </TouchableOpacity>
       </View>
@@ -68,19 +75,42 @@ const styles = StyleSheet.create({
     fontSize: 43,
     fontWeight: 'bold',
     marginBottom: 20,
-    marginRight:63,
-    fontFamily:'Montserrat'
+    marginRight: 63,
+    fontFamily: 'Montserrat'
   },
-  input: {
-    width: '100%',
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 5,
+    borderColor: '#000',
+    borderRadius: 10,
     padding: 10,
-    marginBottom: 10,
+    paddingHorizontal: 10,
+    marginBottom: 15,
+    backgroundColor: '#A8A8A9',
+  },
+  inputIcon: {
+    width: 20,
+    height: 20,
+    marginRight: 8,
+    resizeMode: 'contain',
+  },
+  // input: {
+  //   width: '100%',
+  //   // borderWidth: 1,
+  //   borderColor: '#ccc',
+  //   borderRadius: 5,
+  //   padding: 10,
+  //   marginBottom: 10,
+  //   flex:1
+  // },
+  textInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#676767',
   },
   forgotText: {
-    color: '#666',
+    color: '#F83758',
     alignSelf: 'flex-end',
     marginBottom: 20,
   },
@@ -90,11 +120,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     borderRadius: 5,
     marginBottom: 20,
+    width: 317,
+    height: 55
   },
   buttonText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+    textAlign: "center"
   },
   orText: {
     color: '#666',

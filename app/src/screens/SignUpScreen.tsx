@@ -29,7 +29,7 @@ const SignUpScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {/*  logo lá xanh */}
-    <Image source={require('../images/logo.png')} style={styles.logo}/>
+      <Image source={require('../images/logo.png')} style={styles.logo} />
       <TextInput
         style={styles.input}
         placeholder="Full Name"
@@ -128,11 +128,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     borderRadius: 5,
     marginBottom: 20,
+    width: 316,
+    height: 54
   },
   buttonText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+    textAlign: "center"
   },
   footer: {
     flexDirection: 'row',

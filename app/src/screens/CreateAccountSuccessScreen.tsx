@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet,Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 
@@ -15,21 +15,33 @@ const CreateAccountSuccessScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Tạo một tài khoản</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Tên người dùng hoặc Email"
-        keyboardType="email-address"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Mật khẩu"
-        secureTextEntry
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Nhập lại mật khẩu"
-        secureTextEntry
-      />
+      <View style={styles.inputContainer}>
+        <Image source={require('../images/UserActor.png')} style={styles.inputIcon} />
+        <TextInput
+          // style={styles.input}
+          style={styles.textInput}
+          placeholder="Tên người dùng hoặc Email"
+          keyboardType="email-address"
+        />
+      </View>
+      <View style={styles.inputContainer}>
+        <Image source={require('../images/keylock.png')} style={styles.inputIcon} />
+        <TextInput
+          // style={styles.input}
+          style={styles.textInput}
+          placeholder="Mật khẩu"
+          secureTextEntry
+        />
+      </View>
+      <View style={styles.inputContainer}>
+        <Image source={require('../images/keylock.png')} style={styles.inputIcon} />
+        <TextInput
+          // style={styles.input}
+          style={styles.textInput}
+          placeholder="Nhập lại mật khẩu"
+          secureTextEntry
+        />
+      </View>
       <Text style={styles.note}>
         Bằng cách nhấp vào Đăng ký, bạn đồng ý với điều khoản của chúng tôi
       </Text>
@@ -73,6 +85,27 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 20,
+  }, inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#000',
+    borderRadius: 10,
+    padding: 10,
+    paddingHorizontal: 10,
+    marginBottom: 15,
+    backgroundColor: '#A8A8A9',
+  },
+  inputIcon: {
+    width: 20,
+    height: 20,
+    marginRight: 8,
+    resizeMode: 'contain',
+  },
+  textInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#676767',
   },
   input: {
     width: '100%',
@@ -94,11 +127,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     borderRadius: 5,
     marginBottom: 20,
+    width: 317,
+    height: 55
   },
   buttonText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+    textAlign: "center"
   },
   socialButtons: {
     flexDirection: 'row',

@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 
 type RootStackParamList = {
+  Home: undefined
   SignUp: undefined;
   ForgotPassword: undefined;
   Welcome: undefined;
@@ -25,13 +26,14 @@ const SignInScreen: React.FC = () => {
       return;
     }
     setEmailError(false);
-    navigation.navigate('Welcome');
+    navigation.navigate('Home');
   };
 
   return (
     <View style={styles.container}>
-      {/* Gắn logo lá xanh vào đây */}
+      {/* logo lá xanh */}
        <Image source={require('../images/logo.png')} style={styles.logo}/>
+       
       <TextInput
         style={[styles.input, emailError && styles.inputError]}
         placeholder="Email"
@@ -58,7 +60,7 @@ const SignInScreen: React.FC = () => {
           <Text style={styles.forgotText}>Forgot password</Text>
         </TouchableOpacity>
       </View>
-      <TouchableOpacity style={styles.signInButton} onPress={handleSignIn}>
+      <TouchableOpacity style={styles.signInButton} onPress={handleSignIn} >
         <Text style={styles.buttonText}>Sign In</Text>
       </TouchableOpacity>
       <View style={styles.socialButtons}>

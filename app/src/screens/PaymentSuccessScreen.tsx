@@ -1,15 +1,32 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+
+type NavigationProp = StackNavigationProp<RootStackParamList>;
+
+type RootStackParamList = {
+  QRCodePayment: undefined;
+  Home: undefined;
+  Profile: undefined;
+  Cart: undefined;
+  OrderSummary:undefined;
+  PaymentSuccess: undefined;
+}
+
+
 
 const PaymentSuccessScreen: React.FC = () => {
+    const navigation = useNavigation<NavigationProp>();
+  
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Thanh Toán Với PayOS</Text>
       <Text style={styles.message}>Nhận ngay ưu đãi thanh toán</Text>
-      <TouchableOpacity style={styles.button}>
+      <TouchableOpacity style={styles.button}onPress={() => navigation.navigate('OrderSummary')}>
         <Text style={styles.buttonText}>Thanh toán ngay</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.cancelButton}>
+      <TouchableOpacity style={styles.cancelButton}onPress={() => navigation.navigate('Cart')}>
         <Text style={styles.cancelButtonText}>Quay Lại</Text>
       </TouchableOpacity>
     </View>

@@ -18,9 +18,7 @@ const SplashScreen: React.FC = () => {
       {/* <Image source={require('../../assets/logo.png')} style={styles.logo} /> */}
       <Text style={styles.title}>Strength's Best</Text>
       <Text style={styles.subtitle}>Health is happiness. Cherish and take care of yourself!</Text>
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => navigation.navigate('SignIn')}
+      <TouchableOpacity style={styles.button}onPress={() => navigation.navigate('SignIn')}
       >
         <Text style={styles.buttonText}>Get Started</Text>
       </TouchableOpacity>

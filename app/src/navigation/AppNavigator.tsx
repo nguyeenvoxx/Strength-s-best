@@ -37,6 +37,7 @@ const AppNavigator: React.FC = () => {
         <Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} options={{ title: 'Thanh toán thành công' }} />
         <Stack.Screen name="QRCodePayment" component={QRCodePaymentScreen} options={{ title: 'Thanh toán QR' }} />
         <Stack.Screen name="OrderSummary" component={OrderSummaryScreen} options={{ title: 'Kiểm tra hàng hóa' }} />
+        <Stack.Screen name="ProductDetailScreen" component={OrderSummaryScreen} options={{ title: 'Chi tiết sản phẩm' }} />
       </Stack.Navigator>
   );
 };

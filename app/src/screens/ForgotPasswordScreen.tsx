@@ -8,14 +8,14 @@ const ForgotPasswordScreen: React.FC = () => {
       <Text style={styles.subtitle}>
         Nhập địa chỉ email của bạn
       </Text>
-      <Text style={styles.note}>
-        Chúng tôi sẽ gửi cho bạn một tin nhắn để thiết lập hoặc đặt lại mật khẩu mới của bạn.
-      </Text>
       <TextInput
         style={styles.input}
         placeholder="Nhập địa chỉ email của bạn"
         keyboardType="email-address"
       />
+      <Text style={styles.note}>
+        Chúng tôi sẽ gửi cho bạn một tin nhắn để thiết lập hoặc đặt lại mật khẩu mới của bạn.
+      </Text>
       <TouchableOpacity style={styles.submitButton}>
         <Text style={styles.buttonText}>Gửi</Text>
       </TouchableOpacity>

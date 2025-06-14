@@ -13,10 +13,26 @@ const ProfileScreen: React.FC = () => {
         <Text style={styles.editText}>Chỉnh sửa thông tin</Text>
       </TouchableOpacity>
       <View style={styles.menu}>
-        <Text style={styles.menuItem}>Trạng thái hoạt động</Text>
-        <Text style={styles.menuItem}>Địa chỉ</Text>
-        <Text style={styles.menuItem}>Đơn hàng & phân phối</Text>
-        <Text style={[styles.menuItem, styles.logout]}>Đăng xuất</Text>
+        <View style={styles.menuItem}>
+          <Image source={require('../images/activity.png')} style={styles.icon} />
+          <Text style={styles.menuText}>Trạng thái hoạt động</Text>
+        </View>
+
+        <View style={styles.menuItem}>
+          <Image source={require('../images/pin.png')} style={styles.icon} />
+          <Text style={styles.menuText}>Địa chỉ</Text>
+          <Image source={require('../images/arrow.png')} style={styles.arrow} />
+        </View>
+
+        <View style={styles.menuItem}>
+          <Image source={require('../images/Question.png')} style={styles.icon} />
+          <Text style={styles.menuText}>Trợ giúp & phản hồi</Text>
+        </View>
+
+        <View style={styles.menuItem}>
+          <Image source={require('../images/exit.png')} style={styles.icon} />
+          <Text style={[styles.menuText, styles.logout]}>Đăng xuất</Text>
+        </View>
       </View>
     </View>
   );
@@ -30,9 +46,25 @@ const styles = StyleSheet.create({
   menu: { padding: 10 },
   name: { fontSize: 16, fontWeight: 'bold', marginTop: 10 },
   email: { color: '#666', fontSize: 13 },
-  menuItem: { fontSize: 15, paddingVertical: 10 },
-  logout: { color: 'red', marginTop: 20 },
-  editText: { color: '#fff', fontSize: 14 }
+  menuItem: { fontSize: 15, paddingVertical: 10, flexDirection:'row', alignItems: 'center' },
+  logout: { color: 'red' },
+  editText: { color: '#fff', fontSize: 14 },
+  icon: {
+    width: 20,
+    height: 20,
+    resizeMode: 'contain',
+    marginRight: 10,
+  },
+   menuText: {
+    fontSize: 15,
+  },
+  arrow: {
+    width: 16,
+    height: 16,
+    resizeMode: 'contain',
+    marginLeft: 'auto',
+    tintColor: '#888',
+  },
 });
 
 export default ProfileScreen;

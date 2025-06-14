@@ -63,15 +63,15 @@ const SignUpScreen: React.FC = () => {
             {agree && <View style={styles.checkboxInner} />}
           </View>
         </TouchableOpacity>
-        <Text style={styles.optionText}>I agree with privacy and policy</Text>
+        <Text style={styles.optionText}>Tôi đồng ý với chính sách bảo mật và quyền riêng tư</Text>
       </View>
       <TouchableOpacity style={styles.signUpButton} onPress={handleSignUp}>
-        <Text style={styles.buttonText}>Sign Up</Text>
+        <Text style={styles.buttonText}>Đăng ký</Text>
       </TouchableOpacity>
       <View style={styles.footer}>
-        <Text style={styles.footerText}>Already have an account? </Text>
+        <Text style={styles.footerText}>Bạn đã có tài khoản? </Text>
         <TouchableOpacity onPress={() => navigation.navigate('SignIn')}>
-          <Text style={styles.footerLink}>Sign in</Text>
+          <Text style={styles.footerLink}>Đăng nhập</Text>
         </TouchableOpacity>
       </View>
     </View>

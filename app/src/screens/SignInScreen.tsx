@@ -4,10 +4,10 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 
 type RootStackParamList = {
-  Home: undefined
   SignUp: undefined;
   ForgotPassword: undefined;
   Welcome: undefined;
+  Home: undefined;
 };
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
@@ -18,6 +18,7 @@ const SignInScreen: React.FC = () => {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [emailError, setEmailError] = useState(false);
+  const [passError, setPassError] = useState(false)
 
   const handleSignIn = () => {
     if (!email) {
@@ -26,29 +27,46 @@ const SignInScreen: React.FC = () => {
       return;
     }
     setEmailError(false);
+    
+    if (!password) { 
+      setPassError(true);
+      Alert.alert('Error', 'Wrong Password');
+      return;
+    } else {
+      setPassError(false);
+    }
     navigation.navigate('Home');
   };
 
   return (
     <View style={styles.container}>
-      {/* logo lá xanh */}
-       <Image source={require('../images/logo.png')} style={styles.logo}/>
-       
-      <TextInput
-        style={[styles.input, emailError && styles.inputError]}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-      />
-      {emailError && <Text style={styles.errorText}>Email does not exist</Text>}
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
+      {/* Gắn logo lá xanh vào đây */}
+      <Image source={require('../images/logo.png')} style={styles.logo} />
+
+      <View style={[styles.inputWrapper, emailError && styles.inputError]}>
+        <Image source={require('../images/user.png')} style={styles.icon} />
+        <TextInput
+          placeholder="Username"
+          value={email}
+          onChangeText={setEmail}
+          style={styles.textInput}
+          keyboardType="email-address"
+        />
+      </View>
+
+      {emailError && <Text style={styles.errorText}>Email không tồn tại</Text>}
+      <View style={[styles.inputWrapper, passError && styles.inputError]}>
+        <Image source={require('../images/lock.png')} style={styles.icon} />
+        <TextInput
+          // style={styles.input}
+          placeholder="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          style={styles.textInput}
+        />
+      </View>
+      {passError && <Text style={styles.errorText}>Sai mật khẩu</Text>}
       <View style={styles.options}>
         <TouchableOpacity onPress={() => setRememberMe(!rememberMe)}>
           <View style={styles.checkbox}>
@@ -57,11 +75,11 @@ const SignInScreen: React.FC = () => {
         </TouchableOpacity>
         <Text style={styles.optionText}>Remember me</Text>
         <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
-          <Text style={styles.forgotText}>Forgot password</Text>
+          <Text style={styles.forgotText}>Quên mật khẩu</Text>
         </TouchableOpacity>
       </View>
-      <TouchableOpacity style={styles.signInButton} onPress={handleSignIn} >
-        <Text style={styles.buttonText}>Sign In</Text>
+      <TouchableOpacity style={styles.signInButton} onPress={handleSignIn}>
+        <Text style={styles.buttonText}>Đăng nhập</Text>
       </TouchableOpacity>
       <View style={styles.socialButtons}>
 
@@ -78,9 +96,9 @@ const SignInScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
       <View style={styles.footer}>
-        <Text style={styles.footerText}>Don't have an account? </Text>
+        <Text style={styles.footerText}>Bạn chưa có tài khoản? </Text>
         <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
-          <Text style={styles.footerLink}>Sign up</Text>
+          <Text style={styles.footerLink}>Đăng ký</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -99,6 +117,28 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     marginBottom: 30,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#000',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    marginBottom: 15,
+    width: '100%',
+    height: 48,
+  },
+  icon: {
+    width: 20,
+    height: 20,
+    marginRight: 10,
+    tintColor: '#555',
+  },
+  textInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#000',
   },
   input: {
     width: '100%',
@@ -150,11 +190,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     borderRadius: 5,
     marginBottom: 20,
+    width: 316,
+    height: 54
   },
   buttonText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+    textAlign: "center"
   },
   socialButtons: {
     flexDirection: 'row',

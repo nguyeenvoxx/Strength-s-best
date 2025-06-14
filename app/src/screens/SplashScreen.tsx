@@ -17,10 +17,12 @@ const SplashScreen: React.FC = () => {
       <Image source={require('../images/logo.png')}/>
       {/* <Image source={require('../../assets/logo.png')} style={styles.logo} /> */}
       <Text style={styles.title}>Strength's Best</Text>
-      <Text style={styles.subtitle}>Health is happiness. Cherish and take care of yourself!</Text>
-      <TouchableOpacity style={styles.button}onPress={() => navigation.navigate('SignIn')}
+      <Text style={styles.subtitle}>Sức khỏe là hạnh phúc. Hãy trân trọng và chăm sóc bản thân!</Text>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => navigation.navigate('SignIn')}
       >
-        <Text style={styles.buttonText}>Get Started</Text>
+        <Text style={styles.buttonText}>Bắt đầu</Text>
       </TouchableOpacity>
     </View>
   );

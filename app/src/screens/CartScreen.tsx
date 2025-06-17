@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { View, Text, Image, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
@@ -11,16 +11,19 @@ type RootStackParamList = {
   Home: undefined;
   Profile: undefined;
   Cart: undefined;
-  OrderSummary:undefined;
+  OrderSummary: undefined;
   PaymentSuccess: undefined;
 }
 
+
 const CartScreen: React.FC = () => {
+ 
   const navigation = useNavigation<NavigationProp>();
-  const items = [
-    { id: '1', name: 'Magic Blackmores', price: '1,500,000', Text: 'Neque porro quisquam est qui dolorem ipsum quia', image: require('../images_sp/magie_blackmores.png') },
-    { id: '2', name: 'Dầu cá omega', price: '1,400,000', Text: 'Neque porro quisquam est qui dolorem ipsum quia', image: require('../images_sp/dau_ca_omega.png') },
-  ];
+
+  const [cartItems, setCartItems] = useState([
+    { id: '1', name: 'Magic Blackmores', price: 1500000, quantity: 1, text: 'Neque porro...', image: require('../images_sp/magie_blackmores.png') },
+    { id: '2', name: 'Dầu cá omega', price: 1410000, quantity: 1, text: 'Neque porro...', image: require('../images_sp/dau_ca_omega.png') },
+  ]);
   const [fontsLoaded] = useFonts({
     'PlayfairDisplay': require('../fonts/PlayfairDisplay-Medium.ttf'),
   });
@@ -28,6 +31,25 @@ const CartScreen: React.FC = () => {
   if (!fontsLoaded) {
     return null; // hoặc có thể return <Text>Loading...</Text>
   }
+   const handleIncrease = (id: string) => {
+  setCartItems(prev =>
+    prev.map(item => item.id === id ? { ...item, quantity: item.quantity + 1 } : item)
+  );
+};
+
+const handleDecrease = (id: string) => {
+  setCartItems(prev =>
+    prev
+      .map(item =>
+        item.id === id && item.quantity > 1
+          ? { ...item, quantity: item.quantity - 1 }
+          : item
+      )
+      .filter(item => item.quantity > 0)
+  );
+};
+const totalQuantity = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+const totalPrice = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   return (
 
     <View style={styles.container}>
@@ -59,23 +81,35 @@ const CartScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
         <View>
-          <Text style={{marginTop:30, marginBottom:10, fontSize:16, fontWeight:'bold'}}>
+          <Text style={{ marginTop: 30, marginBottom: 10, fontSize: 16, fontWeight: 'bold' }}>
             Danh sách mua sắm
           </Text>
         </View>
         <View>
-          {items.map(item => (
+          {cartItems.map(item => (
             <View key={item.id} style={styles.cartItem}>
               <Image source={item.image} style={styles.productImage} />
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: 'PlayfairDisplay', fontSize: 20 }}>{item.name}</Text>
-                <Text>{item.Text}</Text>
-                <Text>{item.price} vnđ</Text>
+                <Text>{item.text}</Text>
+                <Text>{item.price.toLocaleString()} vnđ x {item.quantity}</Text>
+                <View style={{ flexDirection: 'row', marginTop: 5 }}>
+                  <TouchableOpacity onPress={() => handleDecrease(item.id)} style={styles.qtyButton}>
+                    <Text style={styles.qtyText}>-</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleIncrease(item.id)} style={styles.qtyButton}>
+                    <Text style={styles.qtyText}>+</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           ))}
         </View>
-        <TouchableOpacity style={styles.checkoutButton}onPress={() => navigation.navigate('PaymentSuccess')}>
+        <View style={{ padding: 10, marginTop: 10 }}>
+          <Text>Tổng số lượng: {totalQuantity}</Text>
+          <Text style={{ fontWeight: 'bold' }}>Tổng tiền: {totalPrice.toLocaleString()} vnđ</Text>
+        </View>
+        <TouchableOpacity style={styles.checkoutButton} onPress={() => navigation.navigate('PaymentSuccess')}>
           <Text style={styles.textButton}>Thanh Toán</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -104,6 +138,16 @@ const CartScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  qtyButton: {
+  backgroundColor: '#e0e0e0',
+  borderRadius: 5,
+  paddingHorizontal: 10,
+  marginRight: 10,
+},
+qtyText: {
+  fontSize: 18,
+  fontWeight: 'bold',
+},
   MenuTab: {
     position: 'absolute',
     bottom: 0,

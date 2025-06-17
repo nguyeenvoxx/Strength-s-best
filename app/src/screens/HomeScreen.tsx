@@ -354,7 +354,7 @@ const HomeScreen: React.FC = () => {
         <TouchableOpacity style={styles.menuButton} onPress={() => navigation.navigate('Cart')}>
           <Image source={require('../images/shopping-cart_icon.png')} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.menuButton}>
+        <TouchableOpacity style={styles.menuButton} >
           <Image source={require('../images/search_icon.png')} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.menuButton} onPress={() => navigation.navigate('Profile')}>

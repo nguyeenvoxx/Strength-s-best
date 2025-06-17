@@ -16,6 +16,7 @@ import CheckoutScreen from '../screens/CheckoutScreen';
 import PaymentSuccessScreen from '../screens/PaymentSuccessScreen';
 import QRCodePaymentScreen from '../screens/QRCodePaymentScreen';
 import OrderSummaryScreen from '../screens/OrderSummaryScreen';
+import SearchBar from '../components/text-input/SearchBar';
 
 const Stack = createStackNavigator();
 

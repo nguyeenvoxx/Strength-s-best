@@ -1,4 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+
+type NavigationProp = StackNavigationProp<RootStackParamList>;
+
+type RootStackParamList = {
+  QRCodePayment: undefined;
+  Home: undefined;
+  Profile: undefined;
+  Cart: undefined;
+  OrderSummary: undefined;
+  PaymentSuccess: undefined;
+}
+
 import {
   StyleSheet,
   View,
@@ -10,7 +24,8 @@ import {
   FlatList,
   SafeAreaView,
   StatusBar
-} from 'react-native';
+}
+from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LIST_PRODUCT_SAMPLE } from '../constants/app.constant';
 import { Product } from '../types/product.type';
@@ -41,6 +56,7 @@ interface Section {
 }
 
 const HeaderSection: React.FC<Section> = ({ title, remainingTime, color }) => {
+
   return (
     <View style={[styles.sectionHeader, { backgroundColor: color }]}>
       <View style={styles.sectionTitleContainer}>
@@ -72,6 +88,8 @@ const NewsCard: React.FC<NewsItemProps> = ({ image, title, date }) => {
 };
 
 const HomeScreen: React.FC = () => {
+    const navigation = useNavigation<NavigationProp>();
+
   const [currentCarouselIndex, setCurrentCarouselIndex] = useState(0);
   const [remainingTime, setRemainingTime] = useState("23:59:59");
   const carouselImages = [
@@ -148,13 +166,13 @@ const HomeScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
-      
+
       {/* Header */}
-      <HomeHeader 
+      <HomeHeader
         onMenuPress={() => console.log('Menu pressed')}
         onUserPress={() => console.log('User pressed')}
       />
-        <ScrollView
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -166,10 +184,10 @@ const HomeScreen: React.FC = () => {
           <View style={styles.searchBarPlaceholder}>
             <Ionicons name="search-outline" size={20} color="#888" style={styles.searchIcon} />
             <Text style={styles.searchBarText}>Tìm kiếm bất kỳ sản phẩm nào...</Text>
-          </View>        </TouchableOpacity>
+          </View></TouchableOpacity>
 
         {/* Category Section */}
-        <HomeCategory 
+        <HomeCategory
           onCategoryPress={(categoryId) => console.log('Category pressed:', categoryId)}
         />
 
@@ -325,11 +343,48 @@ const HomeScreen: React.FC = () => {
         ))}        {/* Bottom Space for better scrolling experience */}
         <View style={styles.bottomSpace} />
       </ScrollView>
+
+      <View style={styles.MenuTab}>
+        <TouchableOpacity style={styles.menuButton} onPress={() => navigation.navigate('Home')}>
+          <Image source={require('../images/home_icon.png')} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.menuButton}>
+          <Image source={require('../images/heart_icon.png')} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.menuButton} onPress={() => navigation.navigate('Cart')}>
+          <Image source={require('../images/shopping-cart_icon.png')} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.menuButton}>
+          <Image source={require('../images/search_icon.png')} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.menuButton} onPress={() => navigation.navigate('Profile')}>
+          <Image source={require('../images/settings_icon.png')} />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  MenuTab: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingVertical: 10,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: -2 },
+    shadowRadius: 4,
+  },
+  menuButton: {
+    
+  },
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
@@ -576,7 +631,7 @@ const styles = StyleSheet.create({
   },
   newsContent: {
     padding: 12,
-  },  newsTitle: {
+  }, newsTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',

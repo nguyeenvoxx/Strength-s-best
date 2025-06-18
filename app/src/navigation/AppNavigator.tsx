@@ -29,7 +29,7 @@ const AppNavigator: React.FC = () => {
       <Stack.Navigator initialRouteName="Splash">
         <Stack.Screen name="Splash" component={SplashScreen} options={{ headerShown: false }} />
         <Stack.Screen name="SignIn" component={SignInScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="SignUp" component={SignUpScreen} options={{ title: 'Create account' }} />
+        <Stack.Screen name="SignUp" component={SignUpScreen} options={{ title: 'Đăng ký tài khoản' }} />
         <Stack.Screen name="EmailVerification" component={EmailVerificationScreen} options={{ title: 'Xác thực email' }} />
         <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
         <Stack.Screen name="CreateAccountSuccess" component={CreateAccountSuccessScreen} options={{ headerShown: false }} />

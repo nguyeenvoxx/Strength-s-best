@@ -51,7 +51,7 @@ const SignInScreen: React.FC = () => {
       <View style={[styles.inputWrapper, emailError && styles.inputError]}>
         <Image source={require('../images/user.png')} style={styles.icon} />
         <TextInput
-          placeholder="Username"
+          placeholder="Tài khoản hoặc Email"
           value={email}
           onChangeText={setEmail}
           style={styles.textInput}
@@ -64,7 +64,7 @@ const SignInScreen: React.FC = () => {
         <Image source={require('../images/lock.png')} style={styles.icon} />
         <TextInput
           // style={styles.input}
-          placeholder="Password"
+          placeholder="Mật khẩu"
           value={password}
           onChangeText={setPassword}
           secureTextEntry={!showPassword}
@@ -86,7 +86,7 @@ const SignInScreen: React.FC = () => {
             {rememberMe && <View style={styles.checkboxInner} />}
           </View>
         </TouchableOpacity>
-        <Text style={styles.optionText}>Remember me</Text>
+        <Text style={styles.optionText}>Ghi nhớ tài khoản</Text>
         <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
           <Text style={styles.forgotText}>Quên mật khẩu</Text>
         </TouchableOpacity>

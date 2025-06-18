@@ -36,7 +36,7 @@ const SignUpScreen: React.FC = () => {
         <TextInput
           // style={styles.input}
           style={styles.textInput}
-          placeholder="Full Name"
+          placeholder="Họ và tên"
           value={fullName}
           onChangeText={setFullName}
         />
@@ -55,7 +55,7 @@ const SignUpScreen: React.FC = () => {
         <TextInput
           // style={styles.input}
           style={styles.textInput}
-          placeholder="Password"
+          placeholder="Mật khẩu"
           value={password}
           onChangeText={setPassword}
           secureTextEntry={!showPassword}
@@ -72,7 +72,7 @@ const SignUpScreen: React.FC = () => {
         <TextInput
           // style={styles.input}
           style={styles.textInput}
-          placeholder="Confirm Password"
+          placeholder="Nhập lại mật khẩu"
           value={confirmPassword}
           onChangeText={setConfirmPassword}
           secureTextEntry={!showPassword}

@@ -13,7 +13,7 @@ type NavigationProp = StackNavigationProp<RootStackParamList>;
 const EmailVerificationScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const [code, setCode] = useState(['', '', '', '']);
-  
+
 
   const handleCodeChange = (text: string, index: number) => {
     const newCode = [...code];
@@ -52,10 +52,10 @@ const EmailVerificationScreen: React.FC = () => {
         <Text style={styles.resendText}>Gửi lại sau 60s Gửi lại</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
-        <Text style={styles.buttonText}>Confirmation</Text>
+        <Text style={styles.buttonText}>Xác nhận</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.confirmButton1} onPress={() => navigation.navigate('SignUp')}>
-        <Text style={styles.backText}>Return to registration</Text>
+        <Text style={styles.backText}>Quay lại</Text>
       </TouchableOpacity>
     </View>
   );
@@ -108,6 +108,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     width: '50%',
     marginBottom: 20,
+    alignItems: 'center',
   },
   confirmButton1: {
     backgroundColor: '#31313140',
@@ -116,6 +117,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     width: '50%',
     marginBottom: 20,
+    alignItems: 'center',
   },
   buttonText: {
     color: '#fff',
@@ -125,6 +127,8 @@ const styles = StyleSheet.create({
   },
   backText: {
     color: '#000000',
+    fontSize: 18,
+
   },
 });
 

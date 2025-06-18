@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -12,69 +12,76 @@ type RootStackParamList = {
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 
+const paymentMethods = [
+  { id: 'bank', icon: require('../images/Bank_icon.png'), last4: '2109' },
+  { id: 'cash', icon: require('../images/Money_icon.png'), last4: '2109' },
+  { id: 'mastercard', icon: require('../images/mastercard_icon.png'), last4: '2109' },
+  { id: 'apple', icon: require('../images/IOS-Bank_icon.png'), last4: '2109' },
+];
 
 const OrderSummaryScreen: React.FC = () => {
-    const navigation = useNavigation<NavigationProp>();
-  
-  
+  const [selectedMethodId, setSelectedMethodId] = useState<string | null>(null);
+  const navigation = useNavigation<NavigationProp>();
+
+
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={{paddingBottom:200}}>  
-{/* Thông tin đơn hàng */}
+      <ScrollView contentContainerStyle={{ paddingBottom: 200 }}>
+        {/* Thông tin đơn hàng */}
 
-      <View style={styles.row}>
-        <Text style={styles.label}>Đặt hàng:</Text>
-        <Text style={styles.item}>2.800.000 VND</Text>
-      </View>
-      <View style={styles.row}>
-        <Text style={styles.label}>Vận chuyển:</Text>
-        <Text style={styles.item}>30.000 VND</Text>
-      </View>
-      <View style={styles.row}>
-        <Text style={styles.labelAll}>Tổng cộng:</Text>
-        <Text style={styles.itemAll}>2.830.000 VND</Text>
-      </View>
+        <View style={styles.row}>
+          <Text style={styles.label}>Đặt hàng:</Text>
+          <Text style={styles.item}>2.800.000 VND</Text>
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.label}>Vận chuyển:</Text>
+          <Text style={styles.item}>30.000 VND</Text>
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.labelAll}>Tổng cộng:</Text>
+          <Text style={styles.itemAll}>2.830.000 VND</Text>
+        </View>
 
 
-      <Text style={styles.section}>Phương thức thanh toán</Text>
+        <Text style={styles.section}>Phương thức thanh toán</Text>
 
-      <View style={styles.paymentOption}>
-        <Image source={require('../images/Bank_icon.png')} style={styles.iconbank} />
-        <Text style={styles.textCar}>••••••••2109</Text>
-      </View>
-      <View style={styles.paymentOption}>
-        <Image source={require('../images/Money_icon.png')} style={styles.iconMoney} />
-        <Text style={styles.textCar}>••••••••2109</Text>
-      </View>
-      <View style={styles.paymentOption}>
-        <Image source={require('../images/mastercar_icon.png')} style={styles.iconbank} />
-        <Text style={styles.textCar}>••••••••2109</Text>
-      </View>
-      <View style={styles.paymentOption}>
-        <Image source={require('../images/IOS-Bank_icon.png')} style={styles.iconbank} />
-        <Text style={styles.textCar}>••••••••2109</Text>
-      </View>
+        <View style={{ padding: 16 }}>
+    
+          {paymentMethods.map((method) => (
+            <TouchableOpacity
+              key={method.id}
+              style={[
+                styles.methodBox,
+                selectedMethodId === method.id && styles.methodBoxSelected,
+              ]}
+              onPress={() => setSelectedMethodId(method.id)}
+            >
+              <Image source={method.icon} style={styles.icon} />
+              <Text style={styles.text}>•••• {method.last4}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-      <TouchableOpacity style={styles.button}onPress={() => navigation.navigate('QRCodePayment')}>
-        <Text style={styles.buttonText}>Tiếp Tục</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('QRCodePayment')}>
+          <Text style={styles.buttonText}>Tiếp Tục</Text>
+        </TouchableOpacity>
       </ScrollView>
-      
+
 
       <View style={styles.MenuTab}>
-        <TouchableOpacity style={styles.menuButton}onPress={() => navigation.navigate('Home')}>
+        <TouchableOpacity style={styles.menuButton} onPress={() => navigation.navigate('Home')}>
           <Image source={require('../images/home_icon.png')} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.menuButton}>
           <Image source={require('../images/heart_icon.png')} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.menuButton}onPress={() => navigation.navigate('Cart')}>
-          <Image source={require('../images/shopping-cart_icon.png')}/>
+        <TouchableOpacity style={styles.menuButton} onPress={() => navigation.navigate('Cart')}>
+          <Image source={require('../images/shopping-cart_icon.png')} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.menuButton}>
           <Image source={require('../images/search_icon.png')} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.menuButton}onPress={() => navigation.navigate('Profile')}>
+        <TouchableOpacity style={styles.menuButton} onPress={() => navigation.navigate('Profile')}>
           <Image source={require('../images/settings_icon.png')} />
         </TouchableOpacity>
       </View>
@@ -83,6 +90,28 @@ const OrderSummaryScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  methodBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  methodBoxSelected: {
+    borderColor: 'red',
+  },
+  icon: {
+    width: 30,
+    height: 30,
+    marginRight: 12,
+    resizeMode: 'contain',
+  },
+  text: {
+    fontSize: 16,
+  },
   MenuTab: {
     position: 'absolute',
     bottom: 0,
@@ -153,7 +182,7 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
-    marginTop:30
+    marginTop: 30
   },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
 });

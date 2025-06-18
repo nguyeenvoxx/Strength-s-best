@@ -40,7 +40,7 @@ const SignInScreen: React.FC = () => {
     } else {
       setPassError(false);
     }
-    navigation.navigate('Profile');
+    navigation.navigate('Home');
   };
 
   return (

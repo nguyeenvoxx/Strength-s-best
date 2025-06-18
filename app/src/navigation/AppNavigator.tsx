@@ -16,6 +16,7 @@ import CheckoutScreen from '../screens/CheckoutScreen';
 import PaymentSuccessScreen from '../screens/PaymentSuccessScreen';
 import QRCodePaymentScreen from '../screens/QRCodePaymentScreen';
 import OrderSummaryScreen from '../screens/OrderSummaryScreen';
+import EditProfileScreen from '../screens/EditProfileScreen';
 
 const Stack = createStackNavigator();
 
@@ -30,6 +31,7 @@ const AppNavigator: React.FC = () => {
         <Stack.Screen name="CreateAccountSuccess" component={CreateAccountSuccessScreen} options={{ headerShown: false }} />
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ title: 'Quên mật khẩu?' }} />
         <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Health' }} />
+        <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Chinh sua thong tin' }} />
         <Stack.Screen name="Product" component={ProductScreen} options={{ title: 'Sản phẩm' }} />
         <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Hồ sơ' }} />
         <Stack.Screen name="Cart" component={CartScreen} options={{ title: 'Giỏ hàng' }} />

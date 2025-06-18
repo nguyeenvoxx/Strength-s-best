@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import Icon from 'react-native-vector-icons/Ionicons';
 
 type RootStackParamList = {
   SignIn: undefined;
@@ -17,10 +18,11 @@ const SignUpScreen: React.FC = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [agree, setAgree] = useState(false);
+  const [showPassword, setShoPassword] = useState(false)
 
   const handleSignUp = () => {
     if (!agree || !fullName || !email || !password || password !== confirmPassword) {
-      alert('Please fill all fields and agree to the policy');
+      alert('Vui lòng điền đầy đủ các trường và đồng ý với chính sách');
       return;
     }
     navigation.navigate('EmailVerification');
@@ -29,34 +31,61 @@ const SignUpScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {/*  logo lá xanh */}
-    <Image source={require('../images/logo.png')} style={styles.logo}/>
-      <TextInput
-        style={styles.input}
-        placeholder="Full Name"
-        value={fullName}
-        onChangeText={setFullName}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Confirm Password"
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-        secureTextEntry
-      />
+      <Image source={require('../images/logo.png')} style={styles.logo} />
+      <View style={styles.inputWrapper}>
+        <TextInput
+          // style={styles.input}
+          style={styles.textInput}
+          placeholder="Full Name"
+          value={fullName}
+          onChangeText={setFullName}
+        />
+      </View>
+      <View style={styles.inputWrapper}>
+        <TextInput
+          // style={styles.input}
+          style={styles.textInput}
+          placeholder="Email"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+        />
+      </View>
+      <View style={styles.inputWrapper}>
+        <TextInput
+          // style={styles.input}
+          style={styles.textInput}
+          placeholder="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry={!showPassword}
+        />
+        <TouchableOpacity onPress={() => setShoPassword(!showPassword)}>
+          <Icon
+            name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+            size={20}
+            color="#555"
+          />
+        </TouchableOpacity>
+      </View>
+      <View style={styles.inputWrapper}>
+        <TextInput
+          // style={styles.input}
+          style={styles.textInput}
+          placeholder="Confirm Password"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          secureTextEntry={!showPassword}
+        />
+        <TouchableOpacity onPress={() => setShoPassword(!showPassword)}>
+          <Icon
+            name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+            size={20}
+            color="#555"
+          />
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.options}>
         <TouchableOpacity onPress={() => setAgree(!agree)}>
           <View style={styles.checkbox}>
@@ -91,13 +120,29 @@ const styles = StyleSheet.create({
     height: 100,
     marginBottom: 30,
   },
-  input: {
-    width: '100%',
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 5,
-    padding: 10,
-    marginBottom: 10,
+    borderColor: '#000',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    marginBottom: 15,
+    width: '100%',
+    height: 48,
+  },
+  // input: {
+  //   width: '100%',
+  //   // borderWidth: 1,
+  //   borderColor: '#ccc',
+  //   borderRadius: 5,
+  //   padding: 10,
+  //   marginBottom: 10,
+  // },
+  textInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#000',
   },
   options: {
     flexDirection: 'row',
@@ -128,11 +173,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     borderRadius: 5,
     marginBottom: 20,
+    width: 316,
+    height: 54
   },
   buttonText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+    textAlign: 'center'
   },
   footer: {
     flexDirection: 'row',

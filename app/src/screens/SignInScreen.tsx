@@ -2,12 +2,15 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import Icon from 'react-native-vector-icons/Ionicons';
 
 type RootStackParamList = {
   SignUp: undefined;
   ForgotPassword: undefined;
   Welcome: undefined;
   Home: undefined;
+  Checkout: undefined,
+  Profile: undefined
 };
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
@@ -18,7 +21,9 @@ const SignInScreen: React.FC = () => {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [emailError, setEmailError] = useState(false);
-  const [passError, setPassError] = useState(false)
+  const [passError, setPassError] = useState(false);
+  const [showPassword, setShowPassword] = useState(false)
+  
 
   const handleSignIn = () => {
     if (!email) {
@@ -27,15 +32,15 @@ const SignInScreen: React.FC = () => {
       return;
     }
     setEmailError(false);
-    
-    if (!password) { 
+
+    if (!password) {
       setPassError(true);
       Alert.alert('Error', 'Wrong Password');
       return;
     } else {
       setPassError(false);
     }
-    navigation.navigate('Home');
+    navigation.navigate('Profile');
   };
 
   return (
@@ -62,9 +67,17 @@ const SignInScreen: React.FC = () => {
           placeholder="Password"
           value={password}
           onChangeText={setPassword}
-          secureTextEntry
+          secureTextEntry={!showPassword}
           style={styles.textInput}
         />
+        <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+          <Icon
+            name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+            size={20}
+            color="#555"
+          />
+
+        </TouchableOpacity>
       </View>
       {passError && <Text style={styles.errorText}>Sai mật khẩu</Text>}
       <View style={styles.options}>

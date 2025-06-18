@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -13,6 +13,7 @@ type NavigationProp = StackNavigationProp<RootStackParamList>;
 const EmailVerificationScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const [code, setCode] = useState(['', '', '', '']);
+  
 
   const handleCodeChange = (text: string, index: number) => {
     const newCode = [...code];
@@ -20,11 +21,12 @@ const EmailVerificationScreen: React.FC = () => {
     setCode(newCode);
   };
 
+
   const handleConfirm = () => {
     if (code.every((digit) => digit !== '')) {
       navigation.navigate('CreateAccountSuccess');
     } else {
-      alert('Please enter the full code');
+      alert('Vui lòng nhập mã đầy đủ');
     }
   };
 
@@ -52,7 +54,7 @@ const EmailVerificationScreen: React.FC = () => {
       <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
         <Text style={styles.buttonText}>Confirmation</Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
+      <TouchableOpacity style={styles.confirmButton1} onPress={() => navigation.navigate('SignUp')}>
         <Text style={styles.backText}>Return to registration</Text>
       </TouchableOpacity>
     </View>
@@ -88,7 +90,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: 'black',
     borderRadius: 5,
     textAlign: 'center',
     fontSize: 20,
@@ -104,15 +106,25 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     paddingHorizontal: 40,
     borderRadius: 5,
+    width: '50%',
+    marginBottom: 20,
+  },
+  confirmButton1: {
+    backgroundColor: '#31313140',
+    paddingVertical: 15,
+    paddingHorizontal: 40,
+    borderRadius: 5,
+    width: '50%',
     marginBottom: 20,
   },
   buttonText: {
     color: '#fff',
     fontSize: 18,
+    textAlign: 'center',
     fontWeight: 'bold',
   },
   backText: {
-    color: '#666',
+    color: '#000000',
   },
 });
 

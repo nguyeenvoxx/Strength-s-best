@@ -1,7 +1,18 @@
 import React from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+
+
+type RootStackParamList = {
+  SignIn: undefined;
+  EditProfile: undefined
+};
+
+type NavigationProp = StackNavigationProp<RootStackParamList>;
 
 const CheckoutScreen: React.FC = () => {
+  const navigation = useNavigation<NavigationProp>();
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Đổi mật khẩu</Text>
@@ -12,7 +23,7 @@ const CheckoutScreen: React.FC = () => {
       <Text style={styles.label}>Xác nhận mật khẩu mới</Text>
       <TextInput style={styles.input} secureTextEntry placeholder="Nhập lại mật khẩu mới"/>
       <View style={styles.buttons}>
-        <TouchableOpacity style={styles.cancelButton}>
+        <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.navigate('EditProfile')}>
           <Text style={styles.cancelButtonText}>Hủy</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.saveButton}>

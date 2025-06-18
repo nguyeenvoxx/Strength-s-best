@@ -8,7 +8,7 @@ type RootStackParamList = {
   SignIn: undefined;
   EmailVerification: undefined;
   Checkout: undefined
-  EditProfile: undefined
+  Profile: undefined
 };
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
@@ -35,7 +35,7 @@ const EditProfileScreen: React.FC = () => {
         <Text style={styles.arrow}>{'>'}</Text>
       </TouchableOpacity>
       <View style={styles.buttons}>
-        <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.navigate('EditProfile')}>
+        <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.navigate('Profile')}>
           <Text style={styles.cancelButtonText}>Hủy</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.saveButton}>

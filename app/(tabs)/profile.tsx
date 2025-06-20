@@ -13,8 +13,10 @@ const ProfileScreen: React.FC = () => {
     <View style={styles.container}>
       <View style={styles.profileHeader}>
         <Image source={require('../../assets/images/avatar.png')} style={styles.avatar} />
-        <Text style={styles.name}>Tâm nhân</Text>
-        <Text style={styles.email}>nhan@gmail.com</Text>
+        <View style={styles.infor}>
+          <Text style={styles.name}>Tâm nhân</Text>
+          <Text style={styles.email}>nhan@gmail.com</Text>
+        </View>
       </View>
       <TouchableOpacity style={styles.button} onPress={() => router.push('../../edit-profile')}>
         <Text style={styles.editText}>Chỉnh sửa thông tin</Text>
@@ -65,50 +67,66 @@ const ProfileScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    padding: 10 
+  container: {
+    flex: 1,
+    padding: 10
   },
-  profileHeader: { 
-    alignItems: 'center', 
-    marginBottom: 20 
+  profileHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    paddingVertical: 20,
+    paddingHorizontal: 15,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowRadius: 4,
+    elevation: 10,
+    marginHorizontal: 10,
+    marginTop: 20,
   },
-  avatar: { 
-    width: 100, 
-    height: 100, 
-    borderRadius: 50 
+  infor: {
+    flexDirection: 'column'
   },
-  button: { 
-    backgroundColor: '#000', 
-    padding: 10, 
-    alignItems: 'center', 
-    marginBottom: 20, 
-    borderRadius: 10 
+  avatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginRight: 25,
   },
-  menu: { 
-    padding: 10 
+  button: {
+    backgroundColor: '#000',
+    padding: 20,
+    alignItems: 'center',
+    marginBottom: 20,
+    borderRadius: 10,
+    marginHorizontal: 10,
   },
-  name: { 
-    fontSize: 16, 
-    fontWeight: 'bold', 
-    marginTop: 10 
+  menu: {
+    padding: 10
   },
-  email: { 
-    color: '#666', 
-    fontSize: 13 
+  name: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 10,
+    marginBottom: 15
   },
-  menuItem: { 
-    fontSize: 15, 
-    paddingVertical: 10, 
-    flexDirection: 'row', 
-    alignItems: 'center' 
+  email: {
+    color: '#666',
+    fontSize: 13
   },
-  logout: { 
-    color: 'red' 
+  menuItem: {
+    fontSize: 15,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center'
   },
-  editText: { 
-    color: '#fff', 
-    fontSize: 14 
+  logout: {
+    color: 'red'
+  },
+  editText: {
+    color: '#fff',
+    fontSize: 14
   },
   icon: {
     width: 20,
@@ -139,48 +157,48 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'center',
   },
-  modalMessage: { 
-    textAlign: 'center', 
-    color: '#666', 
-    marginVertical: 10 
+  modalMessage: {
+    textAlign: 'center',
+    color: '#666',
+    marginVertical: 10
   },
-  modalButtons: { 
-    flexDirection: 'row', 
-    marginTop: 10, 
-    width: '100%' 
+  modalButtons: {
+    flexDirection: 'row',
+    marginTop: 10,
+    width: '100%'
   },
-  modalIcon: { 
-    width: 50, 
-    height: 50, 
-    tintColor: 'red', 
-    marginBottom: 10 
+  modalIcon: {
+    width: 50,
+    height: 50,
+    tintColor: 'red',
+    marginBottom: 10
   },
-  modalTitle: { 
-    fontSize: 18, 
-    fontWeight: 'bold' 
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold'
   },
   cancelButton: {
-    flex: 1, 
-    backgroundColor: '#eee', 
-    padding: 10, 
-    borderRadius: 8, 
-    marginRight: 25, 
-    alignItems: 'center', 
+    flex: 1,
+    backgroundColor: '#eee',
+    padding: 10,
+    borderRadius: 8,
+    marginRight: 25,
+    alignItems: 'center',
     width: 102
   },
   logoutButton: {
-    flex: 1, 
-    backgroundColor: '#F03939', 
-    padding: 10, 
-    borderRadius: 8, 
-    alignItems: 'center', 
+    flex: 1,
+    backgroundColor: '#6AF039',
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
     width: 102
   },
-  cancelText: { 
-    color: '#000' 
+  cancelText: {
+    color: '#000'
   },
-  logoutText: { 
-    color: '#000000' 
+  logoutText: {
+    color: '#000000'
   },
   header: {
     backgroundColor: '#fff',

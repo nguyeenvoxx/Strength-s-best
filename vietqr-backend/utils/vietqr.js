@@ -13,6 +13,7 @@ function generateVietQR(amount, orderId = null) {
 
   const qrUrl = `https://img.vietqr.io/image/${bankId}-${accountNo}-compact2.jpg?amount=${amount}&addInfo=${encodedInfo}&accountName=${encodedName}`;
 
+
   return {
     qrUrl,
     accountName,

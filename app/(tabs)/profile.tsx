@@ -8,6 +8,7 @@ const ProfileScreen: React.FC = () => {
   const handleLogout = () => {
     setlougoutVisible(false);
     alert('Đã đăng xuất thành công!');
+    router.push('/(tabs)/home')
   };
   return (
     <View style={styles.container}>

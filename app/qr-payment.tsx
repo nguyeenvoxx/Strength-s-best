@@ -1,10 +1,54 @@
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Modal } from 'react-native';
+
+type QrData = {
+  qrUrl: string;
+  accountName: string;
+  accountNo: string;
+  amount: number;
+  content: string;
+};
+
+
 
 const QRCodePaymentScreen: React.FC = () => {
   const router = useRouter();
-  const [visible, setVisible] = useState(false);
+
+  const API_URL = 'https://b40e-115-78-238-159.ngrok-free.app/api/qr'; const [visible, setVisible] = useState(false)
+  const [qrData, setQrData] = useState<QrData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [timeLeft, setTimeLeft] = useState(300); // đếm ngược 5 phút
+
+  const fetchQR = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_URL}?amount=5000&orderId=DH123`);
+      const text = await res.text();
+      console.log(">> Raw API response:", text);
+      const data = JSON.parse(text);
+      setQrData(data);
+      setTimeLeft(300);
+      setLoading(false);
+    } catch (e) {
+      console.error('Lỗi khi gọi API:', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchQR(); // gọi lần đầu
+    const refresh = setInterval(fetchQR, 5 * 60 * 1000); // lặp lại sau 5 phút
+    return () => clearInterval(refresh);
+  }, []);
+
+  useEffect(() => {
+    const countdown = setInterval(() => {
+      setTimeLeft(prev => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(countdown);
+  }, []);
+
+
   const handlePaymentSuccess = () => {
     setVisible(false);
     router.push('./payment-success');
@@ -16,73 +60,71 @@ const QRCodePaymentScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Image source={require('../assets/images/QRcode.png')} style={styles.qrCode} />
-      <Text style={styles.title}>Thông báo</Text>
-      <View style={styles.stylesBankinf}>
-        <View style={styles.bankInf}>
-          <Image source={require('../assets/images/mb-bank-logo.png')} style={styles.logoBankinfo} />
-          <Text style={styles.details}>Ngân hàng TMCP Quân đội</Text>
-        </View>
-
-        <Text style={styles.label}>Chủ tài khoản:</Text>
-        <Text style={styles.details}>Triều Tâm Nhan</Text>
-
-        <Text style={styles.label}>Số tài khoản:</Text>
-        <Text style={styles.details}>VQKA93203131331</Text>
-
-        <Text style={styles.label}>Số tiền:</Text>
-        <Text style={styles.details}>5.000đ</Text>
-
-        <Text style={styles.label}>Nội dung chuyển khoản:</Text>
-        <Text style={styles.details}>Trieu Tam nhan chuyen tien</Text>
-      </View>
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.button} onPress={() => setVisible(true)}>
-          <Text style={styles.buttonText}>Thanh Toán</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={handleCancel}>
-          <Text style={styles.buttonText}>Hủy</Text>
-        </TouchableOpacity>
-
-        <Modal
-          visible={visible}
-          transparent={true}
-          animationType="fade"
-        >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalBox}>
-              <Image source={require('../assets/images/Payment_icon.png')} style={{ alignItems: 'center', marginRight: 25 }} />
-              <Text style={styles.modalText}>Thanh toán thành công!</Text>
-              <TouchableOpacity
-                onPress={handlePaymentSuccess}
-                style={styles.closeButton}
-              >
-                <Text style={styles.buttonText}>Đóng</Text>
-              </TouchableOpacity>
+      {loading && <Text>Đang tải mã QR...</Text>}
+      {qrData && (
+        <>
+          <Image source={{ uri: qrData.qrUrl }} style={styles.qrCode} />
+          <Text style={styles.title}>Thông báo</Text>
+          <View style={styles.stylesBankinf}>
+            <View style={styles.bankInf}>
+              <Image source={require('../assets/images/mb-bank-logo.png')} style={styles.logoBankinfo} />
+              <Text style={styles.details}>Ngân hàng TMCP Quân đội</Text>
             </View>
+
+            <Text style={styles.details}>{qrData?.accountName}</Text>
+            <Text style={styles.details}>{qrData?.accountNo}</Text>
+            <Text style={styles.details}>{qrData?.amount}đ</Text>
+            <Text style={styles.details}>{qrData?.content}</Text>
           </View>
-        </Modal>
-      </View>
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity style={styles.button} onPress={() => setVisible(true)}>
+              <Text style={styles.buttonText}>Thanh Toán</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.button} onPress={handleCancel}>
+              <Text style={styles.buttonText}>Hủy</Text>
+            </TouchableOpacity>
+
+            <Modal
+              visible={visible}
+              transparent={true}
+              animationType="fade"
+            >
+              <View style={styles.modalContainer}>
+                <View style={styles.modalBox}>
+                  <Image source={require('../assets/images/Payment_icon.png')} style={{ alignItems: 'center', marginRight: 25 }} />
+                  <Text style={styles.modalText}>Thanh toán thành công!</Text>
+                  <TouchableOpacity
+                    onPress={handlePaymentSuccess}
+                    style={styles.closeButton}
+                  >
+                    <Text style={styles.buttonText}>Đóng</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
+          </View>
+        </>
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
     backgroundColor: '#f5f5f5'
   },
-  qrCode: { 
-    width: 200, 
-    height: 230, 
-    marginBottom: 20 
+  qrCode: {
+    width: 200,
+    height: 230,
+    marginBottom: 20
   },
-  title: { 
-    fontSize: 18, 
-    fontWeight: 'bold', 
+  title: {
+    fontSize: 18,
+    fontWeight: 'bold',
     marginBottom: 10,
     color: '#333'
   },
@@ -133,21 +175,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 10,
   },
-  buttonText: { 
-    color: '#fff', 
+  buttonText: {
+    color: '#fff',
     fontSize: 16,
     fontWeight: '600'
   },
   modalContainer: {
-    flex: 1, 
-    justifyContent: 'center', 
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   modalBox: {
-    backgroundColor: 'white', 
-    padding: 30, 
-    borderRadius: 10, 
+    backgroundColor: 'white',
+    padding: 30,
+    borderRadius: 10,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -156,13 +198,13 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   modalText: {
-    fontSize: 16, 
+    fontSize: 16,
     marginBottom: 20,
     color: '#333'
   },
   closeButton: {
-    backgroundColor: '#28a745', 
-    padding: 10, 
+    backgroundColor: '#28a745',
+    padding: 10,
     borderRadius: 8,
   },
 });

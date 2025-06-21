@@ -29,8 +29,8 @@ export default function TabsLayout() {
             <Image 
               source={require('../../assets/images/home_icon.png')} 
               style={{ 
-                width: 24, 
-                height: 24,
+                width: 23, 
+                height: 23,
                 tintColor: focused ? '#007bff' : '#666'
               }} 
             />
@@ -44,8 +44,8 @@ export default function TabsLayout() {
             <Image 
               source={require('../../assets/images/heart_icon.png')} 
               style={{ 
-                width: 24, 
-                height: 24,
+                width: 25, 
+                height: 20,
                 tintColor: focused ? '#007bff' : '#666'
               }} 
             />

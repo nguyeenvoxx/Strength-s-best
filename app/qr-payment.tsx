@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Modal } from 'react-native';
+import { bankCodeMap } from '../app/utils/bankCodeMap';
 
 type QrData = {
   qrUrl: string;
@@ -30,7 +31,7 @@ const QRCodePaymentScreen: React.FC = () => {
     }
 
   };
-  const API_URL = 'https://9b4f-115-78-238-159.ngrok-free.app/api/qr'; const [visible, setVisible] = useState(false)
+  const API_URL = 'https://quoctuanqrdev.loca.lt/api/qr'; const [visible, setVisible] = useState(false)
   const [qrData, setQrData] = useState<QrData | null>(null);
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState(60); // đếm ngược 5 phút
@@ -116,7 +117,9 @@ const QRCodePaymentScreen: React.FC = () => {
                 source={getBankLogo(qrData.bankId)}
                 style={styles.logoBankinfo}
               />
-              <Text style={styles.details}>Ngân hàng {qrData.bankId?.toUpperCase()}</Text>
+              <Text style={styles.details}>
+                {bankCodeMap[qrData.bankId] || `Ngân hàng ${qrData.bankId}`}
+              </Text>
             </View>
             <Text style={styles.details}>{qrData?.accountName}</Text>
             <Text style={styles.details}>{qrData?.accountNo}</Text>
@@ -219,7 +222,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   button: {
-    backgroundColor: '#007bff',
+    backgroundColor: '#469B43',
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 10,

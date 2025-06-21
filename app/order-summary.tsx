@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams } from 'expo-router';
 
 const paymentMethods = [
   { id: 'bank', icon: require('../assets/images/Bank_icon.png'), last4: '2109', name: 'Ngân hàng' },
@@ -13,6 +14,17 @@ const paymentMethods = [
 const OrderSummaryScreen: React.FC = () => {
   const [selectedMethodId, setSelectedMethodId] = useState<string | null>('bank');
   const router = useRouter();
+
+  // truyền du liệu từ giỏ hàng
+  const { selected } = useLocalSearchParams();
+  const selectedItems = selected ? JSON.parse(selected as string) : [];
+
+  const totalOrder = selectedItems.reduce(
+    (sum: number, item: any) => sum + item.price * item.quantity,
+    0
+  );
+  const shippingFee = 30000;
+  const totalAmount = totalOrder + shippingFee;
 
   const handleContinue = () => {
     if (selectedMethodId === 'bank') {
@@ -37,26 +49,43 @@ const OrderSummaryScreen: React.FC = () => {
         {/* Order Summary */}
         <View style={styles.orderSummary}>
           <Text style={styles.sectionTitle}>Chi tiết đơn hàng</Text>
-          
+          <View style={styles.orderSummary}>
+
+            {selectedItems.map((item: any) => (
+
+              <View key={item.id} style={styles.productBox}>
+                <Image
+                  source={typeof item.image === 'number' ? item.image : { uri: item.image }}
+                  style={styles.productImage}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.label}>{item.name}</Text>
+                  <Text style={styles.value}>
+                    {item.price.toLocaleString()} VND x {item.quantity}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
           <View style={styles.row}>
             <Text style={styles.label}>Đặt hàng:</Text>
-            <Text style={styles.value}>2.800.000 VND</Text>
+            <Text style={styles.value}>{totalOrder.toLocaleString()} VND</Text>
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>Vận chuyển:</Text>
-            <Text style={styles.value}>30.000 VND</Text>
+            <Text style={styles.value}>{shippingFee.toLocaleString()} VND</Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.row}>
             <Text style={styles.totalLabel}>Tổng cộng:</Text>
-            <Text style={styles.totalValue}>2.830.000 VND</Text>
+            <Text style={styles.totalValue}>{totalAmount.toLocaleString()} VND</Text>
           </View>
         </View>
 
         {/* Payment Methods */}
         <View style={styles.paymentSection}>
           <Text style={styles.sectionTitle}>Phương thức thanh toán</Text>
-          
+
           {paymentMethods.map((method) => (
             <TouchableOpacity
               key={method.id}
@@ -95,8 +124,8 @@ const OrderSummaryScreen: React.FC = () => {
 
       {/* Continue Button */}
       <View style={styles.bottomContainer}>
-        <TouchableOpacity 
-          style={[styles.continueButton, !selectedMethodId && styles.disabledButton]} 
+        <TouchableOpacity
+          style={[styles.continueButton, !selectedMethodId && styles.disabledButton]}
           onPress={handleContinue}
           disabled={!selectedMethodId}
         >
@@ -108,6 +137,18 @@ const OrderSummaryScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  productBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    gap: 12,
+  },
+  productImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    resizeMode: 'contain',
+  },
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
@@ -267,7 +308,7 @@ const styles = StyleSheet.create({
     borderTopColor: '#e9ecef',
   },
   continueButton: {
-    backgroundColor: '#007bff',
+    backgroundColor: '#469B43',
     paddingVertical: 15,
     borderRadius: 8,
     alignItems: 'center',

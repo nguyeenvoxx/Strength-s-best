@@ -24,12 +24,12 @@ const CheckoutScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Thanh toán</Text>
-      </View>
+    //   <View style={styles.header}>
+    //     <TouchableOpacity onPress={() => router.back()}>
+    //       <Ionicons name="arrow-back" size={24} color="#333" />
+    //     </TouchableOpacity>
+    //     <Text style={styles.headerTitle}>Thanh toán</Text>
+    //   </View>
 
       <ScrollView style={styles.content}>
         {/* Delivery Address */}

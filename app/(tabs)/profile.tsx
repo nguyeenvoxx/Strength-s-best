@@ -65,50 +65,50 @@ const ProfileScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    padding: 10 
+  container: {
+    flex: 1,
+    padding: 10
   },
-  profileHeader: { 
-    alignItems: 'center', 
-    marginBottom: 20 
+  profileHeader: {
+    alignItems: 'center',
+    marginBottom: 20
   },
-  avatar: { 
-    width: 100, 
-    height: 100, 
-    borderRadius: 50 
+  avatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 50
   },
-  button: { 
-    backgroundColor: '#000', 
-    padding: 10, 
-    alignItems: 'center', 
-    marginBottom: 20, 
-    borderRadius: 10 
+  button: {
+    backgroundColor: '#000',
+    padding: 10,
+    alignItems: 'center',
+    marginBottom: 20,
+    borderRadius: 10
   },
-  menu: { 
-    padding: 10 
+  menu: {
+    padding: 10
   },
-  name: { 
-    fontSize: 16, 
-    fontWeight: 'bold', 
-    marginTop: 10 
+  name: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 10
   },
-  email: { 
-    color: '#666', 
-    fontSize: 13 
+  email: {
+    color: '#666',
+    fontSize: 13
   },
-  menuItem: { 
-    fontSize: 15, 
-    paddingVertical: 10, 
-    flexDirection: 'row', 
-    alignItems: 'center' 
+  menuItem: {
+    fontSize: 15,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center'
   },
-  logout: { 
-    color: 'red' 
+  logout: {
+    color: 'red'
   },
-  editText: { 
-    color: '#fff', 
-    fontSize: 14 
+  editText: {
+    color: '#fff',
+    fontSize: 14
   },
   icon: {
     width: 20,
@@ -139,48 +139,48 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'center',
   },
-  modalMessage: { 
-    textAlign: 'center', 
-    color: '#666', 
-    marginVertical: 10 
+  modalMessage: {
+    textAlign: 'center',
+    color: '#666',
+    marginVertical: 10
   },
-  modalButtons: { 
-    flexDirection: 'row', 
-    marginTop: 10, 
-    width: '100%' 
+  modalButtons: {
+    flexDirection: 'row',
+    marginTop: 10,
+    width: '100%'
   },
-  modalIcon: { 
-    width: 50, 
-    height: 50, 
-    tintColor: 'red', 
-    marginBottom: 10 
+  modalIcon: {
+    width: 50,
+    height: 50,
+    tintColor: 'red',
+    marginBottom: 10
   },
-  modalTitle: { 
-    fontSize: 18, 
-    fontWeight: 'bold' 
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold'
   },
   cancelButton: {
-    flex: 1, 
-    backgroundColor: '#eee', 
-    padding: 10, 
-    borderRadius: 8, 
-    marginRight: 25, 
-    alignItems: 'center', 
+    flex: 1,
+    backgroundColor: '#eee',
+    padding: 10,
+    borderRadius: 8,
+    marginRight: 25,
+    alignItems: 'center',
     width: 102
   },
   logoutButton: {
-    flex: 1, 
-    backgroundColor: '#F03939', 
-    padding: 10, 
-    borderRadius: 8, 
-    alignItems: 'center', 
+    flex: 1,
+    backgroundColor: '#F03939',
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
     width: 102
   },
-  cancelText: { 
-    color: '#000' 
+  cancelText: {
+    color: '#000'
   },
-  logoutText: { 
-    color: '#000000' 
+  logoutText: {
+    color: '#000000'
   },
   header: {
     backgroundColor: '#fff',

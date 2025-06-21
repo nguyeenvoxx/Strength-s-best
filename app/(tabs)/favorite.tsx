@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   shopButton: {
-    backgroundColor: '#007bff',
+    backgroundColor: '#469B43',
     paddingHorizontal: 30,
     paddingVertical: 12,
     borderRadius: 25,

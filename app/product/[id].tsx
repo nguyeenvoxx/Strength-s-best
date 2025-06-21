@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { PRODUCT_ITEM_SAMPLE } from '../../constants/app.constant'
 
+
 const { width } = Dimensions.get('window')
 
 interface SectionItem {

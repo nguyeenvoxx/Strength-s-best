@@ -31,7 +31,7 @@ export default function TabsLayout() {
               style={{ 
                 width: 23, 
                 height: 23,
-                tintColor: focused ? '#007bff' : '#666'
+                tintColor: focused ? '#469B43' : '#666'
               }} 
             />
           ),
@@ -46,7 +46,7 @@ export default function TabsLayout() {
               style={{ 
                 width: 25, 
                 height: 20,
-                tintColor: focused ? '#007bff' : '#666'
+                tintColor: focused ? '#469B43' : '#666'
               }} 
             />
           ),
@@ -59,7 +59,7 @@ export default function TabsLayout() {
             <View style={{
               width: 56,
               height: 56,
-              backgroundColor: focused ? '#007bff' : '#ff69b4',
+              backgroundColor: focused ? '#007bff' : '#469B43',
               borderRadius: 28,
               justifyContent: 'center',
               alignItems: 'center',
@@ -91,7 +91,7 @@ export default function TabsLayout() {
               style={{ 
                 width: 24, 
                 height: 24,
-                tintColor: focused ? '#007bff' : '#666'
+                tintColor: focused ? '#469B43' : '#666'
               }} 
             />
           ),
@@ -106,7 +106,7 @@ export default function TabsLayout() {
               style={{ 
                 width: 24, 
                 height: 24,
-                tintColor: focused ? '#007bff' : '#666'
+                tintColor: focused ? '#469B43' : '#666'
               }} 
             />
           ),

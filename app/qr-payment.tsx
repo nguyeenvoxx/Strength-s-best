@@ -8,6 +8,7 @@ type QrData = {
   accountNo: string;
   amount: number;
   content: string;
+  bankId: string;
 };
 
 
@@ -15,29 +16,58 @@ type QrData = {
 const QRCodePaymentScreen: React.FC = () => {
   const router = useRouter();
 
-  const API_URL = 'https://b40e-115-78-238-159.ngrok-free.app/api/qr'; const [visible, setVisible] = useState(false)
+  const getBankLogo = (bankId: string) => {
+
+    switch (bankId?.toLowerCase()) {
+      case 'mb':
+        return require('../assets/images/mb-bank-logo.png');
+      case 'vcb':
+        return require('../assets/images/Vietcombank-logo.png');
+      case 'tcb':
+        return require('../assets/images/Techcombank-logo.png');
+      default:
+        return require('../assets/images/Bank_icon.png'); // logo mặc định nếu không tìm thấy
+    }
+
+  };
+  const API_URL = 'https://9b4f-115-78-238-159.ngrok-free.app/api/qr'; const [visible, setVisible] = useState(false)
   const [qrData, setQrData] = useState<QrData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [timeLeft, setTimeLeft] = useState(300); // đếm ngược 5 phút
+  const [timeLeft, setTimeLeft] = useState(60); // đếm ngược 5 phút
 
   const fetchQR = async () => {
     try {
       setLoading(true);
+
       const res = await fetch(`${API_URL}?amount=5000&orderId=DH123`);
-      const text = await res.text();
-      console.log(">> Raw API response:", text);
-      const data = JSON.parse(text);
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error(' API trả về lỗi:', errorText);
+        throw new Error('API không trả về JSON hợp lệ');
+      }
+      const data: QrData = await res.json();
+
+      if (!data.qrUrl || !data.accountName || !data.accountNo) {
+        console.error(' Dữ liệu thiếu trường bắt buộc:', data);
+        throw new Error('Thiếu dữ liệu QR');
+      }
+
+
+
       setQrData(data);
-      setTimeLeft(300);
-      setLoading(false);
+      setTimeLeft(60);
     } catch (e) {
       console.error('Lỗi khi gọi API:', e);
+      setQrData(null);
+    } finally {
+      setLoading(false);
     }
   };
 
+
   useEffect(() => {
     fetchQR(); // gọi lần đầu
-    const refresh = setInterval(fetchQR, 5 * 60 * 1000); // lặp lại sau 5 phút
+    const refresh = setInterval(fetchQR, 1 * 60 * 1000); // lặp lại sau 1 phút
     return () => clearInterval(refresh);
   }, []);
 
@@ -61,21 +91,39 @@ const QRCodePaymentScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {loading && <Text>Đang tải mã QR...</Text>}
+      {!loading && !qrData && (
+        <Text style={{ color: 'red' }}>
+          Không thể tải mã QR. Vui lòng thử lại sau.
+        </Text>
+      )}
       {qrData && (
         <>
-          <Image source={{ uri: qrData.qrUrl }} style={styles.qrCode} />
+          {qrData.qrUrl && (
+            <Image source={{ uri: qrData.qrUrl }} style={styles.qrCode} />
+          )}
+          {qrData && (
+            <Text style={{ fontSize: 14, color: '#666', marginBottom: 10 }}>
+              Còn lại: {Math.floor(timeLeft / 60)
+                .toString()
+                .padStart(2, '0')}:{(timeLeft % 60).toString().padStart(2, '0')}
+            </Text>
+          )}
           <Text style={styles.title}>Thông báo</Text>
+
           <View style={styles.stylesBankinf}>
             <View style={styles.bankInf}>
-              <Image source={require('../assets/images/mb-bank-logo.png')} style={styles.logoBankinfo} />
-              <Text style={styles.details}>Ngân hàng TMCP Quân đội</Text>
+              <Image
+                source={getBankLogo(qrData.bankId)}
+                style={styles.logoBankinfo}
+              />
+              <Text style={styles.details}>Ngân hàng {qrData.bankId?.toUpperCase()}</Text>
             </View>
-
             <Text style={styles.details}>{qrData?.accountName}</Text>
             <Text style={styles.details}>{qrData?.accountNo}</Text>
             <Text style={styles.details}>{qrData?.amount}đ</Text>
             <Text style={styles.details}>{qrData?.content}</Text>
           </View>
+
           <View style={styles.buttonContainer}>
             <TouchableOpacity style={styles.button} onPress={() => setVisible(true)}>
               <Text style={styles.buttonText}>Thanh Toán</Text>
@@ -104,6 +152,7 @@ const QRCodePaymentScreen: React.FC = () => {
             </Modal>
           </View>
         </>
+
       )}
     </View>
   );
@@ -118,8 +167,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5'
   },
   qrCode: {
-    width: 200,
-    height: 230,
+    width: 230,
+    height: 280,
     marginBottom: 20
   },
   title: {

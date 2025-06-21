@@ -124,7 +124,7 @@ const CartScreen: React.FC = () => {
           <Text>Tổng số lượng: {totalQuantity}</Text>
           <Text style={{ fontWeight: 'bold' }}>{`Tổng tiền: ${totalPrice.toLocaleString()} vnđ`}</Text>
         </View>
-          <TouchableOpacity style={styles.checkoutButton} onPress={() => router.push('../../payment-success')}>
+          <TouchableOpacity style={styles.checkoutButton} onPress={() => router.push('/order-summary')}>
           <Text style={styles.textButton}>Thanh Toán</Text>
         </TouchableOpacity>
       </ScrollView>

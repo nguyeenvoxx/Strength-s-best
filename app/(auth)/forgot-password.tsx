@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     height: 50,
     width: '100%',
     marginBottom: 16,
-    backgroundColor: '#A8A8A9',
+    backgroundColor: '#F3F3F3',
   },
   inputIcon: {
     width: 24,

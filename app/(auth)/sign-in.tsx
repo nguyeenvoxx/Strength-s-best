@@ -37,7 +37,7 @@ const SignInScreen: React.FC = () => {
       <View style={[styles.inputWrapper, emailError && styles.inputError]}>
         <Image source={require('../../assets/images/user.png')} style={styles.icon} />
         <TextInput
-          placeholder="Username"
+          placeholder="Tên tài khoản"
           value={email}
           onChangeText={setEmail}
           style={styles.textInput}
@@ -49,7 +49,7 @@ const SignInScreen: React.FC = () => {
       <View style={[styles.inputWrapper, passError && styles.inputError]}>
         <Image source={require('../../assets/images/lock.png')} style={styles.icon} />
         <TextInput
-          placeholder="Password"
+          placeholder="Mật khẩu"
           value={password}
           onChangeText={setPassword}
           secureTextEntry={!showPassword}

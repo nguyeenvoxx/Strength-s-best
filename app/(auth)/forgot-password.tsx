@@ -1,11 +1,20 @@
-import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 const ForgotPasswordScreen: React.FC = () => {
   const router = useRouter();
-  
+  const [Email, setEmail] = useState('')
+
+  const handleSend = () => {
+    if (!Email) {
+      Alert.alert('Thông báo', 'Vui lòng nhập địa chỉ email của bạn')
+    } else {
+      router.push('./email-verification')
+    }
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Quên mật khẩu?</Text>
@@ -18,12 +27,14 @@ const ForgotPasswordScreen: React.FC = () => {
           style={styles.textInput}
           placeholder="Nhập địa chỉ email của bạn"
           keyboardType="email-address"
+          value={Email}
+          onChangeText={setEmail}
         />
       </View>
       <Text style={styles.note}>
         Chúng tôi sẽ gửi cho bạn một tin nhắn để thiết lập hoặc đặt lại mật khẩu mới của bạn.
       </Text>
-      <TouchableOpacity style={styles.submitButton} onPress={() => router.push('./email-verification')}>
+      <TouchableOpacity style={styles.submitButton} onPress={handleSend}>
         <Text style={styles.buttonText}>Gửi</Text>
       </TouchableOpacity>
     </View>
@@ -78,10 +89,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   submitButton: {
-    backgroundColor: '#ff4d4f',
+    backgroundColor: '#000000',
     paddingVertical: 15,
     paddingHorizontal: 40,
-    borderRadius: 5,
+    borderRadius: 20,
     width: 317,
     height: 56,
   },

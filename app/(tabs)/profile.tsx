@@ -8,13 +8,16 @@ const ProfileScreen: React.FC = () => {
   const handleLogout = () => {
     setlougoutVisible(false);
     alert('Đã đăng xuất thành công!');
+    router.push('/(tabs)/home')
   };
   return (
     <View style={styles.container}>
       <View style={styles.profileHeader}>
         <Image source={require('../../assets/images/avatar.png')} style={styles.avatar} />
-        <Text style={styles.name}>Tâm nhân</Text>
-        <Text style={styles.email}>nhan@gmail.com</Text>
+        <View style={styles.infor}>
+          <Text style={styles.name}>Tâm nhân</Text>
+          <Text style={styles.email}>nhan@gmail.com</Text>
+        </View>
       </View>
       <TouchableOpacity style={styles.button} onPress={() => router.push('../../edit-profile')}>
         <Text style={styles.editText}>Chỉnh sửa thông tin</Text>
@@ -71,19 +74,34 @@ const styles = StyleSheet.create({
   },
   profileHeader: {
     alignItems: 'center',
-    marginBottom: 20
+    marginBottom: 20,
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    paddingVertical: 20,
+    paddingHorizontal: 15,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowRadius: 4,
+    elevation: 10,
+    marginHorizontal: 10,
+    marginTop: 20,
+  },
+  infor: {
+    flexDirection: 'column'
   },
   avatar: {
     width: 100,
     height: 100,
-    borderRadius: 50
+    borderRadius: 50,
+    marginRight: 25,
   },
   button: {
     backgroundColor: '#000',
-    padding: 10,
+    padding: 20,
     alignItems: 'center',
     marginBottom: 20,
-    borderRadius: 10
+    borderRadius: 10,
+    marginHorizontal: 10,
   },
   menu: {
     padding: 10
@@ -91,7 +109,8 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 16,
     fontWeight: 'bold',
-    marginTop: 10
+    marginTop: 10,
+    marginBottom: 15
   },
   email: {
     color: '#666',
@@ -170,7 +189,7 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     flex: 1,
-    backgroundColor: '#F03939',
+    backgroundColor: '#6AF039',
     padding: 10,
     borderRadius: 8,
     alignItems: 'center',

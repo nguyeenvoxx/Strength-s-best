@@ -147,14 +147,7 @@ const CartScreen: React.FC = () => {
                 {selectedIds.includes(item.id) && <Text style={{ color: '#fff' }}>✓</Text>}
               </TouchableOpacity>
 
-              <Image
-                source={
-                  typeof item.image === 'number'
-                    ? item.image
-                    : { uri: item.image }
-                }
-                style={styles.productImage}
-              />
+              <Image source={typeof item.image === 'number'? item.image: { uri: item.image }}style={styles.productImage}/>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: 'PlayfairDisplay', fontSize: 20 }}>{item.name}</Text>
                 <Text>{item.text}</Text>

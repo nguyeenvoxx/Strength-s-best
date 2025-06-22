@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   cancelButton: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#469B43',
     padding: 16,
     flex: 1,
     alignItems: 'center',
@@ -229,14 +229,14 @@ const styles = StyleSheet.create({
     borderColor: '#e9ecef',
   },
   saveButton: {
-    backgroundColor: '#007bff',
+    backgroundColor: '#404040',
     padding: 16,
     flex: 1,
     alignItems: 'center',
     borderRadius: 8,
   },
   cancelButtonText: {
-    color: '#666',
+    color: '#FFFFFF',
     fontWeight: '600',
     fontSize: 16,
   },

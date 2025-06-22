@@ -43,10 +43,10 @@ const EmailVerificationScreen: React.FC = () => {
         <Text style={styles.resendText}>Gửi lại sau 60s Gửi lại</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
-        <Text style={styles.buttonText}>Confirmation</Text>
+        <Text style={styles.buttonText}>Xác nhận</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.confirmButton1} onPress={() => router.push('./sign-up')}>
-        <Text style={styles.backText}>Return to registration</Text>
+        <Text style={styles.backText}>Quay lại đăng ký</Text>
       </TouchableOpacity>
     </View>
   );

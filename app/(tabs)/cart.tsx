@@ -3,13 +3,24 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert } fr
 import { useRouter } from 'expo-router';
 import { useFonts } from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
+// lấy luu giỏ hàng
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 
 const CartScreen: React.FC = () => {
   const router = useRouter();
-  const [cartItems, setCartItems] = useState([
-    { id: '1', name: 'Magic Blackmores', price: 1500000, quantity: 1, text: 'Neque porro...', image: require('../../assets/images_sp/magie_blackmores.png') },
-    { id: '2', name: 'Dầu cá omega', price: 1410000, quantity: 1, text: 'Neque porro...', image: require('../../assets/images_sp/dau_ca_omega.png') },
-  ]);
+  // Lấy dữ liệu giỏ hàng từ AsyncStorage
+  const [cartItems, setCartItems] = useState<any[]>([]);
+  useFocusEffect(
+    useCallback(() => {
+      const loadCart = async () => {
+        const data = await AsyncStorage.getItem('cart');
+        setCartItems(data ? JSON.parse(data) : []);
+      };
+      loadCart();
+    }, [])
+  );
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const toggleSelect = (id: string) => {
     setSelectedIds(prev =>
@@ -54,12 +65,19 @@ const CartScreen: React.FC = () => {
       params: { selected: JSON.stringify(selectedItems) },
     });
   };
-
+  // Xóa sản phẩm khỏi giỏ hàng
+  const handleDelete = async (id: string) => {
+    const updatedCart = cartItems.filter(item => item.id !== id);
+    setCartItems(updatedCart);
+    await AsyncStorage.setItem('cart', JSON.stringify(updatedCart));
+  };
   const selectedItems = cartItems.filter(item => selectedIds.includes(item.id));
   const totalQuantity = selectedItems.reduce((sum, item) => sum + item.quantity, 0);
-  const totalPrice = selectedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  // Tính tổng tiền
+  const totalPrice = selectedItems.reduce((sum, item) => sum + Number(item.price) * item.quantity, 0);
+
   const formatPrice = (price: number) => {
-    return price.toLocaleString('vi-VN') + 'đ';
+    return price.toLocaleString('vi-VN') + ' đ';
   };
 
   if (cartItems.length === 0) {
@@ -70,7 +88,7 @@ const CartScreen: React.FC = () => {
         </View>
 
         <View style={styles.emptyCart}>
-          <Ionicons name="cart-outline" size={80} color="#ccc" />
+          <Ionicons name="cart-outline" size={80} color="#469B43" />
           <Text style={styles.emptyTitle}>Giỏ hàng trống</Text>
           <Text style={styles.emptySubtitle}>
             Thêm sản phẩm vào giỏ hàng để bắt đầu mua sắm
@@ -121,17 +139,26 @@ const CartScreen: React.FC = () => {
         <View>
           {cartItems.map(item => (
             <View key={item.id} style={styles.cartItem}>
+
               <TouchableOpacity
                 onPress={() => toggleSelect(item.id)}
                 style={[styles.checkbox, selectedIds.includes(item.id) && styles.checkboxSelected]}
               >
                 {selectedIds.includes(item.id) && <Text style={{ color: '#fff' }}>✓</Text>}
               </TouchableOpacity>
-              <Image source={item.image} style={styles.productImage} />
+
+              <Image
+                source={
+                  typeof item.image === 'number'
+                    ? item.image
+                    : { uri: item.image }
+                }
+                style={styles.productImage}
+              />
               <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: 'PlayfairDisplay', fontSize: 20 }}>{item.name}</Text>
                 <Text>{item.text}</Text>
-                <Text>{`${item.price.toLocaleString()} vnđ x ${item.quantity}`}</Text>
+                <Text>{`${formatPrice(Number(item.price))} x ${item.quantity}`}</Text>
                 <View style={{ flexDirection: 'row', marginTop: 5 }}>
                   <TouchableOpacity onPress={() => handleDecrease(item.id)} style={styles.qtyButton}>
                     <Text style={styles.qtyText_}>-</Text>
@@ -139,16 +166,17 @@ const CartScreen: React.FC = () => {
                   <TouchableOpacity onPress={() => handleIncrease(item.id)} style={styles.qtyButton}>
                     <Text style={styles.qtyText}>+</Text>
                   </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleDelete(item.id)}>
+                    <Text style={{ color: 'red', marginTop: 5 }}>Xoá</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             </View>
           ))}
         </View>
-
         <View style={{ padding: 10, marginTop: 10 }}>
           <Text>Tổng số lượng: {totalQuantity}</Text>
-          <Text style={{ fontWeight: 'bold' }}>{`Tổng tiền: ${totalPrice.toLocaleString()} vnđ`}</Text>
-        </View>
+          <Text style={{ fontWeight: 'bold' }}> {`Tổng tiền: ${formatPrice(totalPrice)}`}</Text></View>
         <TouchableOpacity style={styles.checkoutButton} onPress={handleCheckout}>
           <Text style={styles.textButton}>Thanh Toán</Text>
         </TouchableOpacity>
@@ -300,7 +328,7 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   shopButton: {
-    backgroundColor: '#007bff',
+    backgroundColor: '#469B43',
     paddingHorizontal: 30,
     paddingVertical: 12,
     borderRadius: 25,

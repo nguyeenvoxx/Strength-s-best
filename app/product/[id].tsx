@@ -3,6 +3,9 @@ import React, { useState } from 'react'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { PRODUCT_ITEM_SAMPLE } from '../../constants/app.constant'
+//lưu và lấy giỏ hàng
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 
 const { width } = Dimensions.get('window')
@@ -41,6 +44,33 @@ const ProductScreen = () => {
     setCurrentImageIndex(index)
   }
 
+  const handleAddToCart = async () => {
+    const cartItem = {
+      id: product.id,
+      name: product.title,
+      price: Number(product.price.toString().replace(/[^\d]/g, '')), quantity: 1, // chuyển đổi giá sang số
+      image: product.images[0],
+      text: 'Neque porro...' // mô tả đơn giản
+    };
+
+    try {
+      const existingCart = await AsyncStorage.getItem('cart');
+      let cart = existingCart ? JSON.parse(existingCart) : [];
+
+      const index = cart.findIndex((item: any) => item.id === cartItem.id);
+      if (index !== -1) {
+        cart[index].quantity += 1;
+      } else {
+        cart.push(cartItem);
+      }
+
+      await AsyncStorage.setItem('cart', JSON.stringify(cart));
+
+      router.push('/(tabs)/cart'); // đúng với cấu trúc folder bạn đang dùng
+    } catch (err) {
+      console.error('Lỗi thêm sản phẩm vào giỏ:', err);
+    }
+  };
   const renderSectionItem = (item: SectionItem, index: number) => {
     return (
       <View key={index} style={styles.sectionItem}>
@@ -99,9 +129,9 @@ const ProductScreen = () => {
             <Ionicons name="star" size={18} color="#FFD700" />
             <Text style={styles.ratingText}>{rating}</Text></View>
         </View>
-        
+
         {/* Price Button */}
-        <TouchableOpacity style={styles.priceButton} onPress={() => router.push('../checkout')}>
+        <TouchableOpacity style={styles.priceButton} onPress={handleAddToCart}>
           <Text style={styles.priceText}>{price}</Text>
         </TouchableOpacity>
       </View>

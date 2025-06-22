@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     flex: 1,
-    backgroundColor: '#eee',
+    backgroundColor: '#000000',
     padding: 10,
     borderRadius: 8,
     marginRight: 25,
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
     width: 102
   },
   cancelText: {
-    color: '#000'
+    color: '#FFFFFF'
   },
   logoutText: {
     color: '#000000'

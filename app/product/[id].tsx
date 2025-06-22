@@ -97,7 +97,7 @@ const ProductScreen = () => {
           <Text style={styles.title}>{productTitle}</Text>
           <View style={styles.ratingContainer}>
             <Ionicons name="star" size={18} color="#FFD700" />
-            <Text style={styles.ratingText}>{rating}</Text>          </View>
+            <Text style={styles.ratingText}>{rating}</Text></View>
         </View>
         
         {/* Price Button */}

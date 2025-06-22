@@ -15,14 +15,14 @@ const SignInScreen: React.FC = () => {
   const handleSignIn = () => {
     if (!email) {
       setEmailError(true);
-      Alert.alert('Error', 'Email does not exist');
+      Alert.alert('Error', 'Email không tồn tại');
       return;
     }
     setEmailError(false);
 
     if (!password) {
       setPassError(true);
-      Alert.alert('Error', 'Wrong Password');
+      Alert.alert('Error', 'Mật khẩu sai');
       return;
     } else {
       setPassError(false);

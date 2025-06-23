@@ -50,11 +50,13 @@ const PurchasedOrdersScreen: React.FC = () => {
         <View key={order.id} style={styles.card}>
           <View style={styles.orderHeader}>
             <View style={{ flex: 1 }}>
+              <Text style={{fontSize:14}}>Sản phẩm: <Text style={{ fontWeight: 'bold', fontSize:13 }}>{order.items[0].name}</Text></Text>
               <Text style={styles.orderId}>Mã đơn: <Text style={{ fontWeight: 'bold' }}>{order.id}</Text></Text>
               <Text style={styles.orderDate}>Ngày: {new Date(order.date).toLocaleDateString('vi-VN')}</Text>
               {order.voucher && (
                 <Text style={styles.voucherText}>Mã giảm giá: {order.voucher.code}</Text>
               )}
+              <Text>Số lượng: {order.items[0].quantity}</Text>
               <Text style={styles.total}>Tổng thanh toán: {formatPrice(order.total)}</Text>
             </View>
             {order.items?.[0]?.image && (
@@ -110,7 +112,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   orderId: {
-    fontSize: 16,
+    fontSize: 14,
     marginBottom: 4,
   },
   orderDate: {
@@ -129,8 +131,8 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   imageRight: {
-    width: 60,
-    height: 60,
+    width: 89,
+    height: 89,
     borderRadius: 8,
     backgroundColor: '#eee',
     marginLeft: 10,

@@ -37,6 +37,21 @@ const OrderSummaryScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.viewGroup}>
+          <Image style={styles.iconGroup} source={require('../assets/images/Group_icon.png')} />
+          <Text style={styles.tileGroup}>Địa chỉ</Text>
+        </View>
+        <View style={styles.Address}>
+          <View style={styles.addressBox}>
+            <TouchableOpacity style={styles.iconEdit}>
+              <Image style={styles.EditIcon} source={require('../assets/images/edit_icon.png')} />
+            </TouchableOpacity>
+            <Text style={styles.tile1}>Địa chỉ:</Text>
+            <Text>Hoàng triệu Tâm Nhân</Text>
+            <Text>120 Quang Trung, P14, Quận Gò Vấp, TPHCM</Text>
+            <Text>SĐT: +84-32842324</Text>
+          </View>
+        </View>
         {/* Order Summary */}
         <View style={styles.orderSummary}>
           <Text style={styles.sectionTitle}>Chi tiết đơn hàng</Text>
@@ -128,6 +143,59 @@ const OrderSummaryScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  tile1: {
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  iconEdit: {
+    width: 30,
+    height: 20,
+    position: 'absolute',
+    top: 5,
+    right: 5,
+  },
+  EditIcon: {
+    width: 20,
+    height: 20
+  },
+  addressBox: {
+    flex: 1,
+    width: 241,
+    height: 120,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  Address: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    padding: 0,
+    gap: 15,
+    borderRadius: 10,
+    marginTop: 12
+  },
+  tileGroup: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  viewGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 20
+  },
+  iconGroup: {
+    height: 20,
+    width: 17,
+    marginEnd: 10,
+    marginLeft: 10,
+    fontWeight: 100
+  },
   productBox: {
     flexDirection: 'row',
     alignItems: 'center',

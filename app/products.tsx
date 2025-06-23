@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Image, FlatList, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Product {
   id: string;
@@ -13,49 +14,76 @@ interface Product {
 
 const ProductListScreen: React.FC = () => {
   const router = useRouter();
+  // them vào giỏ hàng
+  const addToCart = async (product: Product) => {
+    try {
+      const existingCart = await AsyncStorage.getItem('cart');
+      const cart = existingCart ? JSON.parse(existingCart) : [];
+      // Chuyển đổi giá sang số nguyên để dễ dàng xử lý
+      const numericPrice = parseInt(product.price.replace(/\./g, ''));
+      console.log('Thêm vào giỏ:', product);
+      const existingItem = cart.find((item: any) => item.id === product.id);
+      let updatedCart;
+
+      if (existingItem) {
+        updatedCart = cart.map((item: any) =>
+          item.id === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      } else {
+        updatedCart = [...cart, { ...product, price: numericPrice, quantity: 1 }];
+      }
+
+      await AsyncStorage.setItem('cart', JSON.stringify(updatedCart));
+      alert('Đã thêm vào giỏ hàng!');
+    } catch (error) {
+      console.error('Lỗi khi thêm vào giỏ hàng:', error);
+    }
+  };
   const [activeTab, setActiveTab] = useState('Quà tặng');
   const [currentPage, setCurrentPage] = useState(1);
 
   const products = [
-    { 
-      id: '1', 
-      name: 'Magic Blackmores', 
-      price: '500.000', 
+    {
+      id: '1',
+      name: 'Magic Blackmores',
+      price: '500.000',
       category: 'Quà tặng',
       image: require('../assets/images_sp/magie_blackmores.png')
     },
-    { 
-      id: '2', 
-      name: 'Dầu cá omega', 
-      price: '500.000', 
+    {
+      id: '2',
+      name: 'Dầu cá omega',
+      price: '500.000',
       category: 'Quà tặng',
       image: require('../assets/images_sp/dau_ca_omega.png')
     },
-    { 
-      id: '3', 
-      name: 'Blackmores Bio C Powder', 
-      price: '400.000', 
+    {
+      id: '3',
+      name: 'Blackmores Bio C Powder',
+      price: '400.000',
       category: 'Sản phẩm',
       image: require('../assets/images_sp/magie_blackmores.png')
     },
-    { 
-      id: '4', 
-      name: 'Blackmores Natural', 
-      price: '300.000', 
+    {
+      id: '4',
+      name: 'Blackmores Natural',
+      price: '300.000',
       category: 'Sản phẩm',
       image: require('../assets/images_sp/dau_ca_omega.png')
     },
-    { 
-      id: '5', 
-      name: 'Vitamin D3', 
-      price: '250.000', 
+    {
+      id: '5',
+      name: 'Vitamin D3',
+      price: '250.000',
       category: 'Sản phẩm',
       image: require('../assets/images_sp/magie_blackmores.png')
     },
-    { 
-      id: '6', 
-      name: 'Calcium Plus', 
-      price: '350.000', 
+    {
+      id: '6',
+      name: 'Calcium Plus',
+      price: '350.000',
       category: 'Quà tặng',
       image: require('../assets/images_sp/dau_ca_omega.png')
     },
@@ -63,10 +91,10 @@ const ProductListScreen: React.FC = () => {
 
   const tabs = ['Quà tặng', 'Sản phẩm', 'Khuyến mãi'];
 
-  const filteredProducts = products.filter(product => 
+  const filteredProducts = products.filter(product =>
     activeTab === 'Quà tặng' ? product.category === 'Quà tặng' :
-    activeTab === 'Sản phẩm' ? product.category === 'Sản phẩm' :
-    products // Show all for "Khuyến mãi"
+      activeTab === 'Sản phẩm' ? product.category === 'Sản phẩm' :
+        products // Show all for "Khuyến mãi"
   );
 
   const handleProductPress = (productId: string) => {
@@ -74,13 +102,13 @@ const ProductListScreen: React.FC = () => {
   };
 
   const renderProduct = ({ item }: { item: Product }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={styles.productItem}
       onPress={() => handleProductPress(item.id)}
     >
       <View style={styles.productImageContainer}>
-        <Image 
-          source={item.image} 
+        <Image
+          source={item.image}
           style={styles.productImage}
           resizeMode="contain"
         />
@@ -88,7 +116,7 @@ const ProductListScreen: React.FC = () => {
       <View style={styles.productInfo}>
         <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
         <Text style={styles.productPrice}>{item.price}đ</Text>
-        <TouchableOpacity style={styles.addButton}>
+        <TouchableOpacity style={styles.addButton} onPress={() => addToCart(item)}>
           <Ionicons name="add" size={16} color="#fff" />
         </TouchableOpacity>
       </View>
@@ -173,7 +201,7 @@ const ProductListScreen: React.FC = () => {
         <View style={styles.footer}>
           <Text style={styles.footerContact}>support@openl design</Text>
           <Text style={styles.footerTime}>08:00 - 22:00 Everyday</Text>
-          
+
           <View style={styles.footerLinks}>
             <TouchableOpacity style={styles.footerLink}>
               <Text style={styles.footerLinkText}>About</Text>
@@ -185,7 +213,7 @@ const ProductListScreen: React.FC = () => {
               <Text style={styles.footerLinkText}>Blog</Text>
             </TouchableOpacity>
           </View>
-          
+
           <Text style={styles.footerCopyright}>Copyright © OpenL! All Rights Reserved</Text>
         </View>
       </ScrollView>
@@ -194,8 +222,8 @@ const ProductListScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
+  container: {
+    flex: 1,
     backgroundColor: '#f8f9fa'
   },
   header: {
@@ -216,8 +244,8 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
-  tabs: { 
-    flexDirection: 'row', 
+  tabs: {
+    flexDirection: 'row',
     backgroundColor: '#fff',
     paddingHorizontal: 20,
     paddingVertical: 15,
@@ -231,7 +259,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
     borderRadius: 20,
   },
-  activeTab: { 
+  activeTab: {
     backgroundColor: '#007bff',
   },
   tabText: {
@@ -249,7 +277,7 @@ const styles = StyleSheet.create({
   productRow: {
     justifyContent: 'space-between',
   },
-  productItem: { 
+  productItem: {
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 15,
@@ -265,8 +293,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  productImage: { 
-    width: 80, 
+  productImage: {
+    width: 80,
     height: 80,
     backgroundColor: '#f8f9fa',
   },
@@ -295,8 +323,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pagination: { 
-    flexDirection: 'row', 
+  pagination: {
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 20,
@@ -325,8 +353,8 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
   },
-  footer: { 
-    alignItems: 'center', 
+  footer: {
+    alignItems: 'center',
     paddingVertical: 30,
     paddingHorizontal: 20,
     backgroundColor: '#fff',
@@ -343,8 +371,8 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 20,
   },
-  footerLinks: { 
-    flexDirection: 'row', 
+  footerLinks: {
+    flexDirection: 'row',
     justifyContent: 'center',
     marginBottom: 15,
     gap: 30,

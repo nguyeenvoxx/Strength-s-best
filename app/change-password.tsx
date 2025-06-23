@@ -44,13 +44,13 @@ const ChangePasswordScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.headerContainer}>
+      {/* <View style={styles.headerContainer}>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
         <Text style={styles.header}>Đổi mật khẩu</Text>
         <View style={styles.placeholder} />
-      </View>
+      </View> */}
 
       {/* Form */}
       <View style={styles.formContainer}>

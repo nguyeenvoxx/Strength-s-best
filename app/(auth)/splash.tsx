@@ -1,10 +1,16 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 
 const SplashScreen: React.FC = () => {
   const router = useRouter();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      router.replace('/sign-in');
+    }, 2000); // Hiển thị splash screen trong 2 giây
 
+    return () => clearTimeout(timer); // cleanup nếu unmount
+  }, []);
   return (
     <View style={styles.container}>
       <Image source={require('../../assets/images/logo.png')} style={styles.logo} />

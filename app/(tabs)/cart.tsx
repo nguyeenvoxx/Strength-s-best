@@ -147,15 +147,17 @@ const CartScreen: React.FC = () => {
                 {selectedIds.includes(item.id) && <Text style={{ color: '#fff' }}>✓</Text>}
               </TouchableOpacity>
 
-              <Image source={typeof item.image === 'number'? item.image: { uri: item.image }}style={styles.productImage}/>
+              <Image source={typeof item.image === 'number' ? item.image : { uri: item.image }} style={styles.productImage} />
               <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: 'PlayfairDisplay', fontSize: 20 }}>{item.name}</Text>
                 <Text>{item.text}</Text>
-                <Text>{`${formatPrice(Number(item.price))} x ${item.quantity}`}</Text>
+                <Text>{formatPrice(item.price)}</Text>
                 <View style={{ flexDirection: 'row', marginTop: 5 }}>
+
                   <TouchableOpacity onPress={() => handleDecrease(item.id)} style={styles.qtyButton}>
                     <Text style={styles.qtyText_}>-</Text>
                   </TouchableOpacity>
+                  <Text style={{ marginHorizontal: 2, fontSize: 16,marginRight:10}}>{item.quantity}</Text>
                   <TouchableOpacity onPress={() => handleIncrease(item.id)} style={styles.qtyButton}>
                     <Text style={styles.qtyText}>+</Text>
                   </TouchableOpacity>

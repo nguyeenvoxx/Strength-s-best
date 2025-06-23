@@ -61,7 +61,7 @@ const CartScreen: React.FC = () => {
       return;
     }
     router.push({
-      pathname: '/order-summary',
+      pathname: '/checkout',
       params: { selected: JSON.stringify(selectedItems) },
     });
   };

@@ -2,6 +2,10 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Modal } from 'react-native';
 import { bankCodeMap } from '../app/utils/bankCodeMap';
+import { useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+
 
 type QrData = {
   qrUrl: string;
@@ -35,6 +39,7 @@ const QRCodePaymentScreen: React.FC = () => {
   const [qrData, setQrData] = useState<QrData | null>(null);
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState(60); // đếm ngược 5 phút
+
 
   const fetchQR = async () => {
     try {
@@ -79,12 +84,64 @@ const QRCodePaymentScreen: React.FC = () => {
     return () => clearInterval(countdown);
   }, []);
 
+  const { selected, voucher } = useLocalSearchParams();
+  const selectedItems = selected ? JSON.parse(selected as string) : [];
+  const selectedVoucher = voucher ? JSON.parse(voucher as string) : null;
+  const shippingFee = 30000;
 
-  const handlePaymentSuccess = () => {
+  const orderTotal = selectedItems.reduce(
+    (sum: number, item: any) => sum + item.price * item.quantity,
+    0
+  );
+
+  const discount = selectedVoucher && orderTotal >= selectedVoucher.minOrder
+    ? Math.min((orderTotal * selectedVoucher.discountPercent) / 100, selectedVoucher.maxDiscount)
+    : 0;
+
+  const finalTotal = orderTotal + shippingFee - discount;
+
+  const handlePaymentSuccess = async () => {
     setVisible(false);
-    router.push('./payment-success');
-  };
 
+    try {
+      const newOrder = {
+        id: 'ODR-' + Date.now(),
+        items: selectedItems,
+        total: finalTotal,
+        discount,
+        voucher: selectedVoucher,
+        shippingFee: 30000,
+        date: new Date().toISOString(),
+      };
+      console.log('selectedItems:', selectedItems);
+
+      // Lấy đơn hàng đã mua cũ
+      const existing = await AsyncStorage.getItem('purchased');
+      const purchased = existing ? JSON.parse(existing) : [];
+
+      // Gộp sản phẩm mới thanh toán vào danh sách đã mua
+      const updatedPurchased = [...purchased, newOrder];
+      await AsyncStorage.setItem('purchased', JSON.stringify(updatedPurchased));
+
+      // (Tuỳ chọn) Xoá các sản phẩm đã mua khỏi giỏ hàng
+      const cart = await AsyncStorage.getItem('cart');
+      if (cart) {
+        const cartItems = JSON.parse(cart);
+        const newCart = cartItems.filter(
+          (item: any) => !selectedItems.find((sel: any) => sel.id === item.id)
+        );
+        await AsyncStorage.setItem('cart', JSON.stringify(newCart));
+      }
+
+      // Chuyển qua màn order summary
+      router.push({
+        pathname: './order-summary',
+        params: { selected: JSON.stringify(selectedItems) },
+      });
+    } catch (error) {
+      console.error('Lỗi khi xử lý thanh toán:', error);
+    }
+  };
   const handleCancel = () => {
     router.push('./(tabs)/cart');
   };

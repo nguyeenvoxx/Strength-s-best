@@ -27,13 +27,13 @@ const EditProfileScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.headerContainer}>
+      {/* <View style={styles.headerContainer}>
         <TouchableOpacity onPress={() => router.back()}>
           <Text style={styles.backButton}>‹</Text>
         </TouchableOpacity>
         <Text style={styles.header}>Chỉnh sửa hồ sơ</Text>
         <View style={styles.placeholder} />
-      </View>
+      </View> */}
 
       {/* Profile Avatar */}
       <View style={styles.profileHeader}>

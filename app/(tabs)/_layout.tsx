@@ -1,6 +1,8 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Image, View } from 'react-native';
+import Feather from '@expo/vector-icons/Feather';
+
 
 export default function TabsLayout() {
   return (
@@ -57,9 +59,9 @@ export default function TabsLayout() {
         options={{
           tabBarIcon: ({ focused }) => (
             <View style={{
-              width: 56,
-              height: 56,
-              backgroundColor: focused ? '#007bff' : '#469B43',
+              width: 50,
+              height: 50,
+              backgroundColor: focused ? 'red' : '#469B43',
               borderRadius: 28,
               justifyContent: 'center',
               alignItems: 'center',
@@ -70,14 +72,7 @@ export default function TabsLayout() {
               shadowOffset: { width: 0, height: 2 },
               shadowRadius: 4,
             }}>
-              <Image 
-                source={require('../../assets/images/shopping-cart_icon.png')} 
-                style={{ 
-                  width: 28, 
-                  height: 28,
-                  tintColor: '#fff'
-                }} 
-              />
+              <Feather name="shopping-cart" size={24} color="#fff" />
             </View>
           ),
         }}

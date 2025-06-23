@@ -1,385 +1,123 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams } from 'expo-router';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
-const paymentMethods = [
-  { id: 'bank', icon: require('../assets/images/Bank_icon.png'), last4: '2109', name: 'Ngân hàng' },
-  { id: 'cash', icon: require('../assets/images/Money_icon.png'), last4: '2109', name: 'Tiền mặt' },
-  { id: 'mastercard', icon: require('../assets/images/mastercard_icon.png'), last4: '2109', name: 'Mastercard' },
-  { id: 'apple', icon: require('../assets/images/IOS-Bank_icon.png'), last4: '2109', name: 'Apple Pay' },
-];
-
-const OrderSummaryScreen: React.FC = () => {
-  const [selectedMethodId, setSelectedMethodId] = useState<string | null>('bank');
+export default function OrderSummaryScreen() {
   const router = useRouter();
-
-  // truyền du liệu từ giỏ hàng
   const { selected } = useLocalSearchParams();
-  const selectedItems = selected ? JSON.parse(selected as string) : [];
+  const orderItems = selected ? JSON.parse(selected as string) : [];
 
-  const totalOrder = selectedItems.reduce(
-    (sum: number, item: any) => sum + item.price * item.quantity,
-    0
-  );
-  const shippingFee = 30000;
-  const totalAmount = totalOrder + shippingFee;
-
-  const handleContinue = () => {
-    if (selectedMethodId === 'bank') {
-      router.push('./qr-payment');
-    } else {
-      router.push('./payment-success');
-    }
+  const formatPrice = (price: number) => {
+    return price.toLocaleString('vi-VN') + ' đ';
   };
+
+  const totalQuantity = orderItems.reduce((sum: number, item: any) => sum + item.quantity, 0);
+  const totalPrice = orderItems.reduce((sum: number, item: any) => sum + item.quantity * item.price, 0);
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.viewGroup}>
-          <Image style={styles.iconGroup} source={require('../assets/images/Group_icon.png')} />
-          <Text style={styles.tileGroup}>Địa chỉ</Text>
-        </View>
-        <View style={styles.Address}>
-          <View style={styles.addressBox}>
-            <TouchableOpacity style={styles.iconEdit}>
-              <Image style={styles.EditIcon} source={require('../assets/images/edit_icon.png')} />
-            </TouchableOpacity>
-            <Text style={styles.tile1}>Địa chỉ:</Text>
-            <Text>Hoàng triệu Tâm Nhân</Text>
-            <Text>120 Quang Trung, P14, Quận Gò Vấp, TPHCM</Text>
-            <Text>SĐT: +84-32842324</Text>
-          </View>
-        </View>
-        {/* Order Summary */}
-        <View style={styles.orderSummary}>
-          <Text style={styles.sectionTitle}>Chi tiết đơn hàng</Text>
-          <View style={styles.orderSummary}>
+      <Text style={styles.header}>Xem đơn hàng</Text>
 
-            {selectedItems.map((item: any) => (
-
-              <View key={item.id} style={styles.productBox}>
-                <Image
-                  source={typeof item.image === 'number' ? item.image : { uri: item.image }}
-                  style={styles.productImage}
-                />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.label}>{item.name}</Text>
-                  <Text style={styles.value}>
-                    {item.price.toLocaleString()} VND x {item.quantity}
-                  </Text>
-                </View>
-              </View>
-            ))}
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Đặt hàng:</Text>
-            <Text style={styles.value}>{totalOrder.toLocaleString()} VND</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Vận chuyển:</Text>
-            <Text style={styles.value}>{shippingFee.toLocaleString()} VND</Text>
-          </View>
-          <View style={styles.divider} />
-          <View style={styles.row}>
-            <Text style={styles.totalLabel}>Tổng cộng:</Text>
-            <Text style={styles.totalValue}>{totalAmount.toLocaleString()} VND</Text>
-          </View>
-        </View>
-
-        {/* Payment Methods */}
-        <View style={styles.paymentSection}>
-          <Text style={styles.sectionTitle}>Phương thức thanh toán</Text>
-
-          {paymentMethods.map((method) => (
-            <TouchableOpacity
-              key={method.id}
-              style={[
-                styles.methodBox,
-                selectedMethodId === method.id && styles.methodBoxSelected,
-              ]}
-              onPress={() => setSelectedMethodId(method.id)}
-            >
-              <View style={styles.methodContent}>
-                <Image source={method.icon} style={styles.methodIcon} />
-                <View style={styles.methodInfo}>
-                  <Text style={styles.methodName}>{method.name}</Text>
-                  <Text style={styles.methodDetails}>•••• {method.last4}</Text>
-                </View>
-              </View>
-              {selectedMethodId === method.id && (
-                <Ionicons name="checkmark-circle" size={20} color="#007bff" />
-              )}
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Delivery Info */}
-        <View style={styles.deliverySection}>
-          <Text style={styles.sectionTitle}>Thông tin giao hàng</Text>
-          <View style={styles.deliveryInfo}>
-            <Ionicons name="location-outline" size={20} color="#007bff" />
-            <View style={styles.deliveryText}>
-              <Text style={styles.deliveryAddress}>123 Đường ABC, Quận 1</Text>
-              <Text style={styles.deliveryTime}>Giao hàng trong 2-3 ngày</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {orderItems.map((item: any) => (
+          <View key={item.id} style={styles.card}>
+            <Image
+              source={typeof item.image === 'number' ? item.image : { uri: item.image }}
+              style={styles.image}
+            />
+            <View style={styles.info}>
+              <Text style={styles.name}>{item.name}</Text>
+              <Text style={styles.detail}>Số lượng: {item.quantity}</Text>
+              <Text style={styles.price}>{formatPrice(item.price)}</Text>
             </View>
           </View>
-        </View>
-      </ScrollView>
+        ))}
 
-      {/* Continue Button */}
-      <View style={styles.bottomContainer}>
-        <TouchableOpacity
-          style={[styles.continueButton, !selectedMethodId && styles.disabledButton]}
-          onPress={handleContinue}
-          disabled={!selectedMethodId}
-        >
-          <Text style={styles.continueButtonText}>Tiếp Tục Thanh Toán</Text>
+        <View style={styles.summaryBox}>
+          <Text style={styles.summaryText}>Tổng số lượng: {totalQuantity}</Text>
+          <Text style={styles.totalText}>Tổng tiền: {formatPrice(totalPrice)}</Text>
+        </View>
+
+        <TouchableOpacity style={styles.button} onPress={() => router.push('/home')}>
+          <Text style={styles.buttonText}>Về trang chủ</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  tile1: {
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  iconEdit: {
-    width: 30,
-    height: 20,
-    position: 'absolute',
-    top: 5,
-    right: 5,
-  },
-  EditIcon: {
-    width: 20,
-    height: 20
-  },
-  addressBox: {
-    flex: 1,
-    width: 241,
-    height: 120,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    position: 'relative',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  Address: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    padding: 0,
-    gap: 15,
-    borderRadius: 10,
-    marginTop: 12
-  },
-  tileGroup: {
-    fontSize: 20,
-    fontWeight: '600',
-  },
-  viewGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 20
-  },
-  iconGroup: {
-    height: 20,
-    width: 17,
-    marginEnd: 10,
-    marginLeft: 10,
-    fontWeight: 100
-  },
-  productBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-    gap: 12,
-  },
-  productImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    resizeMode: 'contain',
-  },
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#ffffff',
+    paddingTop: 50,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-  },
-  placeholder: {
-    width: 24,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  orderSummary: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-    marginTop: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  sectionTitle: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 15,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  label: {
-    fontSize: 16,
-    color: '#666',
-  },
-  value: {
-    fontSize: 16,
-    color: '#333',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#e9ecef',
-    marginVertical: 10,
-  },
-  totalLabel: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  totalValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#007bff',
-  },
-  paymentSection: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-    marginTop: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  methodBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    padding: 15,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-  },
-  methodBoxSelected: {
-    borderColor: '#007bff',
-    backgroundColor: '#e7f3ff',
-  },
-  methodContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  methodIcon: {
-    width: 32,
-    height: 32,
-    marginRight: 12,
-    resizeMode: 'contain',
-  },
-  methodInfo: {
-    flex: 1,
-  },
-  methodName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 2,
-  },
-  methodDetails: {
-    fontSize: 14,
-    color: '#666',
-  },
-  deliverySection: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-    marginTop: 15,
+    textAlign: 'center',
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
-  deliveryInfo: {
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 30,
+  },
+  card: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    backgroundColor: '#f9f9f9',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 15,
+    alignItems: 'center',
   },
-  deliveryText: {
-    marginLeft: 10,
+  image: {
+    width: 70,
+    height: 70,
+    borderRadius: 6,
+    backgroundColor: '#eee',
+  },
+  info: {
+    marginLeft: 12,
     flex: 1,
   },
-  deliveryAddress: {
+  name: {
     fontSize: 16,
-    color: '#333',
     fontWeight: '600',
     marginBottom: 4,
   },
-  deliveryTime: {
+  detail: {
     fontSize: 14,
-    color: '#666',
+    color: '#555',
   },
-  bottomContainer: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderTopWidth: 1,
-    borderTopColor: '#e9ecef',
+  price: {
+    fontSize: 14,
+    color: '#007bff',
+    fontWeight: '500',
   },
-  continueButton: {
-    backgroundColor: '#469B43',
-    paddingVertical: 15,
-    borderRadius: 8,
+  summaryBox: {
+    padding: 15,
+    backgroundColor: '#f1f1f1',
+    borderRadius: 10,
+    marginTop: 20,
+  },
+  summaryText: {
+    fontSize: 16,
+    marginBottom: 5,
+  },
+  totalText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#000',
+  },
+  button: {
+    marginTop: 30,
+    backgroundColor: '#28a745',
+    paddingVertical: 14,
+    borderRadius: 10,
     alignItems: 'center',
   },
-  disabledButton: {
-    backgroundColor: '#ccc',
-  },
-  continueButtonText: {
+  buttonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
 });
-
-export default OrderSummaryScreen;

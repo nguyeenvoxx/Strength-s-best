@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
+import Feather from '@expo/vector-icons/Feather';
+
 
 const ProfileScreen: React.FC = () => {
   const router = useRouter();
@@ -23,6 +25,10 @@ const ProfileScreen: React.FC = () => {
         <Text style={styles.editText}>Chỉnh sửa thông tin</Text>
       </TouchableOpacity>
       <View style={styles.menu}>
+        <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/purchased-orders')}>
+          <Feather style={{marginRight:7}} name="shopping-cart" size={24} color="black" />
+          <Text style={styles.menuText}>Đơn hàng đã mua</Text>
+        </TouchableOpacity>
         <View style={styles.menuItem}>
           <Image source={require('../../assets/images/activity.png')} style={styles.icon} />
           <Text style={styles.menuText}>Trạng thái hoạt động</Text>

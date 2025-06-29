@@ -37,8 +37,8 @@ const HomeScreen: React.FC = () => {
   const [remainingTime, setRemainingTime] = useState('22:55:20');
 
   const carouselImages = [
-    require('../../assets/images_sp/dau_ca_omega.png'),
-    require('../../assets/images_sp/magie_blackmores.png'),
+    { uri: 'https://cdnv2.tgdd.vn/mwg-static/common/News/1579137/20-06-22-06-flash-sale-cuoi-tuan-tung-bung-thumb.jpg' },
+    { uri: 'https://cdnv2.tgdd.vn/mwg-static/common/News/1578821/13-06-15-06-mung-ngay-cua-cha-cham-cha-vui-khoe-thumb.jpg' },
   ];
   const handleViewAllProducts = () => {
     router.push('../products');
@@ -106,18 +106,18 @@ const HomeScreen: React.FC = () => {
 
   const newsItems: NewsItem[] = [
     {
-      image: require('../../assets/images_sp/dau_ca_omega.png'),
-      title: '5 cách tăng cường hệ miễn dịch trong mùa dịch',
+      image: { uri: 'https://cdn2.tuoitre.vn/thumb_w/730/471584752817336320/2025/6/24/ban-sao-ban-sao-thuoc-hiem-17231781483331926815331-17507593761622147355194.jpg' },
+      title: 'Nhiều bệnh nhân nguy kịch tại TP.HCM được cứu sống nhờ điều phối thuốc cấp cứu kịp thời',
       date: '10/06/2025'
     },
     {
-      image: require('../../assets/images_sp/magie_blackmores.png'),
-      title: 'Vitamin D và vai trò quan trọng đối với sức khỏe xương',
+      image: { uri: 'https://cdn2.tuoitre.vn/thumb_w/730/471584752817336320/2025/6/23/23-6-hon-1000-nguoi-tham-gia-dong-dien-yoga-quoc-te-da-nang-2025-1-17506916493471544355776.jpg' },
+      title: 'Yoga và những bài tập giúp tăng cường sức khỏe của não',
       date: '08/06/2025'
     },
     {
-      image: require('../../assets/images_sp/dau_ca_omega.png'),
-      title: 'Omega-3: Lợi ích và nguồn bổ sung tốt nhất',
+      image: { uri: 'https://cdn2.tuoitre.vn/thumb_w/730/471584752817336320/2024/6/29/quochoi-1719624459812418575638.jpg' },
+      title: 'Quốc hội họp riêng nghe trình công tác nhân sự',
       date: '05/06/2025'
     }
   ];
@@ -208,7 +208,7 @@ const HomeScreen: React.FC = () => {
 
         <View style={styles.specialOfferSection}>
           <Image
-            source={require('../../assets/images_sp/dau_ca_omega.png')}
+            source={require('../../assets/images/special_offer.png')}
             style={styles.specialOfferImage}
           />
           <View style={styles.specialOfferContent}>
@@ -221,7 +221,7 @@ const HomeScreen: React.FC = () => {
 
         <View style={styles.healthComboSection}>
           <Image
-            source={require('../../assets/images_sp/magie_blackmores.png')}
+            source={require('../../assets/images/combo.png')}
             style={styles.healthComboImage}
           />
           <View style={styles.healthComboContent}>
@@ -264,7 +264,7 @@ const HomeScreen: React.FC = () => {
 
         <View style={styles.newArrivalsCard}>
           <Image
-            source={require('../../assets/images_sp/dau_ca_omega.png')}
+            source={require('../../assets/images/hot_sale.png')}
             style={styles.newArrivalsImage}
           />
           <View style={styles.newArrivalsContent}>

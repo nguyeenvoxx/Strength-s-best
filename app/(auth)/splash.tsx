@@ -1,9 +1,17 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSettingStore } from '../../store/useSettingStore';
 
 const SplashScreen: React.FC = () => {
   const router = useRouter();
+  const { setIsFirstTime } = useSettingStore();
+
+  const handleGetStarted = () => {
+    // Đánh dấu không còn là lần đầu tiên
+    setIsFirstTime(false);
+    router.push('./sign-in');
+  };
 
   return (
     <View style={styles.container}>
@@ -12,7 +20,7 @@ const SplashScreen: React.FC = () => {
       <Text style={styles.subtitle}>Sức khỏe là hạnh phúc. Hãy trân trọng và chăm sóc bản thân!</Text>
       <TouchableOpacity
         style={styles.button}
-        onPress={() => router.push('./sign-in')}
+        onPress={handleGetStarted}
       >
         <Text style={styles.buttonText}>Bắt đầu</Text>
       </TouchableOpacity>

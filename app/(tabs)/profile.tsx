@@ -1,22 +1,54 @@
 import React, { useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useAuthStore } from '../../store/useAuthStore';
+import { Ionicons } from '@expo/vector-icons';
+import { getPlatformContainerStyle } from '../../utils/platformUtils';
 
 const ProfileScreen: React.FC = () => {
   const router = useRouter();
+  const { user, isAuthenticated, logout } = useAuthStore();
   const [logoutVisible, setlougoutVisible] = useState(false);
+  
   const handleLogout = () => {
     setlougoutVisible(false);
+    logout();
     alert('Đã đăng xuất thành công!');
-    router.push('/(auth)/sign-in')
+    router.push('/(auth)/sign-in');
   };
+  
+  const handleLogin = () => {
+    router.push('/(auth)/sign-in');
+  };
+  
+  if (!isAuthenticated || !user) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.guestContainer}>
+          <View style={styles.avatarPlaceholder}>
+            <Ionicons name="person" size={50} color="#666" />
+          </View>
+          <Text style={styles.guestText}>Bạn chưa đăng nhập</Text>
+          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+            <Text style={styles.loginButtonText}>Đăng nhập</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, getPlatformContainerStyle()]}>
       <View style={styles.profileHeader}>
-        <Image source={require('../../assets/images/avatar.png')} style={styles.avatar} />
+        {user.avatarUrl ? (
+          <Image source={{ uri: user.avatarUrl }} style={styles.avatar} />
+        ) : (
+          <View style={styles.avatarPlaceholder}>
+            <Ionicons name="person" size={50} color="#666" />
+          </View>
+        )}
         <View style={styles.infor}>
-          <Text style={styles.name}>Tâm nhân</Text>
-          <Text style={styles.email}>nhan@gmail.com</Text>
+          <Text style={styles.name}>{user.name}</Text>
+          <Text style={styles.email}>{user.email}</Text>
         </View>
       </View>
       <TouchableOpacity style={styles.button} onPress={() => router.push('../../edit-profile')}>
@@ -94,6 +126,38 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     marginRight: 25,
+  },
+  avatarPlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#e9ecef',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 25,
+  },
+  guestContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  guestText: {
+    fontSize: 18,
+    color: '#666',
+    marginVertical: 20,
+    textAlign: 'center',
+  },
+  loginButton: {
+    backgroundColor: '#000',
+    paddingVertical: 15,
+    paddingHorizontal: 40,
+    borderRadius: 10,
+  },
+  loginButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   button: {
     backgroundColor: '#000',

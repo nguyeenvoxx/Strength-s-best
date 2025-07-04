@@ -19,7 +19,20 @@ const TrendingProductItem: React.FC<TrendingProductItemProps> = ({
     onPress,
 }) => {
     return (
-        <TouchableOpacity style={styles.container} onPress={onPress}>
+        <TouchableOpacity 
+            style={styles.container} 
+            onPress={() => {
+                console.log('🔍 DEBUG TrendingProductItem: TouchableOpacity được nhấn');
+                console.log('🔍 DEBUG TrendingProductItem: onPress function:', typeof onPress);
+                if (onPress) {
+                    console.log('🔍 DEBUG TrendingProductItem: Gọi onPress...');
+                    onPress();
+                } else {
+                    console.log('❌ DEBUG TrendingProductItem: onPress không tồn tại!');
+                }
+            }}
+            activeOpacity={0.7}
+        >
             <Image source={image} style={styles.productImage} />
             <View style={styles.infoContainer}>
                 <Text style={styles.title} numberOfLines={2}>{title}</Text>

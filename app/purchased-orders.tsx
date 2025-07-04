@@ -11,10 +11,11 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 
+// định dạng giá tiền
 const formatPrice = (value: number) => {
   return value.toLocaleString('vi-VN') + ' đ';
 };
-
+//khai báo kiểu dữ liệu cho đơn hàng
 const PurchasedOrdersScreen: React.FC = () => {
   const [orders, setOrders] = useState<any[]>([]);
   const router = useRouter();
@@ -26,7 +27,8 @@ const PurchasedOrdersScreen: React.FC = () => {
     };
     fetchOrders();
   }, []);
-
+  // xử lý hủy đơn hàng
+  // hiển thị cảnh báo xác nhận trước khi hủy đơn
   const handleCancel = (orderId: string) => {
     Alert.alert('Xác nhận', 'Bạn có chắc chắn muốn hủy đơn này?', [
       { text: 'Không' },
@@ -50,7 +52,7 @@ const PurchasedOrdersScreen: React.FC = () => {
         <View key={order.id} style={styles.card}>
           <View style={styles.orderHeader}>
             <View style={{ flex: 1 }}>
-              <Text style={{fontSize:14}}>Sản phẩm: <Text style={{ fontWeight: 'bold', fontSize:13 }}>{order.items[0].name}</Text></Text>
+              <Text style={{ fontSize: 14 }}>Sản phẩm: <Text style={{ fontWeight: 'bold', fontSize: 13 }}>{order.items[0].name}</Text></Text>
               <Text style={styles.orderId}>Mã đơn: <Text style={{ fontWeight: 'bold' }}>{order.id}</Text></Text>
               <Text style={styles.orderDate}>Ngày: {new Date(order.date).toLocaleDateString('vi-VN')}</Text>
               {order.voucher && (
@@ -81,7 +83,7 @@ const PurchasedOrdersScreen: React.FC = () => {
 
       <TouchableOpacity
         style={styles.buyButton}
-        onPress={() => router.push('/')}
+        onPress={() => router.push('/(tabs)/home')}
       >
         <Text style={styles.buyButtonText}>Tiếp tục mua sắm</Text>
       </TouchableOpacity>

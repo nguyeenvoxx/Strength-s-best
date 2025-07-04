@@ -2,12 +2,13 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { getPlatformContainerStyle } from '../utils/platformUtils';
 
 const PaymentSuccessScreen: React.FC = () => {
   const router = useRouter();
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, getPlatformContainerStyle()]}>
       <View style={styles.content}>
         <View style={styles.iconContainer}>
           <Ionicons name="checkmark-circle" size={80} color="#28a745" />

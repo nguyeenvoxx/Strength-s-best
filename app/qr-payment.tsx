@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Modal } from 'react-native';
+import { getPlatformContainerStyle } from '../utils/platformUtils';
 
 const QRCodePaymentScreen: React.FC = () => {
   const router = useRouter();
@@ -15,7 +16,7 @@ const QRCodePaymentScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, getPlatformContainerStyle()]}>
       <Image source={require('../assets/images/QRcode.png')} style={styles.qrCode} />
       <Text style={styles.title}>Thông báo</Text>
       <View style={styles.stylesBankinf}>

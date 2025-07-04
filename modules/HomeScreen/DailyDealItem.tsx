@@ -26,7 +26,20 @@ const DailyDealItem: React.FC<DailyDealItemProps> = ({
   onPress,
 }) => {
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress}>
+    <TouchableOpacity 
+      style={styles.container} 
+      onPress={() => {
+        console.log('🔍 DEBUG DailyDealItem: TouchableOpacity được nhấn');
+        console.log('🔍 DEBUG DailyDealItem: onPress function:', typeof onPress);
+        if (onPress) {
+          console.log('🔍 DEBUG DailyDealItem: Gọi onPress...');
+          onPress();
+        } else {
+          console.log('❌ DEBUG DailyDealItem: onPress không tồn tại!');
+        }
+      }}
+      activeOpacity={0.7}
+    >
       <Image source={image} style={styles.image} />
       <View style={styles.infoContainer}>
         <Text style={styles.title} numberOfLines={2}>{title}</Text>

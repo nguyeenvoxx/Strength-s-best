@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -11,14 +11,16 @@ import {
   TouchableWithoutFeedback,
   SafeAreaView,
   StatusBar,
-  TextInput
+  TextInput,
+  ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LIST_PRODUCT_SAMPLE } from '../../constants/app.constant';
 import { Product } from '../../types/product.type';
 import SearchBar from '../../components/text-input/SearchBar';
 import TrendingProductItem from '../../modules/HomeScreen/TrendingProductItem';
 import { useRouter } from 'expo-router';
+import { useProductStore } from '../../store/useProductStore';
+import { getPlatformContainerStyle } from '../../utils/platformUtils';
 
 const { width } = Dimensions.get('window');
 const numColumns = 2;
@@ -37,7 +39,9 @@ const sortOptions: FilterOption[] = [
 
 const priceRanges: FilterOption[] = [
   { id: 'all', label: 'Tất cả mức giá' },
-  { id: 'under_500', label: 'Dưới 500.000 ₫' },
+  { id: 'under_100', label: 'Dưới 100.000 ₫' },
+  { id: '100_300', label: '100.000 ₫ - 300.000 ₫' },
+  { id: '300_500', label: '300.000 ₫ - 500.000 ₫' },
   { id: '500_1000', label: '500.000 ₫ - 1.000.000 ₫' },
   { id: 'over_1000', label: 'Trên 1.000.000 ₫' },
 ];
@@ -49,53 +53,109 @@ const SearchScreen: React.FC = () => {
   const [showPriceFilter, setShowPriceFilter] = useState(false);
   const [selectedSort, setSelectedSort] = useState<string>('name_asc');
   const [selectedPriceRange, setSelectedPriceRange] = useState<string>('all');
+  const [debouncedSearchText, setDebouncedSearchText] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
 
-  const products = LIST_PRODUCT_SAMPLE.map((product: Product) => ({
-    id: product.id,
-    image: product.images[0],
-    title: product.title,
-    price: product.price,
-    originalPrice: `${parseInt(product.price.replace(/[^\d]/g, '')) * 1.2}.000 ₫`,
-    discount: '20%',
-    rating: product.rating
-  }));
+  const { products, isLoading, error, fetchProducts } = useProductStore();
 
-  const allProducts = [...products, ...products];
-  
-  const filteredProducts = allProducts.filter(product => {
-    if (searchText && !product.title.toLowerCase().includes(searchText.toLowerCase())) {
-      return false;
+  // Debounce search text with loading state
+  useEffect(() => {
+    if (searchText) {
+      setIsSearching(true);
     }
     
-    if (selectedPriceRange !== 'all') {
-      const price = parseInt(product.price.replace(/[^\d]/g, ''));
-      switch (selectedPriceRange) {
-        case 'under_500':
-          return price < 500000;
-        case '500_1000':
-          return price >= 500000 && price <= 1000000;
-        case 'over_1000':
-          return price > 1000000;
-        default:
-          return true;
-      }
-    }
+    const timer = setTimeout(() => {
+      setDebouncedSearchText(searchText);
+      setIsSearching(false);
+    }, 300);
+
+    return () => {
+      clearTimeout(timer);
+      setIsSearching(false);
+    };
+  }, [searchText]);
+
+  // Fetch products on component mount
+  useEffect(() => {
+    fetchProducts(50); // Fetch more products for search
+  }, [fetchProducts]);
+
+  // Helper function to check if price is in range
+  const isPriceInRange = (priceStr: string, range: string): boolean => {
+    // Convert price string to number (remove currency symbols and parse)
+    const price = parseFloat(priceStr.replace(/[^0-9.-]+/g, '')) || 0;
     
-    return true;
-  }).sort((a, b) => {
-    switch (selectedSort) {
-      case 'name_asc':
-        return a.title.localeCompare(b.title);
-      case 'name_desc':
-        return b.title.localeCompare(a.title);
-      case 'price_asc':
-        return parseInt(a.price.replace(/[^\d]/g, '')) - parseInt(b.price.replace(/[^\d]/g, ''));
-      case 'price_desc':
-        return parseInt(b.price.replace(/[^\d]/g, '')) - parseInt(a.price.replace(/[^\d]/g, ''));
+    switch (range) {
+      case 'under_100':
+        return price < 100000;
+      case '100_300':
+        return price >= 100000 && price < 300000;
+      case '300_500':
+        return price >= 300000 && price < 500000;
+      case '500_1000':
+        return price >= 500000 && price < 1000000;
+      case 'over_1000':
+        return price >= 1000000;
       default:
-        return 0;
+        return true;
     }
-  });
+  };
+
+  // Helper function for search matching
+  const isSearchMatch = (product: Product, searchTerm: string): boolean => {
+    if (!searchTerm) return true;
+    
+    const searchLower = searchTerm.toLowerCase().trim();
+    const productTitle = product.title.toLowerCase();
+    
+    // Search in title and sections content
+    const sectionsText = product.sections
+      ?.map(section => `${section.title} ${section.items.join(' ')}`)
+      .join(' ')
+      .toLowerCase() || '';
+    
+    return productTitle.includes(searchLower) || sectionsText.includes(searchLower);
+  };
+
+  // Memoized filtered and sorted products for better performance
+  const filteredProducts = React.useMemo(() => {
+    return products
+      .filter(product => {
+        // Search filter - now includes description
+        if (!isSearchMatch(product, debouncedSearchText)) {
+          return false;
+        }
+        
+        // Price range filter
+        if (selectedPriceRange !== 'all') {
+          if (!isPriceInRange(product.price, selectedPriceRange)) {
+            return false;
+          }
+        }
+        
+        return true;
+      })
+      .sort((a, b) => {
+        switch (selectedSort) {
+          case 'name_asc':
+            return a.title.localeCompare(b.title, 'vi', { sensitivity: 'base' });
+          case 'name_desc':
+            return b.title.localeCompare(a.title, 'vi', { sensitivity: 'base' });
+          case 'price_asc': {
+            const priceA = parseFloat(a.price.replace(/[^0-9.-]+/g, '')) || 0;
+            const priceB = parseFloat(b.price.replace(/[^0-9.-]+/g, '')) || 0;
+            return priceA - priceB;
+          }
+          case 'price_desc': {
+            const priceA = parseFloat(a.price.replace(/[^0-9.-]+/g, '')) || 0;
+            const priceB = parseFloat(b.price.replace(/[^0-9.-]+/g, '')) || 0;
+            return priceB - priceA;
+          }
+          default:
+            return 0;
+        }
+      });
+  }, [products, debouncedSearchText, selectedPriceRange, selectedSort]);
 
   const handleSortPress = () => {
     setShowSortOptions(true);
@@ -117,12 +177,39 @@ const SearchScreen: React.FC = () => {
     setShowPriceFilter(false);
   };
 
+  // Clear all filters
+  const handleClearFilters = () => {
+    setSelectedSort('name_asc');
+    setSelectedPriceRange('all');
+    setSearchText('');
+  };
+
+  // Get filter count for UI indication
+  const getActiveFilterCount = () => {
+    let count = 0;
+    if (selectedSort !== 'name_asc') count++;
+    if (selectedPriceRange !== 'all') count++;
+    if (debouncedSearchText) count++;
+    return count;
+  };
+
   const onProductPress = (productId: string) => {
     router.push(`../../product/${productId}`);
   };
 
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND'
+    }).format(price);
+  };
+
+  const getOriginalPrice = (price: number) => {
+    return formatPrice(price * 1.2);
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, getPlatformContainerStyle()]}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.container}>
         
@@ -136,9 +223,19 @@ const SearchScreen: React.FC = () => {
               value={searchText}
               onChangeText={setSearchText}
               autoFocus
+              returnKeyType="search"
+              clearButtonMode="while-editing"
+              accessibilityLabel="Tìm kiếm sản phẩm"
+              accessibilityHint="Nhập tên sản phẩm để tìm kiếm"
             />
-            {searchText ? (
-              <TouchableOpacity onPress={() => setSearchText('')}>
+            {isSearching ? (
+              <ActivityIndicator size="small" color="#4A90E2" />
+            ) : searchText ? (
+              <TouchableOpacity 
+                onPress={() => setSearchText('')}
+                accessibilityLabel="Xóa tìm kiếm"
+                accessibilityRole="button"
+              >
                 <Ionicons name="close-circle" size={20} color="#888" />
               </TouchableOpacity>
             ) : null}
@@ -156,6 +253,8 @@ const SearchScreen: React.FC = () => {
             <TouchableOpacity
               style={[styles.filterButton, showSortOptions && styles.activeFilterButton]}
               onPress={handleSortPress}
+              accessibilityLabel="Sắp xếp sản phẩm"
+              accessibilityRole="button"
             >
               <Ionicons name="swap-vertical" size={16} color={showSortOptions ? "#4A90E2" : "#666"} />
               <Text style={[styles.filterButtonText, showSortOptions && styles.activeFilterText]}>Sắp xếp</Text>
@@ -164,10 +263,29 @@ const SearchScreen: React.FC = () => {
             <TouchableOpacity
               style={[styles.filterButton, showPriceFilter && styles.activeFilterButton]}
               onPress={handlePriceFilterPress}
+              accessibilityLabel="Lọc theo giá"
+              accessibilityRole="button"
             >
               <Ionicons name="options" size={16} color={showPriceFilter ? "#4A90E2" : "#666"} />
               <Text style={[styles.filterButtonText, showPriceFilter && styles.activeFilterText]}>Bộ lọc</Text>
+              {getActiveFilterCount() > 0 && (
+                <View style={styles.filterBadge}>
+                  <Text style={styles.filterBadgeText}>{getActiveFilterCount()}</Text>
+                </View>
+              )}
             </TouchableOpacity>
+            
+            {getActiveFilterCount() > 0 && (
+              <TouchableOpacity
+                style={styles.clearFilterButton}
+                onPress={handleClearFilters}
+                accessibilityLabel="Xóa tất cả bộ lọc"
+                accessibilityRole="button"
+              >
+                <Ionicons name="close" size={16} color="#FF6B6B" />
+                <Text style={styles.clearFilterText}>Xóa</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -222,15 +340,32 @@ const SearchScreen: React.FC = () => {
         </Modal>
 
         {/* Products Grid */}      
-        {filteredProducts.length === 0 ? (
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#4A90E2" />
+            <Text style={styles.loadingText}>Đang tải sản phẩm...</Text>
+          </View>
+        ) : error ? (
+          <View style={styles.emptyStateContainer}>
+            <Ionicons name="alert-circle-outline" size={64} color="#FF6B6B" />
+            <Text style={styles.emptyStateTitle}>Có lỗi xảy ra</Text>
+            <Text style={styles.emptyStateSubtitle}>{error}</Text>
+            <TouchableOpacity 
+              style={styles.retryButton} 
+              onPress={() => fetchProducts(50)}
+            >
+              <Text style={styles.retryButtonText}>Thử lại</Text>
+            </TouchableOpacity>
+          </View>
+        ) : filteredProducts.length === 0 ? (
           <View style={styles.emptyStateContainer}>
             <Ionicons name="search-outline" size={64} color="#CCC" />
             <Text style={styles.emptyStateTitle}>
-              {searchText ? 'Không tìm thấy sản phẩm' : 'Tìm kiếm sản phẩm'}
+              {debouncedSearchText ? 'Không tìm thấy sản phẩm' : 'Tìm kiếm sản phẩm'}
             </Text>
             <Text style={styles.emptyStateSubtitle}>
-              {searchText 
-                ? `Không có kết quả cho "${searchText}"`
+              {debouncedSearchText 
+                ? `Không có kết quả cho "${debouncedSearchText}"`
                 : 'Nhập từ khóa để tìm kiếm sản phẩm'
               }
             </Text>
@@ -238,17 +373,17 @@ const SearchScreen: React.FC = () => {
         ) : (
           <FlatList
             data={filteredProducts}
-            keyExtractor={(item, index) => `${item.id}-${index}`}
+            keyExtractor={(item, index) => `${item._id}-${index}`}
             numColumns={numColumns}
             renderItem={({ item }) => (
               <View style={styles.productCard}>
                 <TrendingProductItem
-                  image={item.image}
+                  image={item.images[0] || item.image || ''}
                   title={item.title}
                   price={item.price}
-                  originalPrice={item.originalPrice}
-                  discount={item.discount}
-                  onPress={() => onProductPress(item.id)}
+                  originalPrice={getOriginalPrice(parseFloat(item.price.replace(/[^0-9.-]+/g, '')) || 0)}
+                  discount="20%"
+                  onPress={() => onProductPress(item._id)}
                 />
               </View>
             )}
@@ -320,6 +455,7 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     borderWidth: 1,
     borderColor: '#E5E5E5',
+    position: 'relative',
   },
   activeFilterButton: {
     borderColor: '#4A90E2',
@@ -332,6 +468,39 @@ const styles = StyleSheet.create({
   },
   activeFilterText: {
     color: '#4A90E2',
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#FF6B6B',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  filterBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  clearFilterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF5F5',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 15,
+    marginLeft: 10,
+    borderWidth: 1,
+    borderColor: '#FFE5E5',
+  },
+  clearFilterText: {
+    fontSize: 14,
+    color: '#FF6B6B',
+    marginLeft: 4,
+    fontWeight: '500',
   },
   productRow: {
     justifyContent: 'space-between',
@@ -402,6 +571,29 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     lineHeight: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 16,
+  },
+  retryButton: {
+    backgroundColor: '#4A90E2',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   }
 });
 

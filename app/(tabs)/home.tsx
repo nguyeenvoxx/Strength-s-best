@@ -10,11 +10,17 @@ import {
   Dimensions,
   FlatList,
   SafeAreaView,
-  StatusBar
+  StatusBar,
+  ActivityIndicator,
+  Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LIST_PRODUCT_SAMPLE } from '../../constants/app.constant';
 import { Product } from '../../types/product.type';
+import { useProductStore } from '../../store/useProductStore';
+import { useAuthStore } from '../../store/useAuthStore';
+import { transformApiProductToProduct, getShortDescription, calculateOriginalPrice, getFullImageUrl } from '../../utils/productUtils';
+import { getPlatformContainerStyle } from '../../utils/platformUtils';
 import DailyDealItem from '../../modules/HomeScreen/DailyDealItem';
 import TrendingProductItem from '../../modules/HomeScreen/TrendingProductItem';
 import HomeHeader from '../../modules/HomeScreen/HomeHeader';
@@ -35,6 +41,8 @@ const HomeScreen: React.FC = () => {
   const router = useRouter();
   const [currentCarouselIndex, setCurrentCarouselIndex] = useState(0);
   const [remainingTime, setRemainingTime] = useState('22:55:20');
+  const { products, isLoading: loading, error, fetchProducts, clearError } = useProductStore();
+  const { user, isAuthenticated } = useAuthStore();
 
   const carouselImages = [
     { uri: 'https://cdnv2.tgdd.vn/mwg-static/common/News/1579137/20-06-22-06-flash-sale-cuoi-tuan-tung-bung-thumb.jpg' },
@@ -42,6 +50,30 @@ const HomeScreen: React.FC = () => {
   ];
   const handleViewAllProducts = () => {
     router.push('../products');
+  };
+
+  // Load products using store
+  const loadProducts = async () => {
+    if (!isAuthenticated) {
+      console.log('User not authenticated, skipping product fetch');
+      return;
+    }
+    
+    try {
+      await fetchProducts(20);
+    } catch (error: any) {
+      console.error('Error fetching products:', error);
+      // Store will handle error state, no need to crash the app
+    }
+  };
+
+  const handleRetryLoadProducts = () => {
+    clearError();
+    loadProducts();
+  };
+
+  const handleLoginPress = () => {
+    router.push('/(auth)/sign-in');
   };
 
   function getShortDescription(sections: any[]): string {
@@ -58,25 +90,40 @@ const HomeScreen: React.FC = () => {
     return 'Mô tả ngắn sản phẩm';
   }
 
-  const saleProducts = LIST_PRODUCT_SAMPLE.map((product: Product, index: number) => {
+  // Debug logs moved to useEffect to prevent spam
+  
+  const saleProducts = products.map((product: Product, index: number) => {
     const shortDescription = getShortDescription(product.sections);
-    const basePrice = parseInt(product.price.replace(/[^\d]/g, '')) || 899000;
-    const originalPrice = Math.round(basePrice * 1.2);
+    const originalPrice = calculateOriginalPrice(product.price, 40);
 
     return {
       id: product.id || `product-${index}`,
-      image: product.images && product.images[0] ? product.images[0] : require('../../assets/images_sp/dau_ca_omega.png'),
+      image: product.images && product.images[0] ? 
+        (typeof product.images[0] === 'string' && product.images[0].startsWith('http') ? 
+          { uri: product.images[0] } : 
+          product.images[0]
+        ) : require('../../assets/images_sp/dau_ca_omega.png'),
       title: product.title || 'Tên sản phẩm',
       price: product.price || '899.000 ₫',
-      originalPrice: `${(originalPrice / 1000).toFixed(0)}.000 ₫`,
+      originalPrice: originalPrice,
       discount: '40% OFF',
       description: shortDescription,
       rating: product.rating || 5,
       reviewCount: 123,
+      onPress: () => {
+        console.log('🔍 DEBUG: onPress được gọi cho sản phẩm:', product.id, product.title);
+        console.log('🔍 DEBUG: Điều hướng đến:', `/product/${product.id}`);
+        router.push(`/product/${product.id}`);
+      },
     };
   });
 
   useEffect(() => {
+    // Load products khi component mount
+    console.log('🔍 DEBUG Home: Component mounted, isAuthenticated =', isAuthenticated);
+    console.log('🔍 DEBUG Home: Initial products.length =', products.length);
+    loadProducts();
+    
     const interval = setInterval(() => {
       setRemainingTime(prevTime => {
         const time = prevTime.split(':');
@@ -104,6 +151,14 @@ const HomeScreen: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Log products changes only when they actually change
+  useEffect(() => {
+    if (products.length > 0) {
+      console.log('🔍 DEBUG Home: Products updated, length =', products.length);
+      console.log('🔍 DEBUG Home: Products =', products.slice(0, 2)); // Only log first 2 products to avoid spam
+    }
+  }, [products]);
+
   const newsItems: NewsItem[] = [
     {
       image: { uri: 'https://cdn2.tuoitre.vn/thumb_w/730/471584752817336320/2025/6/24/ban-sao-ban-sao-thuoc-hiem-17231781483331926815331-17507593761622147355194.jpg' },
@@ -122,13 +177,33 @@ const HomeScreen: React.FC = () => {
     }
   ];
 
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color="#FF6B35" />
+        <Text style={styles.loadingText}>Đang tải sản phẩm...</Text>
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, getPlatformContainerStyle()]}>
       <StatusBar barStyle="dark-content" />
+
+      {error && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={handleRetryLoadProducts}>
+            <Text style={styles.retryButtonText}>Thử lại</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       <HomeHeader
         onMenuPress={() => console.log('Menu pressed')}
         onUserPress={() => router.push('./profile')}
+        user={user}
+        isAuthenticated={isAuthenticated}
       />
       <ScrollView
         style={styles.scrollView}
@@ -184,27 +259,40 @@ const HomeScreen: React.FC = () => {
           color="#3B82F6"
           onViewAll={handleViewAllProducts}
         />
-        <View>
-          <FlatList
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            data={saleProducts}
-            keyExtractor={(_, index) => `sale-product-${index}`}
-            renderItem={({ item }) => (
-              <DailyDealItem
-                image={item.image}
-                title={item.title}
-                description={item.description}
-                price={item.price}
-                originalPrice={item.originalPrice}
-                discount={'40% OFF'}
-                rating={5}
-                reviewCount={123}
-              />
+        
+        {!isAuthenticated ? (
+          <View style={styles.loginPromptContainer}>
+            <Ionicons name="lock-closed-outline" size={48} color="#FF6B35" />
+            <Text style={styles.loginPromptTitle}>Đăng nhập để xem sản phẩm</Text>
+            <Text style={styles.loginPromptText}>Vui lòng đăng nhập để khám phá các sản phẩm tuyệt vời của chúng tôi</Text>
+            <TouchableOpacity style={styles.loginButton} onPress={handleLoginPress}>
+              <Text style={styles.loginButtonText}>Đăng nhập ngay</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View>
+            <FlatList
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              data={saleProducts}
+              keyExtractor={(_, index) => `sale-product-${index}`}
+              renderItem={({ item }) => (
+                <DailyDealItem
+                  image={item.image}
+                  title={item.title}
+                  description={item.description}
+                  price={item.price}
+                  originalPrice={item.originalPrice}
+                  discount={'40% OFF'}
+                  rating={5}
+                  reviewCount={123}
+                  onPress={item.onPress}
+                />
             )}
-            contentContainerStyle={styles.productList}
-          />
-        </View>
+             contentContainerStyle={styles.productList}
+           />
+         </View>
+        )}
 
         <View style={styles.specialOfferSection}>
           <Image
@@ -243,24 +331,36 @@ const HomeScreen: React.FC = () => {
           onViewAll={handleViewAllProducts}
         />
 
-        <View>
-          <FlatList
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            data={saleProducts.slice().reverse()}
-            keyExtractor={(_, index) => `trending-product-${index}`}
-            renderItem={({ item }) => (
-              <TrendingProductItem
-                image={item.image}
-                title={item.title}
-                price={item.price}
-                originalPrice={item.originalPrice}
-                discount={'40% OFF'}
-              />
-            )}
-            contentContainerStyle={styles.productList}
-          />
-        </View>
+        {!isAuthenticated ? (
+          <View style={styles.loginPromptContainer}>
+            <Ionicons name="trending-up-outline" size={48} color="#FF3B30" />
+            <Text style={styles.loginPromptTitle}>Khám phá sản phẩm thịnh hành</Text>
+            <Text style={styles.loginPromptText}>Đăng nhập để xem các sản phẩm được yêu thích nhất</Text>
+            <TouchableOpacity style={[styles.loginButton, {backgroundColor: '#FF3B30'}]} onPress={handleLoginPress}>
+              <Text style={styles.loginButtonText}>Đăng nhập ngay</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View>
+            <FlatList
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              data={saleProducts.slice().reverse()}
+              keyExtractor={(_, index) => `trending-product-${index}`}
+              renderItem={({ item }) => (
+                <TrendingProductItem
+                  image={item.image}
+                  title={item.title}
+                  price={item.price}
+                  originalPrice={item.originalPrice}
+                  discount={'40% OFF'}
+                  onPress={item.onPress}
+                />
+              )}
+              contentContainerStyle={styles.productList}
+            />
+          </View>
+        )}
 
         <View style={styles.newArrivalsCard}>
           <Image
@@ -508,21 +608,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#999',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-  },
+
   categoriesContainer: {
     paddingHorizontal: 20,
     marginBottom: 20,
@@ -590,6 +676,83 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#007bff',
+  },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+  },
+  errorContainer: {
+    backgroundColor: '#ffebee',
+    padding: 10,
+    marginHorizontal: 16,
+    marginTop: 10,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#f44336',
+    alignItems: 'center',
+  },
+  errorText: {
+    color: '#c62828',
+    fontSize: 14,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: '#FF6B35',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  loginPromptContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 24,
+    marginHorizontal: 16,
+    marginVertical: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  loginPromptTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  loginPromptText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  loginButton: {
+    backgroundColor: '#FF6B35',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    minWidth: 120,
+  },
+  loginButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   actionsContainer: {
     flexDirection: 'row',

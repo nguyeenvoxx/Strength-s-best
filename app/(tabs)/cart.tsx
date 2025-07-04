@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { useRouter } from 'expo-router';
+import { getPlatformContainerStyle } from '../../utils/platformUtils';
 import { useFonts } from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -68,7 +69,7 @@ const CartScreen: React.FC = () => {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, getPlatformContainerStyle()]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Giỏ hàng ({cartItems.length})</Text>
       </View>

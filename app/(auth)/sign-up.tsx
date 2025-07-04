@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuthStore } from '../../store/useAuthStore';
+import { getPlatformContainerStyle } from '../../utils/platformUtils';
 
 const SignUpScreen: React.FC = () => {
   const router = useRouter();
@@ -12,10 +14,33 @@ const SignUpScreen: React.FC = () => {
   const [agree, setAgree] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  const { signup, isLoading, error, clearError } = useAuthStore();
 
-  const handleSignUp = () => {
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const handleSignUp = async () => {
+    // Clear previous errors
+    clearError();
+
+    // Validate inputs
     if (!fullName || !email || !password || !confirmPassword) {
       Alert.alert('Lỗi', 'Vui lòng điền đầy đủ các trường');
+      return;
+    }
+    
+    // Validate email format
+    if (!validateEmail(email)) {
+      Alert.alert('Lỗi', 'Vui lòng nhập địa chỉ email hợp lệ (ví dụ: user@example.com)');
+      return;
+    }
+    
+    // Validate name (should not be just numbers)
+    if (fullName.trim().length < 2) {
+      Alert.alert('Lỗi', 'Họ và tên phải có ít nhất 2 ký tự');
       return;
     }
     
@@ -24,15 +49,32 @@ const SignUpScreen: React.FC = () => {
       return;
     }
     
+    if (password.length < 8) {
+      Alert.alert('Lỗi', 'Mật khẩu phải có ít nhất 8 ký tự');
+      return;
+    }
+    
     if (!agree) {
       Alert.alert('Lỗi', 'Vui lòng đồng ý với điều khoản và chính sách');
       return;
     }
-    
-    router.push('./email-verification');
+
+    try {
+      await signup({ 
+        name: fullName.trim(), 
+        email: email.trim().toLowerCase(), 
+        password 
+      });
+      // Sau khi đăng ký thành công, chuyển đến trang xác thực email
+      router.push('./email-verification');
+    } catch (error: any) {
+      console.error('Signup error:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi đăng ký';
+      Alert.alert('Đăng ký thất bại', errorMessage);
+    }
   };
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, getPlatformContainerStyle()]}>
       <Image source={require('../../assets/images/logo.png')} style={styles.logo} />
       <View style={styles.inputWrapper}>
         <TextInput
@@ -92,8 +134,16 @@ const SignUpScreen: React.FC = () => {
         </TouchableOpacity>
         <Text style={styles.optionText}>Tôi đồng ý với chính sách bảo mật và quyền riêng tư</Text>
       </View>
-      <TouchableOpacity style={styles.signUpButton} onPress={handleSignUp}>
-        <Text style={styles.buttonText}>Đăng ký</Text>
+      <TouchableOpacity 
+        style={[styles.signUpButton, isLoading && styles.buttonDisabled]} 
+        onPress={handleSignUp}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Đăng ký</Text>
+        )}
       </TouchableOpacity>
       <View style={styles.footer}>
         <Text style={styles.footerText}>Bạn đã có tài khoản? </Text>
@@ -165,6 +215,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     width: 316,
     height: 54
+  },
+  buttonDisabled: {
+    backgroundColor: '#666',
+    opacity: 0.7,
   },
   buttonText: {
     color: '#fff',

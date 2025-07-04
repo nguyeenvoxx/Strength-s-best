@@ -6,11 +6,18 @@ import { Ionicons } from '@expo/vector-icons';
 const EmailVerificationScreen: React.FC = () => {
   const router = useRouter();
   const [code, setCode] = useState(['', '', '', '']);
+  const inputRefs = useRef<Array<TextInput | null>>([]);
 
   const handleCodeChange = (text: string, index: number) => {
     const newCode = [...code];
     newCode[index] = text;
     setCode(newCode);
+
+    if (text && index < inputRefs.current.length - 1) {
+      inputRefs.current[index + 1]?.focus();
+    } else if (!text && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
   };
 
   const handleConfirm = () => {
@@ -31,6 +38,7 @@ const EmailVerificationScreen: React.FC = () => {
         {code.map((digit, index) => (
           <TextInput
             key={index}
+            ref={ref => { inputRefs.current[index] = ref; }}
             style={styles.codeInput}
             value={digit}
             onChangeText={(text) => handleCodeChange(text, index)}

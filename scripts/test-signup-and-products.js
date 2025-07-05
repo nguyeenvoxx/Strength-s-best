@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-const BASE_URL = 'http://172.16.0.2:3000/api/v1';
+const BASE_URL = 'http://192.168.1.7:3000/api/v1';
 
 // Test data for signup
 const testUser = {

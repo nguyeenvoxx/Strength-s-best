@@ -4,6 +4,7 @@ import { Redirect } from 'expo-router';
 import { useAuthStore } from '../store/useAuthStore';
 import { useSettingStore } from '../store/useSettingStore';
 import { getPlatformContainerStyle } from '../utils/platformUtils';
+import React from 'react';
 
 export default function IndexPage() {
   const [isReady, setIsReady] = useState(false);

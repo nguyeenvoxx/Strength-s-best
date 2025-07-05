@@ -7,13 +7,23 @@ const ForgotPasswordScreen: React.FC = () => {
   const router = useRouter();
   const [Email, setEmail] = useState('')
 
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const handleSend = () => {
     if (!Email) {
       Alert.alert('Thông báo', 'Vui lòng nhập địa chỉ email của bạn')
     } else {
+      if (!validateEmail(Email)) {
+        Alert.alert('Lỗi', 'Vui lòng nhập địa chỉ email hợp lệ (ví dụ: user@example.com)');
+        return;
+      }
       router.push('./email-verification')
     }
   }
+
 
   return (
     <View style={styles.container}>

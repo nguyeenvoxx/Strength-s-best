@@ -25,13 +25,13 @@ const SignInScreen: React.FC = () => {
     // Validate inputs
     if (!email) {
       setEmailError(true);
-      Alert.alert('Lỗi', 'Vui lòng nhập email');
+      Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ email');
       return;
     }
 
     if (!password) {
       setPassError(true);
-      Alert.alert('Lỗi', 'Vui lòng nhập mật khẩu');
+      Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ mật khẩu');
       return;
     }
 

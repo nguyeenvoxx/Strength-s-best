@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Image, View } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
+import React from 'react';
 
 
 export default function TabsLayout() {

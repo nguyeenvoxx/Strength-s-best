@@ -76,12 +76,13 @@ export const PRODUCT_ITEM_SAMPLE: Product = {
                 "Luôn luôn đọc nhãn. Chỉ sử dụng theo chỉ dẫn"
             ]
         }
-    ]
+    ],
+    _id: ''
 }
 
 export const LIST_PRODUCT_SAMPLE: Product[] = [
     {
-        id: "omega3-fish-oil",        title: "Thực phẩm chức năng Dầu Cá Omega-3 Blackmores 1000mg 200 Viên",
+        id: "omega3-fish-oil", title: "Thực phẩm chức năng Dầu Cá Omega-3 Blackmores 1000mg 200 Viên",
         images: [
             require('../assets/images_sp/dau_ca_omega.png'),
             require('../assets/images_sp/magie_blackmores.png'),
@@ -115,10 +116,11 @@ export const LIST_PRODUCT_SAMPLE: Product[] = [
                     "Chỉ sử dụng theo chỉ định của chuyên gia y tế"
                 ]
             }
-        ]
+        ],
+        _id: ''
     },
     {
-        id: "calcium-vitamin-d3",        title: "Viên uống bổ sung Canxi và Vitamin D3 Ostelin 300 Viên",
+        id: "calcium-vitamin-d3", title: "Viên uống bổ sung Canxi và Vitamin D3 Ostelin 300 Viên",
         images: [
             require('../assets/images_sp/magie_blackmores.png'),
             require('../assets/images_sp/dau_ca_omega.png'),
@@ -154,10 +156,11 @@ export const LIST_PRODUCT_SAMPLE: Product[] = [
                     "Nên tham khảo ý kiến bác sĩ trước khi sử dụng"
                 ]
             }
-        ]
+        ],
+        _id: ''
     },
     {
-        id: "glucosamine-joint-care",        title: "Thực phẩm chức năng Glucosamine Chondroitin MSM 120 Viên",
+        id: "glucosamine-joint-care", title: "Thực phẩm chức năng Glucosamine Chondroitin MSM 120 Viên",
         images: [
             require('../assets/images_sp/dau_ca_omega.png'),
             require('../assets/images_sp/magie_blackmores.png'),
@@ -196,7 +199,8 @@ export const LIST_PRODUCT_SAMPLE: Product[] = [
                     "Cần tham khảo ý kiến bác sĩ trước khi sử dụng"
                 ]
             }
-        ]
+        ],
+        _id: ''
     }
 ]
 

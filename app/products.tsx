@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Image, FlatList, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { getPlatformContainerStyle } from '../utils/platformUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Product {
@@ -149,7 +150,7 @@ const ProductListScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, getPlatformContainerStyle()]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>

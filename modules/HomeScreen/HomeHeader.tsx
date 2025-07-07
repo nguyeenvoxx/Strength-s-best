@@ -9,12 +9,21 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+interface User {
+  _id: string;
+  name: string;
+  email: string;
+  avatarUrl?: string;
+}
+
 interface HomeHeaderProps {
   onMenuPress?: () => void;
   onUserPress?: () => void;
+  user?: User | null;
+  isAuthenticated?: boolean;
 }
 
-const HomeHeader: React.FC<HomeHeaderProps> = ({ onMenuPress, onUserPress }) => {
+const HomeHeader: React.FC<HomeHeaderProps> = ({ onMenuPress, onUserPress, user, isAuthenticated }) => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -32,9 +41,21 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({ onMenuPress, onUserPress }) => 
           />
         </View>
 
-        {/* User Icon */}
-        <TouchableOpacity style={styles.iconButton} onPress={onUserPress}>
-          <Ionicons name="person-circle-outline" size={24} color="#333" />
+        {/* User Info */}
+        <TouchableOpacity style={styles.userContainer} onPress={onUserPress}>
+          {isAuthenticated && user?.avatarUrl ? (
+            <Image source={{ uri: user.avatarUrl }} style={styles.avatar} />
+          ) : (
+            <View style={styles.avatarPlaceholder}>
+              <Ionicons name="person" size={20} color="#666" />
+            </View>
+          )}
+          <View style={styles.userInfo}>
+            <Text style={styles.greeting}>Xin chào</Text>
+            <Text style={styles.userName} numberOfLines={1}>
+              {isAuthenticated && user ? user.name : 'Khách'}
+            </Text>
+          </View>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -69,6 +90,39 @@ const styles = StyleSheet.create({
   logo: {
     height: 32,
     maxWidth: 120,
+  },
+  userContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    maxWidth: 120,
+  },
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 8,
+  },
+  avatarPlaceholder: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F0F0F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  userInfo: {
+    flex: 1,
+  },
+  greeting: {
+    fontSize: 10,
+    color: '#666',
+    marginBottom: 2,
+  },
+  userName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#333',
   },
 });
 

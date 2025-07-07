@@ -1,12 +1,14 @@
-import { StyleSheet, Text, View, ScrollView, Dimensions, Image, TouchableOpacity, ImageSourcePropType } from 'react-native'
-import React, { useState } from 'react'
+import { StyleSheet, Text, View, ScrollView, Dimensions, Image, TouchableOpacity, ImageSourcePropType, ActivityIndicator, Alert } from 'react-native'
+import React, { useState, useEffect } from 'react'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { PRODUCT_ITEM_SAMPLE } from '../../constants/app.constant'
-//lưu và lấy giỏ hàng
+import { useProductStore } from '../../store/useProductStore'
+import { useAuthStore } from '../../store/useAuthStore'
+import { transformApiProductToProduct, getFullImageUrl, formatPrice } from '../../utils/productUtils'
+import { getPlatformContainerStyle } from '../../utils/platformUtils'
+import { Product } from '../../types/product.type'
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-
 
 const { width } = Dimensions.get('window')
 
@@ -24,13 +26,92 @@ const ProductScreen = () => {
   const router = useRouter()
   const { id } = useLocalSearchParams()
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const { currentProduct: product, isLoading: loading, error, fetchProductById, clearError } = useProductStore()
+  const { isAuthenticated } = useAuthStore()
 
-  const product = PRODUCT_ITEM_SAMPLE
-  const productImages = product.images as ImageSourcePropType[]
+  // Fetch product detail từ API
+  const loadProduct = async () => {
+    if (!id || typeof id !== 'string') {
+      return
+    }
+
+    if (!isAuthenticated) {
+      console.log('User not authenticated, cannot fetch product details')
+      return
+    }
+
+    try {
+      await fetchProductById(id)
+    } catch (err: any) {
+      console.error('Error fetching product:', err)
+      // Store will handle error state and fallback
+    }
+  }
+
+  const handleLoginPress = () => {
+    router.push('/(auth)/sign-in')
+  }
+
+  useEffect(() => {
+    loadProduct()
+  }, [id])
+
+  if (!isAuthenticated) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="#000000" />
+        </TouchableOpacity>
+        <Ionicons name="lock-closed-outline" size={64} color="#FF6B35" />
+        <Text style={styles.loginPromptTitle}>Đăng nhập để xem chi tiết sản phẩm</Text>
+        <Text style={styles.loginPromptText}>Vui lòng đăng nhập để xem thông tin chi tiết về sản phẩm này</Text>
+        <TouchableOpacity style={styles.loginButton} onPress={handleLoginPress}>
+          <Text style={styles.loginButtonText}>Đăng nhập ngay</Text>
+        </TouchableOpacity>
+      </View>
+    )
+  }
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color="#FF6B35" />
+        <Text style={styles.loadingText}>Đang tải sản phẩm...</Text>
+      </View>
+    )
+  }
+
+  if (error && !product) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => { clearError(); loadProduct(); }}>
+          <Text style={styles.retryText}>Thử lại</Text>
+        </TouchableOpacity>
+      </View>
+    )
+  }
+
+  if (!product) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <Text style={styles.errorText}>Không tìm thấy sản phẩm</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => router.back()}>
+          <Text style={styles.retryText}>Quay lại</Text>
+        </TouchableOpacity>
+      </View>
+    )
+  }
+
+  const productImages = (product.images && product.images.length > 0
+    ? product.images
+    : product.image
+      ? [product.image]
+      : []) as ImageSourcePropType[]
   const productTitle = product.title
-  const rating = product.rating
+  const rating = product.rating || 0
   const price = product.price
-  const sections: Section[] = product.sections.map((section: any) => ({
+  const sections: Section[] = (product.sections || []).map((section: any) => ({
     title: section.title,
     items: section.items.map((text: any, idx: any) => {
       const isNoBullet = text.endsWith(':') || idx === 0;
@@ -82,7 +163,7 @@ const ProductScreen = () => {
     )
   }
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView style={[styles.container, getPlatformContainerStyle()]} showsVerticalScrollIndicator={false}>
       {/* Carousel */}
       <View style={styles.carouselContainer}>
         {/* Back Button */}
@@ -102,23 +183,36 @@ const ProductScreen = () => {
           onScroll={handleScroll}
           scrollEventThrottle={16}
         >
-          {productImages.map((image, index) => (
-            <Image key={index} source={image} style={styles.carouselImage} />
-          ))}
+          {productImages.length > 0 ? productImages.map((image, index) => {
+            const imageSource = product.images
+            return (
+              <Image 
+                key={index} 
+                source={{ uri: imageSource[index] }} 
+                style={styles.carouselImage} 
+              />
+            );
+          }) : (
+            <View style={[styles.carouselImage, styles.noImageContainer]}>
+              <Text style={styles.noImageText}>Không có hình ảnh</Text>
+            </View>
+          )}
         </ScrollView>
 
         {/* Dots indicator */}
-        <View style={styles.dotsContainer}>
-          {productImages.map((_, index) => (
-            <View
-              key={index}
-              style={[
-                styles.dot,
-                index === currentImageIndex && styles.activeDot
-              ]}
-            />
-          ))}
-        </View>
+        {productImages.length > 1 && (
+          <View style={styles.dotsContainer}>
+            {productImages.map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.dot,
+                  index === currentImageIndex && styles.activeDot
+                ]}
+              />
+            ))}
+          </View>
+        )}
       </View>
 
       {/* Title and Rating */}
@@ -127,7 +221,8 @@ const ProductScreen = () => {
           <Text style={styles.title}>{productTitle}</Text>
           <View style={styles.ratingContainer}>
             <Ionicons name="star" size={18} color="#FFD700" />
-            <Text style={styles.ratingText}>{rating}</Text></View>
+            <Text style={styles.ratingText}>{rating}</Text>
+          </View>
         </View>
 
         {/* Price Button */}
@@ -304,6 +399,71 @@ const styles = StyleSheet.create({
   itemTextNoBullet: {
     fontStyle: 'italic',
     color: '#777777',
+  },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#c62828',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#FF6B35',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  noImageContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  noImageText: {
+    fontSize: 16,
+    color: '#999',
+    fontStyle: 'italic',
+  },
+  loginPromptTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  loginPromptText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 30,
+    paddingHorizontal: 20,
+    lineHeight: 24,
+  },
+  loginButton: {
+    backgroundColor: '#FF6B35',
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  loginButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
 

@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect } from 'react';
+import { getPlatformContainerStyle } from '@/utils/platformUtils';
 
 
 
@@ -57,7 +58,7 @@ const PaymentSuccessScreen: React.FC = () => {
     }
   }, []);
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, getPlatformContainerStyle()]}>
       <View style={styles.content}>
         <View style={styles.iconContainer}>
           <Ionicons name="checkmark-circle" size={80} color="#28a745" />

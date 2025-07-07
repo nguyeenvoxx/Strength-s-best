@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { getPlatformContainerStyle } from '../utils/platformUtils';
 
 const ChangePasswordScreen: React.FC = () => {
   const router = useRouter();
@@ -42,7 +43,7 @@ const ChangePasswordScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, getPlatformContainerStyle()]}>
       {/* Header */}
       {/* <View style={styles.headerContainer}>
         <TouchableOpacity onPress={() => router.back()}>

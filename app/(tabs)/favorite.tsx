@@ -2,12 +2,13 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { getPlatformContainerStyle } from '../../utils/platformUtils';
 
 const FavoriteScreen: React.FC = () => {
   const router = useRouter();
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, getPlatformContainerStyle()]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Yêu thích</Text>
       </View>

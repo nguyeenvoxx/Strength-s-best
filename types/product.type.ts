@@ -6,8 +6,10 @@ export interface ProductSection {
 }
 
 export interface Product {
+  _id: string
   id: string
   title: string
+  image?: string
   images: string[]
   rating: number
   price: string

@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuthStore } from '../../store/useAuthStore';
+import { getPlatformContainerStyle } from '../../utils/platformUtils';
 
 const SignInScreen: React.FC = () => {
   const router = useRouter();
@@ -10,28 +12,39 @@ const SignInScreen: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [emailError, setEmailError] = useState(false);
   const [passError, setPassError] = useState(false);
-  const [showPassword, setShowPassword] = useState(false)
+  const [showPassword, setShowPassword] = useState(false);
   
-  const handleSignIn = () => {
+  const { login, isLoading, error, clearError } = useAuthStore();
+  
+  const handleSignIn = async () => {
+    // Clear previous errors
+    setEmailError(false);
+    setPassError(false);
+    clearError();
+
+    // Validate inputs
     if (!email) {
       setEmailError(true);
-      Alert.alert('Error', 'Email không tồn tại');
+      Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ email');
       return;
     }
-    setEmailError(false);
 
     if (!password) {
       setPassError(true);
-      Alert.alert('Error', 'Mật khẩu sai');
+      Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ mật khẩu');
       return;
-    } else {
-      setPassError(false);
     }
-    router.replace('../(tabs)/home');
+
+    try {
+      await login({ email, password });
+      router.replace('../(tabs)/home');
+    } catch (error: any) {
+      Alert.alert('Đăng nhập thất bại', error.response?.data?.message || 'Email hoặc mật khẩu không đúng');
+    }
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, getPlatformContainerStyle()]}>
       <Image source={require('../../assets/images/logo.png')} style={styles.logo} />
 
       <View style={[styles.inputWrapper, emailError && styles.inputError]}>
@@ -77,8 +90,16 @@ const SignInScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
       
-      <TouchableOpacity style={styles.signInButton} onPress={handleSignIn}>
-        <Text style={styles.buttonText}>Đăng nhập</Text>
+      <TouchableOpacity 
+        style={[styles.signInButton, isLoading && styles.buttonDisabled]} 
+        onPress={handleSignIn}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Đăng nhập</Text>
+        )}
       </TouchableOpacity>
       
       <View style={styles.socialButtons}>
@@ -178,6 +199,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     width: 316,
     height: 54
+  },
+  buttonDisabled: {
+    backgroundColor: '#666',
+    opacity: 0.7,
   },
   buttonText: {
     color: '#fff',

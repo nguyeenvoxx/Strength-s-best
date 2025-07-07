@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { getPlatformContainerStyle } from '../../utils/platformUtils';
 
 const EmailVerificationScreen: React.FC = () => {
   const router = useRouter();
@@ -29,7 +30,7 @@ const EmailVerificationScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, getPlatformContainerStyle()]}>
       <Text style={styles.title}>Xác thực email</Text>
       <Text style={styles.subtitle}>
         Vui lòng nhập mã otp 4 đầu được gửi đến user@gmail.com

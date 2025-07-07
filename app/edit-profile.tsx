@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
+import { getPlatformContainerStyle } from '../utils/platformUtils';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
 
 const EditProfileScreen: React.FC = () => {
@@ -25,7 +26,7 @@ const EditProfileScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, getPlatformContainerStyle()]}>
       {/* Header */}
       {/* <View style={styles.headerContainer}>
         <TouchableOpacity onPress={() => router.back()}>

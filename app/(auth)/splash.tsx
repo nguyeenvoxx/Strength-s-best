@@ -19,7 +19,7 @@ const SplashScreen: React.FC = () => {
       <Text style={styles.subtitle}>Sức khỏe là hạnh phúc. Hãy trân trọng và chăm sóc bản thân!</Text>
       <TouchableOpacity
         style={styles.button}
-        onPress={handleGetStarted}
+        onPress={() => {router.replace('/sign-in')}}
       >
         <Text style={styles.buttonText}>Bắt đầu</Text>
       </TouchableOpacity>

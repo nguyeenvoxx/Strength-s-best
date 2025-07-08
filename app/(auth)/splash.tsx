@@ -5,7 +5,7 @@ import { useSettingStore } from '../../store/useSettingStore';
 
 const SplashScreen: React.FC = () => {
   const { setIsFirstTime } = useSettingStore();
-
+  
   const handleGetStarted = () => {
     // Đánh dấu không còn là lần đầu tiên
     setIsFirstTime(false);

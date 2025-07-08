@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-const BASE_URL = 'http://10.0.2.2:3000/api/v1';
+const BASE_URL = 'http://192.168.100.28:3000/api/v1';
 
 // Token from previous signup test
 // Test token from signup: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4NjgyYmQ3NTE3ZjlmNDljYmRjMDk2YyIsImlhdCI6MTc1MTY1NzQzMiwiZXhwIjoxNzU5NDMzNDMyfQ.5gy5YVLgWd3NtFsB2B7FUz6mSqenEraBlulUvdaJ1Tg

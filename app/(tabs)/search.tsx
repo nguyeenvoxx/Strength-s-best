@@ -13,6 +13,7 @@ import {
   StatusBar,
   TextInput,
   ActivityIndicator
+  
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Product } from '../../types/product.type';
@@ -208,6 +209,20 @@ const SearchScreen: React.FC = () => {
     return formatPrice(price * 1.2);
   };
 
+  const parsePrice = (rawPrice: string | number | undefined): number => {
+  if (typeof rawPrice === 'string') {
+    const cleaned = rawPrice.replace(/[^0-9.-]+/g, '');
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+
+  if (typeof rawPrice === 'number') return rawPrice;
+
+  return 0;
+};
+// console.log('🛒 Sản phẩm:', products);
+
+// console.log('🧾 Thông tin chi tiết:', products);
   return (
     <SafeAreaView style={[styles.container, getPlatformContainerStyle()]}>
       <StatusBar barStyle="dark-content" />
@@ -380,8 +395,8 @@ const SearchScreen: React.FC = () => {
                 <TrendingProductItem
                   image={item.images[0] || item.image || ''}
                   title={item.title}
-                  price={item.price}
-                  originalPrice={getOriginalPrice(parseFloat(item.price.replace(/[^0-9.-]+/g, '')) || 0)}
+                  price={formatPrice(parsePrice(item.price))}
+                  originalPrice={getOriginalPrice(parseFloat(item.price))}
                   discount="20%"
                   onPress={() => onProductPress(item._id)}
                 />

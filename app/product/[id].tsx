@@ -9,6 +9,8 @@ import { transformApiProductToProduct, getFullImageUrl, formatPrice } from '../.
 import { getPlatformContainerStyle } from '../../utils/platformUtils'
 import { Product } from '../../types/product.type'
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Fontisto from '@expo/vector-icons/Fontisto';
+import { useFavoriteStore } from '../../store/useFavoriteStore' //
 
 const { width } = Dimensions.get('window')
 
@@ -27,7 +29,9 @@ const ProductScreen = () => {
   const { id } = useLocalSearchParams()
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const { currentProduct: product, isLoading: loading, error, fetchProductById, clearError } = useProductStore()
-  const { isAuthenticated } = useAuthStore()
+  const { isAuthenticated, token } = useAuthStore()
+
+
 
   // Fetch product detail từ API
   const loadProduct = async () => {
@@ -52,6 +56,25 @@ const ProductScreen = () => {
     router.push('/(auth)/sign-in')
   }
 
+  const { addToFavorites, favorites } = useFavoriteStore();
+  const handleAddToFavorites = async () => {
+    if (!token) {
+      Alert.alert('Vui lòng đăng nhập để thêm vào danh sách yêu thích');
+      return;
+    }
+
+    if (!product) {
+      Alert.alert('Không tìm thấy sản phẩm để thêm vào yêu thích');
+      return;
+    }
+
+    try {
+      await addToFavorites(product, token);
+      Alert.alert('Đã thêm vào yêu thích!');
+    } catch (err) {
+      console.error('Lỗi thêm yêu thích:', err);
+    }
+  };
   useEffect(() => {
     loadProduct()
   }, [id])
@@ -124,7 +147,7 @@ const ProductScreen = () => {
     const index = Math.round(contentOffset / width)
     setCurrentImageIndex(index)
   }
-
+  // Hàm thêm sản phẩm vào giỏ hàng
   const handleAddToCart = async () => {
     const cartItem = {
       id: product.id,
@@ -133,6 +156,8 @@ const ProductScreen = () => {
       image: product.images[0],
       text: 'Neque porro...' // mô tả đơn giản
     };
+    // hàm mua ngay
+
 
     try {
       const existingCart = await AsyncStorage.getItem('cart');
@@ -150,6 +175,14 @@ const ProductScreen = () => {
       router.push('/(tabs)/cart'); // đúng với cấu trúc folder bạn đang dùng
     } catch (err) {
       console.error('Lỗi thêm sản phẩm vào giỏ:', err);
+    }
+  };
+  const handleBuyNow = async () => {
+    try {
+      await AsyncStorage.setItem('buyNowProduct', JSON.stringify(product));
+      router.push('/checkout');
+    } catch (err) {
+      console.error('Lỗi mua ngay:', err);
     }
   };
   const renderSectionItem = (item: SectionItem, index: number) => {
@@ -171,10 +204,28 @@ const ProductScreen = () => {
           <Ionicons name="arrow-back" size={24} color="#000000" />
         </TouchableOpacity>
 
-        {/* Heart Button */}
-        <TouchableOpacity style={styles.heartButton}>
-          <Ionicons name="heart-outline" size={24} color="#000000" />
-        </TouchableOpacity>
+        <View style={{
+          flexDirection: 'row',
+          position: 'absolute',
+          top: 20,
+          right: 15,
+          zIndex: 10
+        }}>
+          {/* Icon tim */}
+          <TouchableOpacity style={styles.heartButton} onPress={handleAddToFavorites}>
+            <Ionicons
+              name={favorites.some(fav => fav._id === product._id) ? 'heart' : 'heart-outline'}
+              size={24}
+              color={favorites.some(fav => fav._id === product._id) ? 'red' : '#000000'}
+            />
+          </TouchableOpacity>
+
+          {/* Icon giỏ hàng */}
+          <TouchableOpacity style={[styles.heartButton, { marginLeft: 10 }]} onPress={handleAddToCart}>
+            <Fontisto name="shopping-basket-add" size={20} color="#000000" />
+          </TouchableOpacity>
+        </View>
+
 
         <ScrollView
           horizontal
@@ -186,10 +237,10 @@ const ProductScreen = () => {
           {productImages.length > 0 ? productImages.map((image, index) => {
             const imageSource = product.images
             return (
-              <Image 
-                key={index} 
-                source={{ uri: imageSource[index] }} 
-                style={styles.carouselImage} 
+              <Image
+                key={index}
+                source={{ uri: imageSource[index] }}
+                style={styles.carouselImage}
               />
             );
           }) : (
@@ -226,10 +277,20 @@ const ProductScreen = () => {
         </View>
 
         {/* Price Button */}
-        <TouchableOpacity style={styles.priceButton} onPress={handleAddToCart}>
+        <TouchableOpacity style={styles.priceButton}>
           <Text style={styles.priceText}>{price}</Text>
         </TouchableOpacity>
       </View>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 30 }}>
+        {/* nut mua ngay*/}
+        <TouchableOpacity
+          style={{ flex: 1, backgroundColor: '#469B43', padding: 14, borderRadius: 8 }}
+          onPress={handleBuyNow}
+        >
+          <Text style={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}>Mua ngay</Text>
+        </TouchableOpacity>
+      </View>
+
 
       {/* Description Sections */}
       <View style={styles.sectionsContainer}>
@@ -243,8 +304,12 @@ const ProductScreen = () => {
             </View>
           </View>
         ))}
+
       </View>
+
     </ScrollView>
+
+
   );
 };
 
@@ -280,10 +345,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   heartButton: {
-    position: 'absolute',
-    top: 20,
-    right: 15,
-    zIndex: 10,
+
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 8,

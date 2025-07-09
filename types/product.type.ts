@@ -13,9 +13,10 @@ export interface Product {
   images: string[]
   rating: number
   price: string
-  sections: ProductSection[]
+  sections: ProductSection[]  
+  favoriteId?: string
 }
-``
+
 export enum ProductSectionType {
   USES = "Công dụng",
   OVERVIEW = "Tổng quan", 

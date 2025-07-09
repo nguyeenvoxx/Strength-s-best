@@ -52,7 +52,7 @@ const PurchasedOrdersScreen: React.FC = () => {
         <View key={order.id} style={styles.card}>
           <View style={styles.orderHeader}>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14 }}>Sản phẩm: <Text style={{ fontWeight: 'bold', fontSize: 13 }}>{order.items[0].name}</Text></Text>
+              <Text style={{ fontSize: 14 }}>Sản phẩm: <Text style={{ fontWeight: 'bold', fontSize: 16}}>{order.items[0].name}</Text></Text>
               <Text style={styles.orderId}>Mã đơn: <Text style={{ fontWeight: 'bold' }}>{order.id}</Text></Text>
               <Text style={styles.orderDate}>Ngày: {new Date(order.date).toLocaleDateString('vi-VN')}</Text>
               {order.voucher && (

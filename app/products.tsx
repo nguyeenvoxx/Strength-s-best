@@ -1,27 +1,81 @@
-import React, { useState } from 'react';
-import { View, Text, Image, FlatList, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, Image, FlatList, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getPlatformContainerStyle } from '../utils/platformUtils';
+import { useProductStore } from '../store/useProductStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { Product } from '../types/product.type';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-interface Product {
+interface CategoryItem {
   id: string;
-  name: string;
-  price: string;
-  category?: string;
-  image?: any; // Changed from string to any to support require()
+  title: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  color: string;
 }
 
 const ProductListScreen: React.FC = () => {
   const router = useRouter();
-  // them vào giỏ hàng
+  const { products, isLoading, error, fetchProducts } = useProductStore();
+  const { isAuthenticated } = useAuthStore();
+  const [activeTab, setActiveTab] = useState('Sản phẩm');
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Categories from HomeCategory
+  const categories: CategoryItem[] = [
+    {
+      id: 'all',
+      title: 'Sản phẩm',
+      icon: 'grid',
+      color: '#007bff',
+    },
+    {
+      id: 'health',
+      title: 'Sức khỏe',
+      icon: 'heart',
+      color: '#FF6B6B',
+    },
+    {
+      id: 'mom',
+      title: 'Mẹ',
+      icon: 'woman',
+      color: '#4ECDC4',
+    },
+    {
+      id: 'baby',
+      title: 'Bé',
+      icon: 'happy',
+      color: '#45B7D1',
+    },
+    {
+      id: 'beauty',
+      title: 'Làm đẹp',
+      icon: 'flower',
+      color: '#FFA07A',
+    },
+    {
+      id: 'healthy-nuts',
+      title: 'Hạt healthy',
+      icon: 'nutrition',
+      color: '#98D8C8',
+    },
+  ];
+
+  // Load products when component mounts
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchProducts(50); // Load more products for listing
+    }
+  }, [isAuthenticated]);
+
+  // Add to cart function
   const addToCart = async (product: Product) => {
     try {
       const existingCart = await AsyncStorage.getItem('cart');
       const cart = existingCart ? JSON.parse(existingCart) : [];
-      // Chuyển đổi giá sang số nguyên để dễ dàng xử lý
-      const numericPrice = parseInt(product.price.replace(/\./g, ''));
+      // Convert price string to number
+      const numericPrice = parseFloat(product.price.replace(/[^0-9.-]+/g, '')) || 0;
       console.log('Thêm vào giỏ:', product);
       const existingItem = cart.find((item: any) => item.id === product.id);
       let updatedCart;
@@ -33,7 +87,17 @@ const ProductListScreen: React.FC = () => {
             : item
         );
       } else {
-        updatedCart = [...cart, { ...product, price: numericPrice, quantity: 1 }];
+        updatedCart = [...cart, { 
+          ...product, 
+          name: product.title, // Map title to name for cart compatibility
+          price: numericPrice, 
+          quantity: 1,
+          image: product.images && product.images[0] ? 
+            (typeof product.images[0] === 'string' && product.images[0].startsWith('http') ? 
+              { uri: product.images[0] } : 
+              product.images[0]
+            ) : require('../assets/images_sp/dau_ca_omega.png')
+        }];
       }
 
       await AsyncStorage.setItem('cart', JSON.stringify(updatedCart));
@@ -42,67 +106,77 @@ const ProductListScreen: React.FC = () => {
       console.error('Lỗi khi thêm vào giỏ hàng:', error);
     }
   };
-  const [activeTab, setActiveTab] = useState('Quà tặng');
-  const [currentPage, setCurrentPage] = useState(1);
 
-  const products = [
-    {
-      id: '1',
-      name: 'Magic Blackmores',
-      price: '500.000',
-      category: 'Quà tặng',
-      image: require('../assets/images_sp/magie_blackmores.png')
-    },
-    {
-      id: '2',
-      name: 'Dầu cá omega',
-      price: '500.000',
-      category: 'Quà tặng',
-      image: require('../assets/images_sp/dau_ca_omega.png')
-    },
-    {
-      id: '3',
-      name: 'Blackmores Bio C Powder',
-      price: '400.000',
-      category: 'Sản phẩm',
-      image: require('../assets/images_sp/magie_blackmores.png')
-    },
-    {
-      id: '4',
-      name: 'Blackmores Natural',
-      price: '300.000',
-      category: 'Sản phẩm',
-      image: require('../assets/images_sp/dau_ca_omega.png')
-    },
-    {
-      id: '5',
-      name: 'Vitamin D3',
-      price: '250.000',
-      category: 'Sản phẩm',
-      image: require('../assets/images_sp/magie_blackmores.png')
-    },
-    {
-      id: '6',
-      name: 'Calcium Plus',
-      price: '350.000',
-      category: 'Quà tặng',
-      image: require('../assets/images_sp/dau_ca_omega.png')
-    },
-  ];
+  // Filter products based on active tab
+  const filteredProducts = activeTab === 'Sản phẩm' ? products : 
+    products.filter(product => {
+      // For now, show all products for each category
+      // In a real app, you would filter based on product categories
+      return true;
+    });
 
-  const tabs = ['Quà tặng', 'Sản phẩm', 'Khuyến mãi'];
-
-  const filteredProducts = products.filter(product =>
-    activeTab === 'Quà tặng' ? product.category === 'Quà tặng' :
-      activeTab === 'Sản phẩm' ? product.category === 'Sản phẩm' :
-        products // Show all for "Khuyến mãi"
-  );
+  // Convert Product to display format
+  const displayProducts = filteredProducts.map(product => ({
+    id: product.id || product._id,
+    name: product.title,
+    price: product.price,
+    image: product.images && product.images[0] ? 
+      (typeof product.images[0] === 'string' && product.images[0].startsWith('http') ? 
+        { uri: product.images[0] } : 
+        product.images[0]
+      ) : require('../assets/images_sp/dau_ca_omega.png'),
+    originalProduct: product // Keep reference to original product
+  }));
 
   const handleProductPress = (productId: string) => {
     router.push(`./product/${productId}`);
   };
 
-  const renderProduct = ({ item }: { item: Product }) => (
+  if (!isAuthenticated) {
+    return (
+      <View style={[styles.container, getPlatformContainerStyle()]}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color="#333" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Sản phẩm</Text>
+          <TouchableOpacity onPress={() => router.push('./search')}>
+            <Ionicons name="search" size={24} color="#333" />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.loginPromptContainer}>
+          <Ionicons name="lock-closed-outline" size={48} color="#007bff" />
+          <Text style={styles.loginPromptTitle}>Đăng nhập để xem sản phẩm</Text>
+          <Text style={styles.loginPromptText}>Vui lòng đăng nhập để khám phá các sản phẩm tuyệt vời của chúng tôi</Text>
+          <TouchableOpacity style={styles.loginButton} onPress={() => router.push('/(auth)/sign-in')}>
+            <Text style={styles.loginButtonText}>Đăng nhập ngay</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, getPlatformContainerStyle()]}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color="#333" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Sản phẩm</Text>
+          <TouchableOpacity onPress={() => router.push('./search')}>
+            <Ionicons name="search" size={24} color="#333" />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007bff" />
+          <Text style={styles.loadingText}>Đang tải sản phẩm...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  const renderProduct = ({ item }: { item: any }) => (
     <TouchableOpacity
       style={styles.productItem}
       onPress={() => handleProductPress(item.id)}
@@ -116,9 +190,10 @@ const ProductListScreen: React.FC = () => {
       </View>
       <View style={styles.productInfo}>
         <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
-        <Text style={styles.productPrice}>{item.price}đ</Text>
-        <TouchableOpacity style={styles.addButton} onPress={() => addToCart(item)}>
-          <Ionicons name="add" size={16} color="#fff" />
+        <Text style={styles.productPrice}>{item.price}</Text>
+        <TouchableOpacity style={styles.addToCartButton} onPress={() => addToCart(item.originalProduct)}>
+          <Ionicons name="add" size={16} color="#fff" style={styles.addIcon} />
+          <Text style={styles.addToCartText}>Thêm vào giỏ hàng</Text>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -157,43 +232,62 @@ const ProductListScreen: React.FC = () => {
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Sản phẩm</Text>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push('./search')}>
           <Ionicons name="search" size={24} color="#333" />
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Tabs */}
-        <View style={styles.tabs}>
-          {tabs.map(tab => (
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          style={styles.tabsScrollView}
+          contentContainerStyle={styles.tabsContainer}
+        >
+          {categories.map(category => (
             <TouchableOpacity
-              key={tab}
+              key={category.id}
               style={[
-                styles.tab,
-                activeTab === tab && styles.activeTab
+                styles.tabChip,
+                activeTab === category.title && { backgroundColor: category.color }
               ]}
-              onPress={() => setActiveTab(tab)}
+              onPress={() => setActiveTab(category.title)}
             >
+              <Ionicons 
+                name={category.icon} 
+                size={16} 
+                color={activeTab === category.title ? '#fff' : category.color} 
+                style={styles.tabIcon}
+              />
               <Text style={[
                 styles.tabText,
-                activeTab === tab && styles.activeTabText
+                activeTab === category.title && { color: '#fff' }
               ]}>
-                {tab}
+                {category.title}
               </Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
 
         {/* Product Grid */}
-        <FlatList
-          data={filteredProducts}
-          renderItem={renderProduct}
-          keyExtractor={item => item.id}
-          numColumns={2}
-          scrollEnabled={false}
-          contentContainerStyle={styles.productGrid}
-          columnWrapperStyle={styles.productRow}
-        />
+        {displayProducts.length > 0 ? (
+          <FlatList
+            data={displayProducts}
+            renderItem={renderProduct}
+            keyExtractor={item => item.id}
+            numColumns={2}
+            scrollEnabled={false}
+            contentContainerStyle={styles.productGrid}
+            columnWrapperStyle={styles.productRow}
+          />
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="cube-outline" size={48} color="#ccc" />
+            <Text style={styles.emptyText}>Không có sản phẩm nào</Text>
+            <Text style={styles.emptySubText}>Thử chọn danh mục khác</Text>
+          </View>
+        )}
 
         {/* Pagination */}
         {renderPagination()}
@@ -245,23 +339,28 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
-  tabs: {
-    flexDirection: 'row',
+  tabsScrollView: {
     backgroundColor: '#fff',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#e9ecef',
   },
-  tab: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 8,
-    marginHorizontal: 5,
-    borderRadius: 20,
+  tabsContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    gap: 12,
   },
-  activeTab: {
-    backgroundColor: '#007bff',
+  tabChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 25,
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  tabIcon: {
+    marginRight: 8,
   },
   tabText: {
     fontSize: 14,
@@ -269,7 +368,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   activeTabText: {
-    color: '#fff',
     fontWeight: '600',
   },
   productGrid: {
@@ -316,13 +414,23 @@ const styles = StyleSheet.create({
     color: '#007bff',
     marginBottom: 10,
   },
-  addButton: {
-    backgroundColor: '#28a745',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  addToCartButton: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#007bff',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginTop: 8,
+  },
+  addIcon: {
+    marginRight: 6,
+  },
+  addToCartText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   pagination: {
     flexDirection: 'row',
@@ -390,6 +498,65 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999',
     textAlign: 'center',
+  },
+  loginPromptContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  loginPromptTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 20,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  loginPromptText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 30,
+    lineHeight: 24,
+  },
+  loginButton: {
+    backgroundColor: '#007bff',
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 25,
+  },
+  loginButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#666',
+    marginTop: 15,
+  },
+  emptySubText: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 5,
   },
 });
 

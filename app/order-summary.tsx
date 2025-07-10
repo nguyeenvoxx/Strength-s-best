@@ -6,7 +6,7 @@ import { getPlatformContainerStyle } from '../utils/platformUtils';
 
 export default function OrderSummaryScreen() {
   const router = useRouter();
-  const { selected } = useLocalSearchParams();
+  const { selected, id, total, date, voucher } = useLocalSearchParams();
   const orderItems = selected ? JSON.parse(selected as string) : [];
 
   const formatPrice = (price: number) => {
@@ -17,23 +17,30 @@ export default function OrderSummaryScreen() {
   const totalPrice = orderItems.reduce((sum: number, item: any) => sum + item.quantity * item.price, 0);
 
   return (
+
     <View style={styles.container}>
       <Text style={styles.header}>Xem đơn hàng</Text>
+      <Text style={styles.orderInfo}>Mã đơn hàng: {id}</Text>
 
+      <Text style={styles.orderInfo}>Ngày: {new Date(date as string).toLocaleDateString('vi-VN')}</Text>
+      {voucher && <Text style={styles.orderInfo}>Mã giảm giá: {voucher}</Text>}
+      <Text style={styles.orderInfo}>Tổng tiền (lưu): {formatPrice(Number(total))}</Text>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {orderItems.map((item: any) => (
-          <View key={item.id} style={styles.card}>
-            <Image
-              source={typeof item.image === 'number' ? item.image : { uri: item.image }}
-              style={styles.image}
-            />
-            <View style={styles.info}>
-              <Text style={styles.name}>{item.name}</Text>
-              <Text style={styles.detail}>Số lượng: {item.quantity}</Text>
-              <Text style={styles.price}>{formatPrice(item.price)}</Text>
+        {orderItems.map((item: any, index: number) =>
+          item ? (
+            <View key={item.id ?? index} style={styles.card}>
+              <Image
+                source={typeof item.image === 'number' ? item.image : { uri: item.image }}
+                style={styles.image}
+              />
+              <View style={styles.info}>
+                <Text style={styles.name}>{item.name ?? 'Không rõ tên'}</Text>
+                <Text style={styles.detail}>Số lượng: {item.quantity ?? 0}</Text>
+                <Text style={styles.price}>{formatPrice(item.price ?? 0)}</Text>
+              </View>
             </View>
-          </View>
-        ))}
+          ) : null
+        )}
 
         <View style={styles.summaryBox}>
           <Text style={styles.summaryText}>Tổng số lượng: {totalQuantity}</Text>
@@ -49,6 +56,12 @@ export default function OrderSummaryScreen() {
 }
 
 const styles = StyleSheet.create({
+  orderInfo: {
+    fontSize: 15,
+    marginBottom: 4,
+    paddingHorizontal: 20,
+    color: '#444',
+  },
   container: {
     flex: 1,
     backgroundColor: '#ffffff',

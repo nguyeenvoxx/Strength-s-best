@@ -52,13 +52,18 @@ const PurchasedOrdersScreen: React.FC = () => {
         <View key={order.id} style={styles.card}>
           <View style={styles.orderHeader}>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14 }}>Sản phẩm: <Text style={{ fontWeight: 'bold', fontSize: 16}}>{order.items[0].name}</Text></Text>
+              <Text style={{ fontSize: 14 }}>
+                Sản phẩm:{' '}
+                <Text style={{ fontWeight: 'bold', fontSize: 16 }}>
+                  {order.items?.[0]?.name ?? 'Không rõ'}
+                </Text>
+              </Text>
               <Text style={styles.orderId}>Mã đơn: <Text style={{ fontWeight: 'bold' }}>{order.id}</Text></Text>
               <Text style={styles.orderDate}>Ngày: {new Date(order.date).toLocaleDateString('vi-VN')}</Text>
               {order.voucher && (
                 <Text style={styles.voucherText}>Mã giảm giá: {order.voucher.code}</Text>
               )}
-              <Text>Số lượng: {order.items[0].quantity}</Text>
+             <Text>Số lượng: {order.items?.[0]?.quantity ?? 0}</Text>
               <Text style={styles.total}>Tổng thanh toán: {formatPrice(order.total)}</Text>
             </View>
             {order.items?.[0]?.image && (
@@ -71,6 +76,26 @@ const PurchasedOrdersScreen: React.FC = () => {
 
           <TouchableOpacity style={styles.cancelButton} onPress={() => handleCancel(order.id)}>
             <Text style={styles.cancelText}>Hủy đơn</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={{ marginTop: 10, padding: 10, backgroundColor: '#007bff', borderRadius: 6 }}
+            onPress={() =>
+              router.push({
+                pathname: '/order-summary',
+                params: {
+                  selected: JSON.stringify(order.items),
+                  id: order.id,
+                  total: order.total.toString(), // truyền dạng chuỗi
+                  date: order.date,
+                  voucher: order.voucher?.code ?? '',
+                },
+              })
+            }
+          >
+            <Text style={{ color: '#fff', textAlign: 'center', fontWeight: 'bold' }}>
+              Xem đơn hàng
+            </Text>
           </TouchableOpacity>
         </View>
       ))}

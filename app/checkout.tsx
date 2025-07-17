@@ -112,8 +112,7 @@ const OrderSummaryScreen: React.FC = () => {
           <View style={styles.orderSummary}>
 
             {selectedItems.map((item: any) => (
-
-              <View key={item.id} style={styles.productBox}>
+              <View key={item.id || item._id} style={styles.productBox}>
                 <Image
                   source={typeof item.image === 'number' ? item.image : { uri: item.image }}
                   style={styles.productImage}

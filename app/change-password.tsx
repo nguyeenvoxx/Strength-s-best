@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getPlatformContainerStyle } from '../utils/platformUtils';
+import { useAuthStore } from '../store/useAuthStore';
+import { changePassword } from '../services/authApi';
 
 const ChangePasswordScreen: React.FC = () => {
   const router = useRouter();
@@ -12,8 +14,9 @@ const ChangePasswordScreen: React.FC = () => {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const token = useAuthStore((state) => state.token);
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
       Alert.alert('Lỗi', 'Vui lòng điền đầy đủ thông tin');
       return;
@@ -29,13 +32,24 @@ const ChangePasswordScreen: React.FC = () => {
       return;
     }
 
-    // Implement password change logic here
-    Alert.alert('Thành công', 'Mật khẩu đã được đổi thành công', [
-      {
-        text: 'OK',
-        onPress: () => router.back()
+    // Kiểm tra thêm nếu muốn: phải có chữ và số, khác mật khẩu cũ, v.v.
+
+    try {
+      if (!token) {
+        Alert.alert('Lỗi', 'Không tìm thấy token xác thực');
+        return;
       }
-    ]);
+      await changePassword(token, currentPassword, newPassword);
+      Alert.alert('Thành công', 'Mật khẩu đã được đổi thành công', [
+        {
+          text: 'OK',
+          onPress: () => router.back()
+        }
+      ]);
+    } catch (error: any) {
+      console.error('Change password error:', error);
+      Alert.alert('Lỗi', error?.response?.data?.message || 'Đổi mật khẩu thất bại');
+    }
   };
 
   const handleCancel = () => {

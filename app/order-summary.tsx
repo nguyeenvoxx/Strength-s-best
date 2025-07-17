@@ -3,10 +3,13 @@ import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView } from 'rea
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getPlatformContainerStyle } from '../utils/platformUtils';
+import { useAuthStore } from '../store/useAuthStore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 export default function OrderSummaryScreen() {
   const router = useRouter();
-  const { selected, id, total, date, voucher } = useLocalSearchParams();
+  const { selected, id, total, date, voucher, status, customerName, customerPhone, customerAddress, customerEmail } = useLocalSearchParams();
   const orderItems = selected ? JSON.parse(selected as string) : [];
 
   const formatPrice = (price: number) => {
@@ -16,12 +19,43 @@ export default function OrderSummaryScreen() {
   const totalQuantity = orderItems.reduce((sum: number, item: any) => sum + item.quantity, 0);
   const totalPrice = orderItems.reduce((sum: number, item: any) => sum + item.quantity * item.price, 0);
 
+  const user = useAuthStore.getState().user;
+  const newOrder = {
+    id: 'ODR-' + Date.now(),
+    items: orderItems,
+    total: totalPrice,
+    date: new Date().toISOString(),
+    voucher: voucher,
+    status: status,
+    customerName: user?.name || '',
+    customerPhone: user?.phoneNumber || '',
+    customerAddress: user?.address || '',
+  };
+
+
+  React.useEffect(() => {
+    const saveOrder = async () => {
+      const existing = await AsyncStorage.getItem('purchased');
+      const purchased = existing ? JSON.parse(existing) : [];
+      const updated = [...purchased, newOrder];
+      await AsyncStorage.setItem('purchased', JSON.stringify(updated));
+    };
+    saveOrder();
+  }, []);
+
+
+
   return (
 
     <View style={styles.container}>
       <Text style={styles.header}>Xem đơn hàng</Text>
+      <View style={styles.customerBox}>
+        <Text style={styles.customerTitle}>Thông tin người đặt</Text>
+        <Text style={[styles.customerInfo, { fontWeight: 'bold' }]}>{newOrder.customerName || 'Không rõ'}</Text>
+        <Text style={styles.customerInfo}>Địa chỉ: {newOrder.customerAddress || 'Không rõ'}</Text>
+        <Text style={styles.customerInfo}>SĐT: {newOrder.customerPhone || 'Không rõ'}</Text>
+      </View>
       <Text style={styles.orderInfo}>Mã đơn hàng: {id}</Text>
-
       <Text style={styles.orderInfo}>Ngày: {new Date(date as string).toLocaleDateString('vi-VN')}</Text>
       {voucher && <Text style={styles.orderInfo}>Mã giảm giá: {voucher}</Text>}
       <Text style={styles.orderInfo}>Tổng tiền (lưu): {formatPrice(Number(total))}</Text>
@@ -41,7 +75,7 @@ export default function OrderSummaryScreen() {
             </View>
           ) : null
         )}
-
+        <Text style={[styles.orderInfo, { color: status === 'cancelled' ? 'red' : '#28a745', fontWeight: 'bold' }]}>Trạng thái đơn hàng: {status === 'cancelled' ? 'Đã hủy' : 'Đang xử lý'}</Text>
         <View style={styles.summaryBox}>
           <Text style={styles.summaryText}>Tổng số lượng: {totalQuantity}</Text>
           <Text style={styles.totalText}>Tổng tiền: {formatPrice(totalPrice)}</Text>
@@ -56,6 +90,25 @@ export default function OrderSummaryScreen() {
 }
 
 const styles = StyleSheet.create({
+  customerBox: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 10,
+    padding: 14,
+    marginVertical: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  customerTitle: {
+    fontWeight: 'bold',
+    fontSize: 16,
+    marginBottom: 6,
+    color: '#007bff',
+  },
+  customerInfo: {
+    fontSize: 15,
+    color: '#333',
+    marginBottom: 2,
+  },
   orderInfo: {
     fontSize: 15,
     marginBottom: 4,

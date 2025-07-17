@@ -78,4 +78,13 @@ export const authService = {
   },
 };
 
+export const changePassword = async (token: string, currentPassword: string, newPassword: string) => {
+  const res = await axios.post(
+    `${API_CONFIG.BASE_URL}/users/change-password`, 
+    { currentPassword, newPassword },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return res.data;
+};
+
 export default authService;

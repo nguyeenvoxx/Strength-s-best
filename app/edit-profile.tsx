@@ -2,14 +2,30 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { getPlatformContainerStyle } from '../utils/platformUtils';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
+import { useAuthStore } from '../store/useAuthStore';
+import { changePassword } from '../services/authApi';
 
 const EditProfileScreen: React.FC = () => {
+  const user = useAuthStore((state) => state.user);
+  const setUser = useAuthStore((state) => state.setUser);
+  const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
   const router = useRouter();
-  const [name, setName] = useState('VuDuyPhuc');
-  const [email, setEmail] = useState('vuduyphuc674@gmail.com');
 
   const handleSave = () => {
-    // Implement save logic here
+    if (!user || !user._id) {
+      Alert.alert('Lỗi', 'Không tìm thấy thông tin người dùng');
+      return;
+    }
+    // Tạo object user mới (giữ lại các trường cũ, chỉ đổi tên/email)
+    const updatedUser = {
+      ...user,
+      name,
+      email,
+      _id: user._id, // đảm bảo _id luôn là string
+    };
+    setUser(updatedUser);
+
     Alert.alert('Thành công', 'Thông tin đã được cập nhật', [
       {
         text: 'OK',

@@ -1,16 +1,17 @@
-import { StyleSheet, Text, View, ScrollView, Dimensions, Image, TouchableOpacity, ImageSourcePropType, ActivityIndicator, Alert } from 'react-native'
+import { StyleSheet, Text, View, ScrollView, Dimensions, Image, TouchableOpacity, ImageSourcePropType, ActivityIndicator, Alert, Modal, TouchableWithoutFeedback, TextInput } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { PRODUCT_ITEM_SAMPLE } from '../../constants/app.constant'
 import { useProductStore } from '../../store/useProductStore'
 import { useAuthStore } from '../../store/useAuthStore'
+import { useCartStore } from '../../store/useCartStore'
 import { transformApiProductToProduct, getFullImageUrl, formatPrice } from '../../utils/productUtils'
 import { getPlatformContainerStyle } from '../../utils/platformUtils'
 import { Product } from '../../types/product.type'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Fontisto from '@expo/vector-icons/Fontisto';
-import { useFavoriteStore } from '../../store/useFavoriteStore' //
+import { useFavoriteStore } from '../../store/useFavoriteStore'
 
 const { width } = Dimensions.get('window')
 
@@ -28,8 +29,11 @@ const ProductScreen = () => {
   const router = useRouter()
   const { id } = useLocalSearchParams()
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [showCartModal, setShowCartModal] = useState(false)
+  const [quantity, setQuantity] = useState(1)
   const { currentProduct: product, isLoading: loading, error, fetchProductById, clearError } = useProductStore()
   const { isAuthenticated, token } = useAuthStore()
+  const { addToCart, loading: cartLoading, error: cartError } = useCartStore()
 
 
 
@@ -133,7 +137,7 @@ const ProductScreen = () => {
       : []) as ImageSourcePropType[]
   const productTitle = product.title
   const rating = product.rating || 0
-  const price = product.price
+  const price = product.price || 0
   const sections: Section[] = (product.sections || []).map((section: any) => ({
     title: section.title,
     items: section.items.map((text: any, idx: any) => {
@@ -147,34 +151,62 @@ const ProductScreen = () => {
     const index = Math.round(contentOffset / width)
     setCurrentImageIndex(index)
   }
+  // Hàm mở modal giỏ hàng
+  const handleOpenCartModal = () => {
+    if (!token) {
+      Alert.alert('Lỗi', 'Vui lòng đăng nhập để thêm vào giỏ hàng');
+      return;
+    }
+    setQuantity(1);
+    setShowCartModal(true);
+  };
+
   // Hàm thêm sản phẩm vào giỏ hàng
   const handleAddToCart = async () => {
-    const cartItem = {
-      id: product.id,
-      name: product.title,
-      price: Number(product.price.toString().replace(/[^\d]/g, '')), quantity: 1, // chuyển đổi giá sang số
-      image: product.images[0],
-      text: 'Neque porro...' // mô tả đơn giản
-    };
-    // hàm mua ngay
+    if (!token) {
+      Alert.alert('Lỗi', 'Vui lòng đăng nhập để thêm vào giỏ hàng');
+      return;
+    }
 
+    if (!product) {
+      Alert.alert('Lỗi', 'Không tìm thấy sản phẩm');
+      return;
+    }
 
     try {
-      const existingCart = await AsyncStorage.getItem('cart');
-      let cart = existingCart ? JSON.parse(existingCart) : [];
+      await addToCart(token, product._id, quantity);
+      setShowCartModal(false);
+      Alert.alert(
+        'Thành công',
+        `Đã thêm ${quantity} sản phẩm vào giỏ hàng!`,
+        [
+          { text: 'Tiếp tục mua sắm', style: 'cancel' },
+          { text: 'Xem giỏ hàng', onPress: () => router.push('/(tabs)/cart') }
+        ]
+      );
+    } catch (error) {
+      console.error('Lỗi thêm sản phẩm vào giỏ hàng:', error);
+      Alert.alert('Lỗi', 'Không thể kết nối đến server');
+    }
+  };
 
-      const index = cart.findIndex((item: any) => item.id === cartItem.id);
-      if (index !== -1) {
-        cart[index].quantity += 1;
-      } else {
-        cart.push(cartItem);
-      }
+  // Hàm tăng số lượng
+  const handleIncreaseQuantity = () => {
+    setQuantity(prev => prev + 1);
+  };
 
-      await AsyncStorage.setItem('cart', JSON.stringify(cart));
+  // Hàm giảm số lượng
+  const handleDecreaseQuantity = () => {
+    if (quantity > 1) {
+      setQuantity(prev => prev - 1);
+    }
+  };
 
-      router.push('/(tabs)/cart'); // đúng với cấu trúc folder bạn đang dùng
-    } catch (err) {
-      console.error('Lỗi thêm sản phẩm vào giỏ:', err);
+  // Hàm xử lý thay đổi số lượng từ input
+  const handleQuantityChange = (text: string) => {
+    const num = parseInt(text);
+    if (!isNaN(num) && num > 0) {
+      setQuantity(num);
     }
   };
   const handleBuyNow = async () => {
@@ -221,7 +253,7 @@ const ProductScreen = () => {
           </TouchableOpacity>
 
           {/* Icon giỏ hàng */}
-          <TouchableOpacity style={[styles.heartButton, { marginLeft: 10 }]} onPress={handleAddToCart}>
+          <TouchableOpacity style={[styles.heartButton, { marginLeft: 10 }]} onPress={handleOpenCartModal}>
             <Fontisto name="shopping-basket-add" size={20} color="#000000" />
           </TouchableOpacity>
         </View>
@@ -281,7 +313,7 @@ const ProductScreen = () => {
           <Text style={styles.priceText}>{price}</Text>
         </TouchableOpacity>
       </View>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 30 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 30, gap: 10 }}>
         {/* nut mua ngay*/}
         <TouchableOpacity
           style={{ flex: 1, backgroundColor: '#469B43', padding: 14, borderRadius: 8 }}
@@ -306,6 +338,71 @@ const ProductScreen = () => {
         ))}
 
       </View>
+
+      {/* Cart Modal */}
+      <Modal transparent visible={showCartModal} animationType="slide">
+        <TouchableWithoutFeedback onPress={() => setShowCartModal(false)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Thêm vào giỏ hàng</Text>
+                  <TouchableOpacity onPress={() => setShowCartModal(false)}>
+                    <Ionicons name="close" size={24} color="#666" />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.productInfo}>
+                  <Image
+                    source={{ uri: product.images[0] || product.image }}
+                    style={styles.modalProductImage}
+                  />
+                  <View style={styles.productDetails}>
+                    <Text style={styles.modalProductTitle}>{product.title}</Text>
+                    <Text style={styles.modalProductPrice}>{product.price}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.quantityContainer}>
+                  <Text style={styles.quantityLabel}>Số lượng:</Text>
+                  <View style={styles.quantityControls}>
+                    <TouchableOpacity
+                      style={styles.quantityButton}
+                      onPress={handleDecreaseQuantity}
+                    >
+                      <Ionicons name="remove" size={20} color="#666" />
+                    </TouchableOpacity>
+
+                    <TextInput
+                      style={styles.quantityInput}
+                      value={quantity.toString()}
+                      onChangeText={handleQuantityChange}
+                      keyboardType="numeric"
+                      textAlign="center"
+                    />
+
+                    <TouchableOpacity
+                      style={styles.quantityButton}
+                      onPress={handleIncreaseQuantity}
+                    >
+                      <Ionicons name="add" size={20} color="#666" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.addToCartButton}
+                  onPress={handleAddToCart}
+                >
+                  <Text style={styles.addToCartButtonText}>
+                    Thêm {quantity} vào giỏ hàng
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
 
     </ScrollView>
 
@@ -526,6 +623,99 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '70%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  productInfo: {
+    flexDirection: 'row',
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  modalProductImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    marginRight: 15,
+  },
+  productDetails: {
+    flex: 1,
+  },
+  modalProductTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 5,
+  },
+  modalProductPrice: {
+    fontSize: 14,
+    color: '#666',
+  },
+  quantityContainer: {
+    marginBottom: 20,
+  },
+  quantityLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 10,
+  },
+  quantityControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quantityButton: {
+    width: 40,
+    height: 40,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  quantityInput: {
+    width: 60,
+    height: 40,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    marginHorizontal: 10,
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  addToCartButton: {
+    backgroundColor: '#469B43',
+    paddingVertical: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  addToCartButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

@@ -4,25 +4,26 @@ import { useRouter } from 'expo-router';
 import { getPlatformContainerStyle } from '../../utils/platformUtils';
 import { useFonts } from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
-// lấy luu giỏ hàng
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
+import { useAuthStore } from '../../store/useAuthStore';
+import { useCartStore } from '../../store/useCartStore';
+import { API_CONFIG } from '../../constants/config';
 
 const CartScreen: React.FC = () => {
   const router = useRouter();
-  // Lấy dữ liệu giỏ hàng từ AsyncStorage
-  const [cartItems, setCartItems] = useState<any[]>([]);
+  const { token } = useAuthStore();
+  const { cart, items: cartItems, loading, error, fetchCart, addToCart, removeFromCart, clearCart, clearError } = useCartStore();
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
   useFocusEffect(
     useCallback(() => {
-      const loadCart = async () => {
-        const data = await AsyncStorage.getItem('cart');
-        setCartItems(data ? JSON.parse(data) : []);
-      };
-      loadCart();
-    }, [])
+      if (token) {
+        fetchCart(token);
+      }
+    }, [token])
   );
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
   const toggleSelect = (id: string) => {
     setSelectedIds(prev =>
       prev.includes(id)
@@ -30,6 +31,7 @@ const CartScreen: React.FC = () => {
         : [...prev, id]
     );
   };
+
   const [fontsLoaded] = useFonts({
     'PlayfairDisplay': require('../../assets/fonts/PlayfairDisplay-Medium.ttf'),
   });
@@ -38,23 +40,50 @@ const CartScreen: React.FC = () => {
     return null;
   }
 
-  const handleIncrease = (id: string) => {
-    setCartItems(prev =>
-      prev.map(item => item.id === id ? { ...item, quantity: item.quantity + 1 } : item)
+  const handleIncrease = async (item: any) => {
+    if (token) {
+      await addToCart(token, item.idProduct, item.quantity + 1);
+    }
+  };
+
+  const handleDecrease = async (item: any) => {
+    if (token) {
+      if (item.quantity > 1) {
+        await addToCart(token, item.idProduct, item.quantity - 1);
+      } else {
+        await removeFromCart(token, item.idProduct);
+      }
+    }
+  };
+
+  const handleDelete = async (productId: string) => {
+    Alert.alert(
+      'Xác nhận',
+      'Bạn có chắc muốn xóa sản phẩm này khỏi giỏ hàng?',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        { text: 'Xóa', style: 'destructive', onPress: () => token && removeFromCart(token, productId) }
+      ]
     );
   };
 
-  const handleDecrease = (id: string) => {
-    setCartItems(prev =>
-      prev
-        .map(item =>
-          item.id === id && item.quantity > 1
-            ? { ...item, quantity: item.quantity - 1 }
-            : item
-        )
-        .filter(item => item.quantity > 0)
+  const handleClearCart = async () => {
+    Alert.alert(
+      'Xác nhận',
+      'Bạn có chắc muốn xóa toàn bộ giỏ hàng?',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        { text: 'Xóa', style: 'destructive', onPress: async () => {
+          if (token) {
+            await clearCart(token);
+            setSelectedIds([]);
+            Alert.alert('Thành công', 'Đã xóa toàn bộ giỏ hàng');
+          }
+        }}
+      ]
     );
   };
+
   //TRUYỀN DỮ LIỆU TỪ GIỎ HÀNG
   const handleCheckout = () => {
     if (selectedItems.length === 0) {
@@ -66,13 +95,8 @@ const CartScreen: React.FC = () => {
       params: { selected: JSON.stringify(selectedItems) },
     });
   };
-  // Xóa sản phẩm khỏi giỏ hàng
-  const handleDelete = async (id: string) => {
-    const updatedCart = cartItems.filter(item => item.id !== id);
-    setCartItems(updatedCart);
-    await AsyncStorage.setItem('cart', JSON.stringify(updatedCart));
-  };
-  const selectedItems = cartItems.filter(item => selectedIds.includes(item.id));
+
+  const selectedItems = cartItems.filter(item => selectedIds.includes(item.idProduct._id));
   const totalQuantity = selectedItems.reduce((sum, item) => sum + item.quantity, 0);
   // Tính tổng tiền
   const totalPrice = selectedItems.reduce((sum, item) => sum + Number(item.price) * item.quantity, 0);
@@ -80,6 +104,35 @@ const CartScreen: React.FC = () => {
   const formatPrice = (price: number) => {
     return price.toLocaleString('vi-VN') + ' đ';
   };
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Giỏ hàng</Text>
+        </View>
+        <View style={styles.emptyCart}>
+          <Text>Đang tải...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Giỏ hàng</Text>
+        </View>
+        <View style={styles.emptyCart}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => { clearError(); token && fetchCart(token); }}>
+            <Text style={styles.retryText}>Thử lại</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   if (cartItems.length === 0) {
     return (
@@ -109,6 +162,9 @@ const CartScreen: React.FC = () => {
     <View style={[styles.container, getPlatformContainerStyle()]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Giỏ hàng ({cartItems.length})</Text>
+        <TouchableOpacity onPress={handleClearCart} style={styles.clearButton}>
+          <Text style={styles.clearButtonText}>Xóa tất cả</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
@@ -139,32 +195,47 @@ const CartScreen: React.FC = () => {
 
         <View>
           {cartItems.map(item => (
-            <View key={item.id} style={styles.cartItem}>
-
+            <View key={item._id} style={styles.cartItem}>
               <TouchableOpacity
-                onPress={() => toggleSelect(item.id)}
-                style={[styles.checkbox, selectedIds.includes(item.id) && styles.checkboxSelected]}
+                onPress={() => toggleSelect(item.idProduct._id)}
+                style={[styles.checkbox, selectedIds.includes(item.idProduct._id) && styles.checkboxSelected]}
               >
-                {selectedIds.includes(item.id) && <Text style={{ color: '#fff' }}>✓</Text>}
+                {selectedIds.includes(item.idProduct._id) && <Text style={{ color: '#fff' }}>✓</Text>}
               </TouchableOpacity>
 
-              <Image source={typeof item.image === 'number' ? item.image : { uri: item.image }} style={styles.productImage} />
+              <Image 
+                source={{ uri: `${API_CONFIG.BASE_URL}/uploads/${item.idProduct.image}` }} 
+                style={styles.productImage} 
+              />
               <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: 'PlayfairDisplay', fontSize: 20 }}>{item.name}</Text>
-                <Text>{item.text}</Text>
-                <Text>{formatPrice(item.price)}</Text>
-                <View style={{ flexDirection: 'row', marginTop: 5 }}>
-
-                  <TouchableOpacity onPress={() => handleDecrease(item.id)} style={styles.qtyButton}>
+                <Text style={{ fontSize: 20 }}>
+                  {item.idProduct.nameProduct}
+                </Text>
+                <Text style={{ color: '#666', marginBottom: 5 }}>
+                  {item.idProduct.description}
+                </Text>
+                <Text style={{ fontWeight: 'bold', color: '#469B43', fontSize: 16 }}>
+                  {formatPrice(item.price)}
+                </Text>
+                <View style={{ flexDirection: 'row', marginTop: 4, alignItems: 'center' }}>
+                  {/* <TouchableOpacity onPress={() => handleDecrease(item)} style={styles.qtyButton}>
                     <Text style={styles.qtyText_}>-</Text>
                   </TouchableOpacity>
-                  <Text style={{ marginHorizontal: 2, fontSize: 16,marginRight:10}}>{item.quantity}</Text>
-                  <TouchableOpacity onPress={() => handleIncrease(item.id)} style={styles.qtyButton}>
+                  <Text style={{ marginHorizontal: 10, fontSize: 16, fontWeight: 'bold' }}>
+                    {item.quantity}
+                  </Text>
+                  <TouchableOpacity onPress={() => handleIncrease(item)} style={styles.qtyButton}>
                     <Text style={styles.qtyText}>+</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => handleDelete(item.id)}>
-                    <Text style={{ color: 'red', marginTop: 5 }}>Xoá</Text>
-                  </TouchableOpacity>
+                  </TouchableOpacity> */}
+                  <Text style={{ fontSize: 16, fontWeight: '300' }}>
+                    Số lượng: {item.quantity}
+                  </Text>
+                  {/* <TouchableOpacity 
+                    onPress={() => handleDelete(item.idProduct._id)}
+                    style={styles.deleteButton}
+                  >
+                    <Ionicons name="trash-outline" size={20} color="#ff4444" />
+                  </TouchableOpacity> */}
                 </View>
               </View>
             </View>
@@ -182,6 +253,17 @@ const CartScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  clearButton: {
+    backgroundColor: '#ff4444',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  clearButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
   checkbox: {
     width: 24,
     height: 24,
@@ -298,6 +380,9 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#e9ecef',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 20,
@@ -352,6 +437,27 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     width: 295,
     alignSelf: 'center'
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#c62828',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#FF6B35',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  deleteButton: {
+    marginLeft: 15,
+    padding: 5,
   },
 });
 

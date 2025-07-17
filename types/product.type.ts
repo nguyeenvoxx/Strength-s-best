@@ -13,6 +13,7 @@ export interface Product {
   images: string[]
   rating: number
   price: string
+  priceProduct: number
   sections: ProductSection[]  
   favoriteId?: string
 }

@@ -7,8 +7,8 @@ export const API_CONFIG = {
   // BASE_URL: 'http://192.168.1.9:3000/api/v1',
   // AUTH_URL: 'http://192.168.1.9:3000/api/v1/auth',
 
-  BASE_URL: 'http://192.168.100.28:3000/api/v1',
-  AUTH_URL: 'http://192.168.100.28:3000/api/v1/auth',
+  BASE_URL: 'http://172.19.16.1:3000/api/v1',
+  AUTH_URL: 'http://172.19.16.1:3000/api/v1/auth',
 
   TIMEOUT: 10000,
 };

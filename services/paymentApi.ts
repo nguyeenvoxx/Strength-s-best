@@ -8,7 +8,7 @@ export const createVnpayPayment = async (amount: number, orderId: string) => {
   const token = useAuthStore.getState().token;
   // Gửi POST request tới endpoint /payments/qr với amount và orderId
   const res = await axios.post(
-    'http://192.168.100.28:3000/api/v1/vnpay/create',
+    'http://172.19.16.1:3000/api/v1/vnpay/create',
     { amount, orderId },
     {
       headers: {

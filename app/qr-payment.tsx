@@ -74,7 +74,7 @@ const VnpayPaymentScreen: React.FC = () => {
   // Hàm xử lý khi WebView chuyển hướng về returnUrl
   const handleNavigationStateChange = (navState: any) => {
     const { url } = navState;
-    if (url && url.startsWith('http://172.19.16.1:3000/vnpay_return')) {
+    if (url && url.startsWith('http://192.168.100.28:3000/vnpay_return')) {
       // Xóa sản phẩm khỏi giỏ hàng trước khi chuyển hướng
       removeItemsFromCart();
       router.push('/payment-success'); // hoặc route khác tuỳ bạn

@@ -14,6 +14,8 @@ const SignUpScreen: React.FC = () => {
   const [agree, setAgree] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [phone, setPhone] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   
   const { signup, isLoading, error, clearError } = useAuthStore();
 
@@ -59,11 +61,21 @@ const SignUpScreen: React.FC = () => {
       return;
     }
 
+    if (!phone) {
+      Alert.alert('Lỗi', 'Vui lòng nhập số điện thoại');
+      return;
+    }
+    if (!/^\+84\s\d{9}$/.test(phone)) {
+      Alert.alert('Lỗi', 'Số điện thoại phải đúng định dạng +84 9xxxxxxxx');
+      return;
+    }
+
     try {
       await signup({ 
         name: fullName.trim(), 
         email: email.trim().toLowerCase(), 
-        password 
+        password,
+        phone: phone.trim()
       });
       // Sau khi đăng ký thành công, chuyển đến trang xác thực email
       router.push('./email-verification');
@@ -124,6 +136,28 @@ const SignUpScreen: React.FC = () => {
             color="#555"
           />
         </TouchableOpacity>
+      </View>
+      <View style={styles.inputWrapper}>
+        <TextInput
+          style={styles.textInput}
+          placeholder="Số điện thoại (+84 9xxxxxxxx)"
+          value={phone}
+          onChangeText={text => {
+            // Đảm bảo luôn có '+84 ' ở đầu, chỉ cho nhập số phía sau
+            let formatted = text;
+            if (!formatted.startsWith('+84 ')) {
+              formatted = '+84 ' + formatted.replace(/[^0-9]/g, '');
+            } else {
+              formatted = '+84 ' + formatted.slice(4).replace(/[^0-9]/g, '');
+            }
+            if (formatted.length > 13) formatted = formatted.slice(0, 13); // +84 + space + 9 số = 13 ký tự
+            setPhone(formatted);
+            setPhoneError('');
+          }}
+          keyboardType="phone-pad"
+          maxLength={13}
+        />
+        {phoneError ? <Text style={{color: 'red', marginBottom: 8}}>{phoneError}</Text> : null}
       </View>
 
       <View style={styles.options}>

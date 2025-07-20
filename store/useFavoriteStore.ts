@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import axios from 'axios';
 import { Product } from '../types/product.type';
 
-const BASE_URL = 'http://172.19.16.1:3000/api/v1';
+const BASE_URL = 'http://192.168.100.28:3000/api/v1';
 
 interface FavoriteState {
     favorites: Product[];

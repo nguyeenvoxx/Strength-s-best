@@ -18,7 +18,7 @@ export interface SignupRequest {
   name: string;
   email: string;
   password: string;
-  phoneNumber?: string;
+  phone?: string;
   address?: string;
 }
 
@@ -30,7 +30,7 @@ export interface AuthResponse {
       _id: string;
       name: string;
       email: string;
-      phoneNumber?: string;
+      phone?: string;
       address?: string;
       role: string;
       status: string;
@@ -76,6 +76,15 @@ export const authService = {
       return false;
     }
   },
+};
+
+export const updateProfile = async (token: string, data: { name?: string; email?: string; phoneNumber?: string }) => {
+  const res = await axios.put(
+    `${API_CONFIG.BASE_URL}/users/me`,
+    data,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return res.data;
 };
 
 export const changePassword = async (token: string, currentPassword: string, newPassword: string) => {

@@ -76,9 +76,26 @@ const ProfileScreen: React.FC = () => {
         <View style={styles.userInfo}>
           <Text style={styles.userName}>{user?.name || 'Khách hàng'}</Text>
           <Text style={styles.userEmail}>{user?.email || 'Chưa có email'}</Text>
-          <Text style={styles.userPhone}>{user?.phoneNumber || 'Chưa có số điện thoại'}</Text>
+          <Text style={styles.userPhone}>{user?.phone || 'Chưa có số điện thoại'}</Text>
         </View>
       </View>
+      {/* Nút Đăng nhập/Đăng ký cho khách hàng */}
+      {(!user || !user._id) && (
+        <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 16, marginTop: 8 }}>
+          <TouchableOpacity
+            style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: '#fff', borderRadius: 4, paddingVertical: 8, paddingHorizontal: 32, marginRight: 8 }}
+            onPress={() => router.push('/(auth)/sign-in')}
+          >
+            <Text style={{ color: '#469B43', fontWeight: 'bold', fontSize: 16 }}>Đăng nhập</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: '#fff', borderRadius: 4, paddingVertical: 8, paddingHorizontal: 32 }}
+            onPress={() => router.push('/(auth)/sign-up')}
+          >
+            <Text style={{ color: '#469B43', fontWeight: 'bold', fontSize: 16 }}>Đăng ký</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Menu Items */}
       <ScrollView style={styles.menuContainer} showsVerticalScrollIndicator={false}>
@@ -151,12 +168,14 @@ const ProfileScreen: React.FC = () => {
       </ScrollView>
 
       {/* Logout Button */}
-      <View style={styles.logoutContainer}>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={24} color="#fff" />
-          <Text style={styles.logoutText}>Đăng xuất</Text>
-        </TouchableOpacity>
-      </View>
+      {user && user._id && (
+        <View style={styles.logoutContainer}>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={24} color="#fff" />
+            <Text style={styles.logoutText}>Đăng xuất</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 };

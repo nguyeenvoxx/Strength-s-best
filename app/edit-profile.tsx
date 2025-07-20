@@ -3,35 +3,56 @@ import React, { useState } from 'react';
 import { getPlatformContainerStyle } from '../utils/platformUtils';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
 import { useAuthStore } from '../store/useAuthStore';
-import { changePassword } from '../services/authApi';
+import { changePassword, updateProfile } from '../services/authApi';
 
 const EditProfileScreen: React.FC = () => {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
+  const token = useAuthStore((state) => state.token);
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
+  // Hàm format số điện thoại về dạng +84 123456789
+  function formatPhone(raw: string | undefined): string {
+    if (!raw) return '';
+    if (/^\+84\s\d{9}$/.test(raw)) return raw; // Đúng định dạng
+    if (/^0\d{9}$/.test(raw)) return '+84 ' + raw.slice(1); // 0xxxxxxxxx => +84 xxxxxxxxx
+    if (/^\+84\d{9}$/.test(raw)) return '+84 ' + raw.slice(3); // +849xxxxxxxx => +84 9xxxxxxxx
+    return raw;
+  }
+  const [phone, setPhone] = useState(formatPhone(user?.phone));
+  const [phoneError, setPhoneError] = useState('');
   const router = useRouter();
 
-  const handleSave = () => {
-    if (!user || !user._id) {
+  const handleSave = async () => {
+    // Validate phone
+    let valid = true;
+    let error = '';
+    if (!phone.startsWith('+84 ')) {
+      error = 'Số điện thoại phải bắt đầu bằng +84 và có khoảng cách';
+      valid = false;
+    } else if (!/^\+84\s\d{9}$/.test(phone)) {
+      error = 'Số điện thoại phải có đúng 9 số sau +84';
+      valid = false;
+    }
+    setPhoneError(error);
+    if (!valid) return;
+    if (!user || !user._id || !token) {
       Alert.alert('Lỗi', 'Không tìm thấy thông tin người dùng');
       return;
     }
-    // Tạo object user mới (giữ lại các trường cũ, chỉ đổi tên/email)
-    const updatedUser = {
-      ...user,
-      name,
-      email,
-      _id: user._id, // đảm bảo _id luôn là string
-    };
-    setUser(updatedUser);
-
-    Alert.alert('Thành công', 'Thông tin đã được cập nhật', [
-      {
-        text: 'OK',
-        onPress: () => router.back()
-      }
-    ]);
+    try {
+      const res = await updateProfile(token, { name, email, phoneNumber: phone });
+      setUser(res.data.user);
+      Alert.alert('Thành công', 'Thông tin đã được cập nhật', [
+        {
+          text: 'OK',
+          onPress: () => router.back()
+        }
+      ]);
+    } catch (err: any) {
+      console.log('Update profile error:', err?.response?.data || err?.message || err);
+      Alert.alert('Lỗi', err?.response?.data?.message || 'Không thể cập nhật thông tin');
+    }
   };
 
   const handleCancel = () => {
@@ -80,6 +101,33 @@ const EditProfileScreen: React.FC = () => {
           placeholder="Nhập email của bạn"
           keyboardType="email-address"
         />
+          <Text style={styles.label}>Số điện thoại</Text>
+        <TextInput 
+          style={styles.input} 
+          value={phone}
+          onChangeText={text => {
+            // Nếu xóa hết thì để trống
+            if (text === '' || text === '+') {
+              setPhone('');
+              setPhoneError('');
+              return;
+            }
+            // Nếu chưa có +84 thì tự động thêm
+            let formatted = text;
+            if (!formatted.startsWith('+84 ')) {
+              formatted = '+84 ' + formatted.replace(/[^0-9]/g, '');
+            } else {
+              formatted = '+84 ' + formatted.slice(4).replace(/[^0-9]/g, '');
+            }
+            if (formatted.length > 13) formatted = formatted.slice(0, 13); // +84 + space + 9 số = 13 ký tự
+            setPhone(formatted);
+            setPhoneError('');
+          }}
+          placeholder="Nhập số điện thoại của bạn"
+          keyboardType="phone-pad"
+          maxLength={13}
+        />
+        {phoneError ? <Text style={{color: 'red', marginBottom: 8}}>{phoneError}</Text> : null}
 
         {/* Change Password */}
         <TouchableOpacity style={styles.passwordRow} onPress={handleChangePassword}>

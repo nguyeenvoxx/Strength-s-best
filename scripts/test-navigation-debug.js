@@ -11,7 +11,7 @@ try {
   process.exit(1);
 }
 
-const API_BASE_URL = 'http://172.19.16.1:3000/api';
+const API_BASE_URL = 'http:// 192.168.1.138:3000/api';
 
 async function testNavigationFlow() {
   console.log('🔍 Kiểm tra luồng điều hướng từ Home đến Product Detail...');

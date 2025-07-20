@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getPlatformContainerStyle } from '../utils/platformUtils';
+import { useTheme } from '../store/ThemeContext';
+import { LightColors, DarkColors } from '../constants/Colors';
 
 interface Address {
   id: string;
@@ -19,6 +21,9 @@ const SelectAddressScreen: React.FC = () => {
   const { user } = useAuthStore();
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const colors = isDark ? DarkColors : LightColors;
 
   useEffect(() => {
     loadAddresses();
@@ -96,22 +101,22 @@ const SelectAddressScreen: React.FC = () => {
   };
 
   return (
-    <View style={[styles.container, getPlatformContainerStyle()]}>
+    <View style={[styles.container, getPlatformContainerStyle(), { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Chọn địa chỉ nhận hàng</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Chọn địa chỉ nhận hàng</Text>
         <View style={styles.headerRight} />
       </View>
 
       {/* Address List */}
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.sectionTitle}>Địa chỉ</Text>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Địa chỉ</Text>
         
         {addresses.map((address) => (
-          <View key={address.id} style={styles.addressCard}>
+          <View key={address.id} style={[styles.addressCard, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
             <TouchableOpacity 
               style={styles.addressContent}
               onPress={() => handleSelectAddress(address.id)}
@@ -119,7 +124,8 @@ const SelectAddressScreen: React.FC = () => {
               <View style={styles.radioContainer}>
                 <View style={[
                   styles.radioButton,
-                  selectedAddressId === address.id && styles.radioButtonSelected
+                  selectedAddressId === address.id && styles.radioButtonSelected,
+                  { borderColor: colors.border }
                 ]}>
                   {selectedAddressId === address.id && (
                     <View style={styles.radioButtonInner} />
@@ -128,12 +134,12 @@ const SelectAddressScreen: React.FC = () => {
               </View>
               
               <View style={styles.addressInfo}>
-                <Text style={styles.addressName}>{address.name}</Text>
-                <Text style={styles.addressPhone}>{address.phone}</Text>
-                <Text style={styles.addressText}>{address.address}</Text>
+                <Text style={[styles.addressName, { color: colors.text }]}>{address.name}</Text>
+                <Text style={[styles.addressPhone, { color: colors.textSecondary }]}>{address.phone}</Text>
+                <Text style={[styles.addressText, { color: colors.textSecondary }]}>{address.address}</Text>
                 {address.isDefault && (
-                  <View style={styles.defaultTag}>
-                    <Text style={styles.defaultTagText}>Mặc định</Text>
+                  <View style={[styles.defaultTag, { backgroundColor: colors.accent }]}>
+                    <Text style={[styles.defaultTagText, { color: '#fff' }]}>Mặc định</Text>
                   </View>
                 )}
               </View>
@@ -142,7 +148,7 @@ const SelectAddressScreen: React.FC = () => {
                 style={styles.editButton}
                 onPress={() => handleEditAddress(address)}
               >
-                <Text style={styles.editButtonText}>Sửa</Text>
+                <Text style={[styles.editButtonText, { color: colors.accent }]}>Sửa</Text>
               </TouchableOpacity>
             </TouchableOpacity>
             
@@ -151,7 +157,7 @@ const SelectAddressScreen: React.FC = () => {
                 style={styles.setDefaultButton}
                 onPress={() => handleSetDefault(address.id)}
               >
-                <Text style={styles.setDefaultText}>Đặt làm mặc định</Text>
+                <Text style={[styles.setDefaultText, { color: colors.accent }]}>Đặt làm mặc định</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -159,18 +165,18 @@ const SelectAddressScreen: React.FC = () => {
       </ScrollView>
 
       {/* Add New Address Button */}
-      <View style={styles.bottomContainer}>
-        <TouchableOpacity style={styles.addButton} onPress={handleAddNewAddress}>
+      <View style={[styles.bottomContainer, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
+        <TouchableOpacity style={[styles.addButton, { backgroundColor: colors.accent }]} onPress={handleAddNewAddress}>
           <Ionicons name="add-circle" size={24} color="#fff" />
-          <Text style={styles.addButtonText}>Thêm Địa Chỉ Mới</Text>
+          <Text style={[styles.addButtonText, { color: '#fff' }]}>Thêm Địa Chỉ Mới</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
-          style={[styles.confirmButton, !selectedAddressId && styles.confirmButtonDisabled]}
+          style={[styles.confirmButton, { backgroundColor: colors.accent }]}
           onPress={handleConfirmAddress}
           disabled={!selectedAddressId}
         >
-          <Text style={styles.confirmButtonText}>Xác nhận</Text>
+          <Text style={[styles.confirmButtonText, { color: '#fff' }]}>Xác nhận</Text>
         </TouchableOpacity>
       </View>
     </View>

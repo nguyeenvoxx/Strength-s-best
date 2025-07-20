@@ -7,6 +7,8 @@ import { useRouter } from 'expo-router';
 import { getPlatformContainerStyle } from '../../utils/platformUtils';
 import { useFavoriteStore } from '../../store/useFavoriteStore';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useTheme } from '../../store/ThemeContext';
+import { LightColors, DarkColors } from '../../constants/Colors';
 
 
 const FavoriteScreen: React.FC = () => {
@@ -14,6 +16,9 @@ const FavoriteScreen: React.FC = () => {
 
   const router = useRouter();
   const { token } = useAuthStore();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const colors = isDark ? DarkColors : LightColors;
 
   useEffect(() => {
     if (token) {
@@ -29,23 +34,21 @@ const FavoriteScreen: React.FC = () => {
   };
 
   return (
-    <View style={[styles.container, getPlatformContainerStyle()]}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Yêu thích</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Yêu thích</Text>
       </View>
 
       {favorites.length === 0 ? (
         <View style={styles.emptyFavorite}>
-          <Ionicons name="heart-outline" size={80} color="#ccc" />
-          <Text style={styles.emptyTitle}>Chưa có sản phẩm yêu thích</Text>
-          <Text style={styles.emptySubtitle}>
-            Thêm sản phẩm vào danh sách yêu thích để xem lại sau
-          </Text>
+          <Ionicons name="heart-outline" size={80} color={colors.textSecondary} />
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>Chưa có sản phẩm yêu thích</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>Thêm sản phẩm vào danh sách yêu thích để xem lại sau</Text>
           <TouchableOpacity
-            style={styles.shopButton}
+            style={[styles.shopButton, { backgroundColor: colors.accent }]}
             onPress={() => router.push('/(tabs)/home')}
           >
-            <Text style={styles.shopButtonText}>Khám phá ngay</Text>
+            <Text style={[styles.shopButtonText, { color: '#fff' }]}>Khám phá ngay</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -53,7 +56,7 @@ const FavoriteScreen: React.FC = () => {
           {Array.isArray(favorites) && favorites
             .filter((product) => product && typeof product === 'object')
             .map((product) => (
-              <View key={product.favoriteId || product._id} style={styles.productCard}>
+              <View key={product.favoriteId || product._id} style={[styles.productCard, { backgroundColor: colors.card }]}>
                 <TouchableOpacity
                   onPress={() => handleProductPress(product._id)}
                   style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
@@ -63,8 +66,8 @@ const FavoriteScreen: React.FC = () => {
                     style={styles.productImage}
                   />
                   <View style={styles.productInfo}>
-                    <Text numberOfLines={1} style={styles.productTitle}>{product.title}</Text>
-                    <Text style={styles.productPrice}>{product.price}đ</Text>
+                    <Text numberOfLines={1} style={[styles.productTitle, { color: colors.text }]}>{product.title}</Text>
+                    <Text style={[styles.productPrice, { color: colors.textSecondary }]}>{product.price}đ</Text>
                   </View>
                 </TouchableOpacity>
 

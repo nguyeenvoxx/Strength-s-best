@@ -7,6 +7,8 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../store/ThemeContext';
+import { LightColors, DarkColors } from '../../constants/Colors';
 
 interface CategoryItem {
   id: string;
@@ -20,6 +22,10 @@ interface HomeCategoryProps {
 }
 
 const HomeCategory: React.FC<HomeCategoryProps> = ({ onCategoryPress }) => {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const colors = isDark ? DarkColors : LightColors;
+
   const categories: CategoryItem[] = [
     {
       id: 'health',
@@ -55,7 +61,7 @@ const HomeCategory: React.FC<HomeCategoryProps> = ({ onCategoryPress }) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Mua sắm tại đây</Text>
+      <Text style={[styles.title, { color: colors.text } ]}>Mua sắm tại đây</Text>
       
       <ScrollView
         horizontal
@@ -68,10 +74,10 @@ const HomeCategory: React.FC<HomeCategoryProps> = ({ onCategoryPress }) => {
             style={styles.categoryItem}
             onPress={() => onCategoryPress?.(category.id)}
           >
-            <View style={[styles.iconContainer, { backgroundColor: category.color }]}>
+            <View style={[styles.iconContainer, { backgroundColor: category.color }] }>
               <Ionicons name={category.icon} size={24} color="#FFFFFF" />
             </View>
-            <Text style={styles.categoryTitle}>{category.title}</Text>
+            <Text style={[styles.categoryTitle, { color: colors.text } ]}>{category.title}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>

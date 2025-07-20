@@ -27,6 +27,8 @@ import HomeHeader from '../../modules/HomeScreen/HomeHeader';
 import HomeCategory from '../../modules/HomeScreen/HomeCategory';
 import HeaderSection from '../../modules/HomeScreen/HeaderSection';
 import NewsCard from '../../modules/HomeScreen/NewsCard';
+import { useTheme } from '../../store/ThemeContext';
+import { LightColors, DarkColors } from '../../constants/Colors';
 
 const { width } = Dimensions.get('window');
 const CAROUSEL_WIDTH = width - 32;
@@ -43,6 +45,9 @@ const HomeScreen: React.FC = () => {
   const [remainingTime, setRemainingTime] = useState('22:55:20');
   const { products, isLoading: loading, error, fetchProducts, clearError } = useProductStore();
   const { user, isAuthenticated } = useAuthStore();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const colors = isDark ? DarkColors : LightColors;
 
   const carouselImages = [
     { uri: 'https://cdnv2.tgdd.vn/mwg-static/common/News/1579137/20-06-22-06-flash-sale-cuoi-tuan-tung-bung-thumb.jpg' },
@@ -181,20 +186,20 @@ const HomeScreen: React.FC = () => {
     return (
       <View style={[styles.container, styles.centered]}>
         <ActivityIndicator size="large" color="#FF6B35" />
-        <Text style={styles.loadingText}>Đang tải sản phẩm...</Text>
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Đang tải sản phẩm...</Text>
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, getPlatformContainerStyle()]}>
-      <StatusBar barStyle="dark-content" />
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       {error && (
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error}</Text>
+          <Text style={[styles.errorText, { color: colors.danger }]}> {error} </Text>
           <TouchableOpacity style={styles.retryButton} onPress={handleRetryLoadProducts}>
-            <Text style={styles.retryButtonText}>Thử lại</Text>
+            <Text style={[styles.retryButtonText, { color: colors.text }]}>Thử lại</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -215,8 +220,8 @@ const HomeScreen: React.FC = () => {
           onPress={() => router.push('./search')}
         >
           <View style={styles.searchBarPlaceholder}>
-            <Ionicons name="search-outline" size={20} color="#888" style={styles.searchIcon} />
-            <Text style={styles.searchBarText}>Tìm kiếm bất kỳ sản phẩm nào...</Text>
+            <Ionicons name="search-outline" size={20} color={colors.textSecondary} style={styles.searchIcon} />
+            <Text style={[styles.searchBarText, { color: colors.textSecondary }]}>Tìm kiếm bất kỳ sản phẩm nào...</Text>
           </View>
         </TouchableOpacity>
 
@@ -263,10 +268,10 @@ const HomeScreen: React.FC = () => {
         {!isAuthenticated ? (
           <View style={styles.loginPromptContainer}>
             <Ionicons name="lock-closed-outline" size={48} color="#FF6B35" />
-            <Text style={styles.loginPromptTitle}>Đăng nhập để xem sản phẩm</Text>
-            <Text style={styles.loginPromptText}>Vui lòng đăng nhập để khám phá các sản phẩm tuyệt vời của chúng tôi</Text>
+            <Text style={[styles.loginPromptTitle, { color: colors.text }]}>Đăng nhập để xem sản phẩm</Text>
+            <Text style={[styles.loginPromptText, { color: colors.textSecondary }]}>Vui lòng đăng nhập để khám phá các sản phẩm tuyệt vời của chúng tôi</Text>
             <TouchableOpacity style={styles.loginButton} onPress={handleLoginPress}>
-              <Text style={styles.loginButtonText}>Đăng nhập ngay</Text>
+              <Text style={[styles.loginButtonText, { color: colors.text }]}>Đăng nhập ngay</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -294,32 +299,28 @@ const HomeScreen: React.FC = () => {
          </View>
         )}
 
-        <View style={styles.specialOfferSection}>
+        <View style={[styles.specialOfferSection, { backgroundColor: colors.card }]}>
           <Image
             source={require('../../assets/images/special_offer.png')}
             style={styles.specialOfferImage}
           />
           <View style={styles.specialOfferContent}>
-            <Text style={styles.specialOfferTitle}>Ưu đãi đặc biệt</Text>
-            <Text style={styles.specialOfferDescription}>
-              Chúng tôi đảm bảo bạn nhận được ưu đãi mà bạn cần với giá tốt nhất.
-            </Text>
+            <Text style={[styles.specialOfferTitle, { color: colors.text }]}>Ưu đãi đặc biệt</Text>
+            <Text style={[styles.specialOfferDescription, { color: colors.textSecondary }]}>Chúng tôi đảm bảo bạn nhận được ưu đãi mà bạn cần với giá tốt nhất.</Text>
           </View>
         </View>
 
-        <View style={styles.healthComboSection}>
+        <View style={[styles.healthComboSection, { backgroundColor: colors.card }]}>
           <Image
             source={require('../../assets/images/combo.png')}
             style={styles.healthComboImage}
           />
           <View style={styles.healthComboContent}>
-            <Text style={styles.healthComboTitle}>Combo sức khỏe</Text>
-            <Text style={styles.healthComboDescription}>
-              Có cơ hội nhận thưởng
-            </Text>
+            <Text style={[styles.healthComboTitle, { color: colors.text }]}>Combo sức khỏe</Text>
+            <Text style={[styles.healthComboDescription, { color: colors.textSecondary }]}>Có cơ hội nhận thưởng</Text>
             <TouchableOpacity style={styles.viewAllButtonSmall} onPress={handleViewAllProducts}>
-              <Text style={styles.viewAllTextSmall}>Xem tất cả</Text>
-              <Ionicons name="chevron-forward" size={14} color="#4A90E2" />
+              <Text style={[styles.viewAllTextSmall, { color: colors.accent }]}>Xem tất cả</Text>
+              <Ionicons name="chevron-forward" size={14} color={colors.accent} />
             </TouchableOpacity>
           </View>
         </View>
@@ -334,10 +335,10 @@ const HomeScreen: React.FC = () => {
         {!isAuthenticated ? (
           <View style={styles.loginPromptContainer}>
             <Ionicons name="trending-up-outline" size={48} color="#FF3B30" />
-            <Text style={styles.loginPromptTitle}>Khám phá sản phẩm thịnh hành</Text>
-            <Text style={styles.loginPromptText}>Đăng nhập để xem các sản phẩm được yêu thích nhất</Text>
+            <Text style={[styles.loginPromptTitle, { color: colors.text }]}>Khám phá sản phẩm thịnh hành</Text>
+            <Text style={[styles.loginPromptText, { color: colors.textSecondary }]}>Đăng nhập để xem các sản phẩm được yêu thích nhất</Text>
             <TouchableOpacity style={[styles.loginButton, {backgroundColor: '#FF3B30'}]} onPress={handleLoginPress}>
-              <Text style={styles.loginButtonText}>Đăng nhập ngay</Text>
+              <Text style={[styles.loginButtonText, { color: colors.text }]}>Đăng nhập ngay</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -369,22 +370,20 @@ const HomeScreen: React.FC = () => {
           />
           <View style={styles.newArrivalsContent}>
             <View style={{ flex: 1, marginRight: 10 }}>
-              <Text style={styles.newArrivalsTitle}>Hàng mới về</Text>
-              <Text style={styles.newArrivalsDescription}>
-                Tươi mát ngày hè, khỏe mạnh từ bên trong
-              </Text>
+              <Text style={[styles.newArrivalsTitle, { color: colors.text }]}>Hàng mới về</Text>
+              <Text style={[styles.newArrivalsDescription, { color: colors.textSecondary }]}>Tươi mát ngày hè, khỏe mạnh từ bên trong</Text>
             </View>
             <TouchableOpacity style={styles.viewAllButtonRed} onPress={handleViewAllProducts}>
-              <Text style={styles.viewAllTextRed}>Xem tất cả</Text>
-              <Ionicons name="chevron-forward" size={14} color="white" />
+              <Text style={[styles.viewAllTextRed, { color: colors.text }]}>Xem tất cả</Text>
+              <Ionicons name="chevron-forward" size={14} color={colors.text} />
             </TouchableOpacity>
           </View>
         </View>
 
         <View>
           <View style={styles.newsHeader}>
-            <Text style={styles.newsHeaderTitle}>Bảng tin tức</Text>
-            <Ionicons name="chevron-forward" size={18} color="#333" />
+            <Text style={[styles.newsHeaderTitle, { color: colors.text }]}>Bảng tin tức</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.text} />
           </View>
         </View>
 

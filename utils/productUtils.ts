@@ -43,7 +43,9 @@ export const transformApiProductToProduct = (apiProduct: ApiProduct): Product =>
     images: [apiProduct.image], // API chỉ có 1 image, frontend expect array
     rating: 5, // Default rating vì API không có field này
     price: formatPrice(apiProduct.priceProduct),
-    sections
+    priceProduct: apiProduct.priceProduct,
+    sections,
+    idCategory: apiProduct.idCategory
   };
 };
 

@@ -6,12 +6,14 @@ import { useAuthStore } from '../store/useAuthStore';
 import { changePassword } from '../services/authApi';
 import { useTheme } from '../store/ThemeContext';
 import { LightColors, DarkColors } from '../constants/Colors';
+import * as ImagePicker from 'expo-image-picker';
 
 const EditProfileScreen: React.FC = () => {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || null);
   const router = useRouter();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -22,11 +24,12 @@ const EditProfileScreen: React.FC = () => {
       Alert.alert('Lỗi', 'Không tìm thấy thông tin người dùng');
       return;
     }
-    // Tạo object user mới (giữ lại các trường cũ, chỉ đổi tên/email)
+    // Tạo object user mới (giữ lại các trường cũ, chỉ đổi tên/email/avatar)
     const updatedUser = {
       ...user,
       name,
       email,
+      avatarUrl: avatarUrl ?? undefined, // fix type: không truyền null
       _id: user._id, // đảm bảo _id luôn là string
     };
     setUser(updatedUser);
@@ -46,6 +49,23 @@ const EditProfileScreen: React.FC = () => {
     router.push('./change-password');
   };
 
+  const handlePickAvatar = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permissionResult.granted) {
+      Alert.alert('Bạn cần cho phép truy cập thư viện ảnh!');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setAvatarUrl(result.assets[0].uri);
+    }
+  };
+
   return (
     <View style={[styles.container, getPlatformContainerStyle(), { backgroundColor: colors.background }]}>
       {/* Header */}
@@ -60,8 +80,8 @@ const EditProfileScreen: React.FC = () => {
       {/* Profile Avatar */}
       <View style={styles.profileHeader}>
         <View style={styles.avatarContainer}>
-          <Image source={require('../assets/images/avatar.png')} style={styles.avatar} />
-          <TouchableOpacity style={[styles.cameraButton, { backgroundColor: colors.card, borderColor: colors.border }] }>
+          <Image source={avatarUrl ? { uri: avatarUrl } : require('../assets/images/avatar.png')} style={styles.avatar} />
+          <TouchableOpacity style={[styles.cameraButton, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={handlePickAvatar}>
             <Image source={require('../assets/images/camera.png')} style={styles.cameraImage} />
           </TouchableOpacity>
         </View>
@@ -74,7 +94,7 @@ const EditProfileScreen: React.FC = () => {
           style={[styles.input, { color: colors.text, borderBottomColor: colors.border }]} 
           value={name}
           onChangeText={setName}
-          placeholder="Nhập tên của bạn"
+          placeholder="Nhập tên của bạn" 
           placeholderTextColor={colors.textSecondary}
         />
 

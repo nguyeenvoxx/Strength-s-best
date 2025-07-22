@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -67,7 +67,7 @@ const ProfileScreen: React.FC = () => {
   };
 
   return (
-    <View style={[styles.container, getPlatformContainerStyle(), { backgroundColor: colors.background }]}>
+    <View style={[styles.container, getPlatformContainerStyle(), { backgroundColor: colors.card }]}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Tài khoản</Text>
@@ -76,7 +76,14 @@ const ProfileScreen: React.FC = () => {
       {/* User Info */}
       <View style={[styles.userSection, { backgroundColor: colors.card }]}>
         <View style={styles.avatarContainer}>
-          <Ionicons name="person-circle" size={80} color={colors.accent} />
+          {user?.avatarUrl ? (
+            <Image
+              source={{ uri: user.avatarUrl }}
+              style={{ width: 80, height: 80, borderRadius: 40 }}
+            />
+          ) : (
+            <Ionicons name="person-circle" size={80} color={colors.accent} />
+          )}
         </View>
         <View style={styles.userInfo}>
           <Text style={[styles.userName, { color: colors.text }]}>{user?.name || 'Khách hàng'}</Text>
@@ -86,16 +93,16 @@ const ProfileScreen: React.FC = () => {
       </View>
 
       {/* Menu Items */}
-      <ScrollView style={styles.menuContainer} showsVerticalScrollIndicator={false}>
-        <View style={[styles.menuSection, { backgroundColor: colors.section, shadowColor: colors.shadow }]}>
+      <ScrollView style={[styles.menuContainer, { backgroundColor: colors.card }]} showsVerticalScrollIndicator={false}>
+        <View style={[styles.menuSection, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Thông tin cá nhân</Text>
 
-          <TouchableOpacity style={styles.menuItem} onPress={handleEditProfile}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/edit-profile')}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="person-outline" size={24} color={colors.accent} />
               <Text style={[styles.menuItemText, { color: colors.text }]}>Chỉnh sửa thông tin</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.border} />
+            <Ionicons name="chevron-forward" size={20} color={isDark ? '#fff' : '#ccc'} />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.menuItem} onPress={handleChangePassword}>
@@ -103,11 +110,11 @@ const ProfileScreen: React.FC = () => {
               <Ionicons name="lock-closed-outline" size={24} color={colors.accent} />
               <Text style={[styles.menuItemText, { color: colors.text }]}>Đổi mật khẩu</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.border} />
+            <Ionicons name="chevron-forward" size={20} color={isDark ? '#fff' : '#ccc'} />
           </TouchableOpacity>
         </View>
 
-        <View style={[styles.menuSection, { backgroundColor: colors.section, shadowColor: colors.shadow }]}>
+        <View style={[styles.menuSection, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Địa chỉ giao hàng</Text>
 
           <TouchableOpacity style={styles.menuItem} onPress={handleManageAddresses}>
@@ -117,12 +124,12 @@ const ProfileScreen: React.FC = () => {
             </View>
             <View style={styles.menuItemRight}>
               <Text style={[styles.addressCount, { color: colors.accent }]}>{addresses.length} địa chỉ</Text>
-              <Ionicons name="chevron-forward" size={20} color={colors.border} />
+              <Ionicons name="chevron-forward" size={20} color={isDark ? '#fff' : '#ccc'} />
             </View>
           </TouchableOpacity>
         </View>
 
-        <View style={[styles.menuSection, { backgroundColor: colors.section, shadowColor: colors.shadow }]}>
+        <View style={[styles.menuSection, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Đơn hàng</Text>
 
           <TouchableOpacity style={styles.menuItem} onPress={handleViewOrders}>
@@ -130,11 +137,11 @@ const ProfileScreen: React.FC = () => {
               <Ionicons name="receipt-outline" size={24} color={colors.accent} />
               <Text style={[styles.menuItemText, { color: colors.text }]}>Đơn hàng đã mua</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.border} />
+            <Ionicons name="chevron-forward" size={20} color={isDark ? '#fff' : '#ccc'} />
           </TouchableOpacity>
         </View>
 
-        <View style={[styles.menuSection, { backgroundColor: colors.section, shadowColor: colors.shadow }]}>
+        <View style={[styles.menuSection, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Giao diện sáng/tối</Text>
           <TouchableOpacity style={styles.menuItem} onPress={toggleTheme}>
             <Ionicons name={isDark ? 'sunny' : 'moon-sharp'} size={24} color={colors.accent} />
@@ -142,7 +149,7 @@ const ProfileScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        <View style={[styles.menuSection, { backgroundColor: colors.section, shadowColor: colors.shadow }]}>
+        <View style={[styles.menuSection, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Hỗ trợ</Text>
 
           <TouchableOpacity style={styles.menuItem}>
@@ -150,7 +157,7 @@ const ProfileScreen: React.FC = () => {
               <Ionicons name="help-circle-outline" size={24} color={colors.accent} />
               <Text style={[styles.menuItemText, { color: colors.text }]}>Trợ giúp</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.border} />
+            <Ionicons name="chevron-forward" size={20} color={isDark ? '#fff' : '#ccc'} />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.menuItem}>
@@ -158,7 +165,7 @@ const ProfileScreen: React.FC = () => {
               <Ionicons name="information-circle-outline" size={24} color={colors.accent} />
               <Text style={[styles.menuItemText, { color: colors.text }]}>Về ứng dụng</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.border} />
+            <Ionicons name="chevron-forward" size={20} color={isDark ? '#fff' : '#ccc'} />
           </TouchableOpacity>
         </View>
       </ScrollView>

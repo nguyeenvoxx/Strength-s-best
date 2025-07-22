@@ -28,4 +28,8 @@ export enum ProductSectionType {
   PHYSICAL_DESCRIPTION = "Mô tả vật lý"
 }
 
+export interface User {
+  avatar?: string;
+}
+
 export default {};

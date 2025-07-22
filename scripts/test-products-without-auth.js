@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-const BASE_URL = 'http:// 192.168.1.138:3000/api/v1';
+const BASE_URL = 'http://192.168.1.138:3000/api/v1';
 
 async function testProductsWithoutAuth() {
   try {

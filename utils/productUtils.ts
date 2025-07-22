@@ -44,7 +44,8 @@ export const transformApiProductToProduct = (apiProduct: ApiProduct): Product =>
     rating: 5, // Default rating vì API không có field này
     price: formatPrice(apiProduct.priceProduct),
     priceProduct: apiProduct.priceProduct,
-    sections
+    sections,
+    idCategory: apiProduct.idCategory
   };
 };
 

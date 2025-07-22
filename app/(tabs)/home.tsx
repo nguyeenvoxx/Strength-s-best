@@ -19,6 +19,7 @@ import { LIST_PRODUCT_SAMPLE } from '../../constants/app.constant';
 import { Product } from '../../types/product.type';
 import { useProductStore } from '../../store/useProductStore';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useCategoryStore } from '../../store/useCategoryStore';
 import { transformApiProductToProduct, getShortDescription, calculateOriginalPrice, getFullImageUrl } from '../../utils/productUtils';
 import { getPlatformContainerStyle } from '../../utils/platformUtils';
 import DailyDealItem from '../../modules/HomeScreen/DailyDealItem';
@@ -45,6 +46,7 @@ const HomeScreen: React.FC = () => {
   const [remainingTime, setRemainingTime] = useState('22:55:20');
   const { products, isLoading: loading, error, fetchProducts, clearError } = useProductStore();
   const { user, isAuthenticated } = useAuthStore();
+  const { categories } = useCategoryStore();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const colors = isDark ? DarkColors : LightColors;
@@ -226,7 +228,11 @@ const HomeScreen: React.FC = () => {
         </TouchableOpacity>
 
         <HomeCategory
-          onCategoryPress={(categoryId) => console.log('Category pressed:', categoryId)}
+          onCategoryPress={(categoryId) => {
+            console.log('Category pressed:', categoryId);
+            // Navigate to products filtered by category
+            router.push(`../products?category=${categoryId}`);
+          }}
         />
 
         <View style={styles.carouselContainer}>

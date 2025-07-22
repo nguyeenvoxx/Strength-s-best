@@ -14,7 +14,11 @@ export interface Product {
   rating: number
   price: string
   priceProduct: number
-  sections: ProductSection[]  
+  sections: ProductSection[]
+  idCategory?: string | {
+    _id: string;
+    nameCategory: string;
+  }
   favoriteId?: string
 }
 

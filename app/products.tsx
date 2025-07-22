@@ -1,73 +1,54 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Image, FlatList, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getPlatformContainerStyle } from '../utils/platformUtils';
 import { useProductStore } from '../store/useProductStore';
 import { useAuthStore } from '../store/useAuthStore';
+import { useCategoryStore } from '../store/useCategoryStore';
 import { Product } from '../types/product.type';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-interface CategoryItem {
-  id: string;
-  title: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  color: string;
-}
-
 const ProductListScreen: React.FC = () => {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const { products, isLoading, error, fetchProducts } = useProductStore();
   const { isAuthenticated } = useAuthStore();
-  const [activeTab, setActiveTab] = useState('Sản phẩm');
+  const { categories, isLoading: categoriesLoading, fetchCategories } = useCategoryStore();
+  const [activeTab, setActiveTab] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Categories from HomeCategory
-  const categories: CategoryItem[] = [
-    {
-      id: 'all',
-      title: 'Sản phẩm',
-      icon: 'grid',
-      color: '#007bff',
-    },
-    {
-      id: 'health',
-      title: 'Sức khỏe',
-      icon: 'heart',
-      color: '#FF6B6B',
-    },
-    {
-      id: 'mom',
-      title: 'Mẹ',
-      icon: 'woman',
-      color: '#4ECDC4',
-    },
-    {
-      id: 'baby',
-      title: 'Bé',
-      icon: 'happy',
-      color: '#45B7D1',
-    },
-    {
-      id: 'beauty',
-      title: 'Làm đẹp',
-      icon: 'flower',
-      color: '#FFA07A',
-    },
-    {
-      id: 'healthy-nuts',
-      title: 'Hạt healthy',
-      icon: 'nutrition',
-      color: '#98D8C8',
-    },
-  ];
+  // Predefined icons and colors for categories (same as HomeCategory)
+  const categoryIcons: { [key: string]: keyof typeof Ionicons.glyphMap } = {
+    'Vitamin & Khoáng chất': 'nutrition',
+    'Bột Protein': 'fitness',
+    'Thực phẩm bổ sung năng lượng': 'flash',
+    'Thực phẩm chức năng': 'medical',
+    'Dinh dưỡng thể thao': 'barbell',
+  };
 
-  // Load products when component mounts
+  const categoryColors: { [key: string]: string } = {
+    'Vitamin & Khoáng chất': '#FF6B6B',
+    'Bột Protein': '#4ECDC4',
+    'Thực phẩm bổ sung năng lượng': '#45B7D1',
+    'Thực phẩm chức năng': '#FFA07A',
+    'Dinh dưỡng thể thao': '#98D8C8',
+  };
+
+  // Load products and categories when component mounts
   useEffect(() => {
     if (isAuthenticated) {
       fetchProducts(50); // Load more products for listing
+      fetchCategories(); // Load categories
     }
   }, [isAuthenticated]);
+
+  // Handle category filter from URL params
+  useEffect(() => {
+    if (params.category && typeof params.category === 'string') {
+      setActiveTab(params.category);
+    }
+  }, [params.category]);
 
   // Add to cart function
   const addToCart = async (product: Product) => {
@@ -107,12 +88,14 @@ const ProductListScreen: React.FC = () => {
     }
   };
 
-  // Filter products based on active tab
-  const filteredProducts = activeTab === 'Sản phẩm' ? products : 
+  // Filter products based on active category
+  const filteredProducts = activeTab === 'all' ? products : 
     products.filter(product => {
-      // For now, show all products for each category
-      // In a real app, you would filter based on product categories
-      return true;
+      // Filter by category ID
+      if (typeof product.idCategory === 'object' && product.idCategory?._id) {
+        return product.idCategory._id === activeTab;
+      }
+      return product.idCategory === activeTab;
     });
 
   // Convert Product to display format
@@ -156,7 +139,7 @@ const ProductListScreen: React.FC = () => {
     );
   }
 
-  if (isLoading) {
+  if (isLoading || categoriesLoading) {
     return (
       <View style={[styles.container, getPlatformContainerStyle()]}>
         <View style={styles.header}>
@@ -170,7 +153,7 @@ const ProductListScreen: React.FC = () => {
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#007bff" />
-          <Text style={styles.loadingText}>Đang tải sản phẩm...</Text>
+          <Text style={styles.loadingText}>Đang tải...</Text>
         </View>
       </View>
     );
@@ -245,29 +228,57 @@ const ProductListScreen: React.FC = () => {
           style={styles.tabsScrollView}
           contentContainerStyle={styles.tabsContainer}
         >
-          {categories.map(category => (
-            <TouchableOpacity
-              key={category.id}
-              style={[
-                styles.tabChip,
-                activeTab === category.title && { backgroundColor: category.color }
-              ]}
-              onPress={() => setActiveTab(category.title)}
-            >
-              <Ionicons 
-                name={category.icon} 
-                size={16} 
-                color={activeTab === category.title ? '#fff' : category.color} 
-                style={styles.tabIcon}
-              />
-              <Text style={[
-                styles.tabText,
-                activeTab === category.title && { color: '#fff' }
-              ]}>
-                {category.title}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {/* All Products Tab */}
+          <TouchableOpacity
+            style={[
+              styles.tabChip,
+              activeTab === 'all' && { backgroundColor: '#007bff' }
+            ]}
+            onPress={() => setActiveTab('all')}
+          >
+            <Ionicons 
+              name="grid" 
+              size={16} 
+              color={activeTab === 'all' ? '#fff' : '#007bff'} 
+              style={styles.tabIcon}
+            />
+            <Text style={[
+              styles.tabText,
+              activeTab === 'all' && { color: '#fff' }
+            ]}>
+              Tất cả
+            </Text>
+          </TouchableOpacity>
+
+          {/* Category Tabs */}
+          {categories.map(category => {
+            const icon = categoryIcons[category.nameCategory] || 'nutrition';
+            const color = categoryColors[category.nameCategory] || '#FF6B6B';
+            
+            return (
+              <TouchableOpacity
+                key={category._id}
+                style={[
+                  styles.tabChip,
+                  activeTab === category._id && { backgroundColor: color }
+                ]}
+                onPress={() => setActiveTab(category._id)}
+              >
+                <Ionicons 
+                  name={icon} 
+                  size={16} 
+                  color={activeTab === category._id ? '#fff' : color} 
+                  style={styles.tabIcon}
+                />
+                <Text style={[
+                  styles.tabText,
+                  activeTab === category._id && { color: '#fff' }
+                ]}>
+                  {category.nameCategory}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
 
         {/* Product Grid */}

@@ -1,21 +1,32 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect } from 'react';
 import { getPlatformContainerStyle } from '@/utils/platformUtils';
+import { useCartStore } from '../store/useCartStore';
+import { useAuthStore } from '../store/useAuthStore';
 
-
+interface Address {
+  id: string;
+  name: string;
+  phone: string;
+  address: string;
+  isDefault?: boolean;
+}
 
 const PaymentSuccessScreen: React.FC = () => {
   const router = useRouter();
   const { selected } = useLocalSearchParams();
   const selectedItems = selected ? JSON.parse(selected as string) : [];
   const [orderId, setOrderId] = useState('');
-  useEffect(() => {
+  const { token } = useAuthStore();
+  const { removeFromCart } = useCartStore();
+  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
 
+  useEffect(() => {
     const saveOrder = async () => {
       try {
         const existing = await AsyncStorage.getItem('purchased');
@@ -35,28 +46,59 @@ const PaymentSuccessScreen: React.FC = () => {
 
         setOrderId(orderIdGenerated);
 
-
+        // Lưu đơn hàng vào purchased
         const updated = [...purchased, newOrder];
         await AsyncStorage.setItem('purchased', JSON.stringify(updated));
 
-        // (tùy chọn) xoá khỏi giỏ hàng
-        const cart = await AsyncStorage.getItem('cart');
-        if (cart) {
-          const cartItems = JSON.parse(cart);
-          const newCart = cartItems.filter(
-            (item: any) => !selectedItems.find((sel: any) => sel.id === item.id)
-          );
-          await AsyncStorage.setItem('cart', JSON.stringify(newCart));
+        // Xóa sản phẩm khỏi giỏ hàng sau khi thanh toán thành công
+        if (token && selectedItems.length > 0) {
+          try {
+            // Xóa từng sản phẩm đã thanh toán khỏi giỏ hàng
+            for (const item of selectedItems) {
+              if (item._id || item.id) {
+                await removeFromCart(token, item._id || item.id);
+                console.log(`Đã xóa sản phẩm ${item._id || item.id} khỏi giỏ hàng`);
+              }
+            }
+            
+            // Cũng xóa từ AsyncStorage để đảm bảo
+            const cart = await AsyncStorage.getItem('cart');
+            if (cart) {
+              const cartItems = JSON.parse(cart);
+              const selectedItemIds = selectedItems.map((item: any) => item._id || item.id);
+              const newCart = cartItems.filter(
+                (item: any) => !selectedItemIds.includes(item.idProduct?._id || item._id || item.id)
+              );
+              await AsyncStorage.setItem('cart', JSON.stringify(newCart));
+              console.log('Đã cập nhật AsyncStorage cart');
+            }
+
+          } catch (error) {
+            console.error('Lỗi khi xóa sản phẩm khỏi giỏ hàng:', error);
+          }
         }
       } catch (err) {
         console.error('Lỗi lưu đơn hàng COD:', err);
       }
     };
 
+    const loadSelectedAddress = async () => {
+      try {
+        const savedAddress = await AsyncStorage.getItem('selectedDeliveryAddress');
+        if (savedAddress) {
+          setSelectedAddress(JSON.parse(savedAddress));
+        }
+      } catch (error) {
+        console.error('Lỗi khi tải địa chỉ:', error);
+      }
+    };
+
     if (selectedItems.length > 0) {
       saveOrder();
     }
+    loadSelectedAddress();
   }, []);
+
   return (
     <View style={[styles.container, getPlatformContainerStyle()]}>
       <View style={styles.content}>
@@ -68,6 +110,21 @@ const PaymentSuccessScreen: React.FC = () => {
         <Text style={styles.message}>
           Cảm ơn bạn đã đặt hàng. Đơn hàng của bạn đang được xử lý và sẽ được giao sớm nhất.
         </Text>
+
+        {/* Thông tin giao hàng */}
+        {selectedAddress && (
+          <View style={styles.deliverySection}>
+            <Text style={styles.sectionTitle}>Thông tin giao hàng</Text>
+            <View style={styles.deliveryInfo}>
+              <Ionicons name="location-outline" size={20} color="#469B43" />
+              <View style={styles.deliveryText}>
+                <Text style={styles.deliveryName}>{selectedAddress.name}</Text>
+                <Text style={styles.deliveryAddress}>{selectedAddress.address}</Text>
+                <Text style={styles.deliveryPhone}>SĐT: {selectedAddress.phone}</Text>
+              </View>
+            </View>
+          </View>
+        )}
 
         <View style={styles.orderInfo}>
           <Text style={styles.orderLabel}>Mã đơn hàng:</Text>
@@ -163,6 +220,44 @@ const styles = StyleSheet.create({
     color: '#007bff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  deliverySection: {
+    backgroundColor: '#e9ecef',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 30,
+    width: '100%',
+    alignItems: 'center',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#469B43',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  deliveryInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  deliveryText: {
+    marginLeft: 10,
+  },
+  deliveryName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  deliveryAddress: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  deliveryPhone: {
+    fontSize: 14,
+    color: '#007bff',
+    marginTop: 2,
   },
 });
 

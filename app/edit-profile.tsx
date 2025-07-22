@@ -2,14 +2,35 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { getPlatformContainerStyle } from '../utils/platformUtils';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
+import { useAuthStore } from '../store/useAuthStore';
+import { changePassword } from '../services/authApi';
+import { useTheme } from '../store/ThemeContext';
+import { LightColors, DarkColors } from '../constants/Colors';
 
 const EditProfileScreen: React.FC = () => {
+  const user = useAuthStore((state) => state.user);
+  const setUser = useAuthStore((state) => state.setUser);
+  const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
   const router = useRouter();
-  const [name, setName] = useState('VuDuyPhuc');
-  const [email, setEmail] = useState('vuduyphuc674@gmail.com');
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const colors = isDark ? DarkColors : LightColors;
 
   const handleSave = () => {
-    // Implement save logic here
+    if (!user || !user._id) {
+      Alert.alert('Lỗi', 'Không tìm thấy thông tin người dùng');
+      return;
+    }
+    // Tạo object user mới (giữ lại các trường cũ, chỉ đổi tên/email)
+    const updatedUser = {
+      ...user,
+      name,
+      email,
+      _id: user._id, // đảm bảo _id luôn là string
+    };
+    setUser(updatedUser);
+
     Alert.alert('Thành công', 'Thông tin đã được cập nhật', [
       {
         text: 'OK',
@@ -26,7 +47,7 @@ const EditProfileScreen: React.FC = () => {
   };
 
   return (
-    <View style={[styles.container, getPlatformContainerStyle()]}>
+    <View style={[styles.container, getPlatformContainerStyle(), { backgroundColor: colors.background }]}>
       {/* Header */}
       {/* <View style={styles.headerContainer}>
         <TouchableOpacity onPress={() => router.back()}>
@@ -40,7 +61,7 @@ const EditProfileScreen: React.FC = () => {
       <View style={styles.profileHeader}>
         <View style={styles.avatarContainer}>
           <Image source={require('../assets/images/avatar.png')} style={styles.avatar} />
-          <TouchableOpacity style={styles.cameraButton}>
+          <TouchableOpacity style={[styles.cameraButton, { backgroundColor: colors.card, borderColor: colors.border }] }>
             <Image source={require('../assets/images/camera.png')} style={styles.cameraImage} />
           </TouchableOpacity>
         </View>
@@ -48,37 +69,39 @@ const EditProfileScreen: React.FC = () => {
 
       {/* Form */}
       <View style={styles.formContainer}>
-        <Text style={styles.label}>Tên người dùng</Text>
+        <Text style={[styles.label, { color: colors.text }]}>Tên người dùng</Text>
         <TextInput 
-          style={styles.input} 
+          style={[styles.input, { color: colors.text, borderBottomColor: colors.border }]} 
           value={name}
           onChangeText={setName}
-          placeholder="Nhập tên của bạn" 
+          placeholder="Nhập tên của bạn"
+          placeholderTextColor={colors.textSecondary}
         />
 
-        <Text style={styles.label}>Email</Text>
+        <Text style={[styles.label, { color: colors.text }]}>Email</Text>
         <TextInput 
-          style={styles.input} 
+          style={[styles.input, { color: colors.text, borderBottomColor: colors.border }]} 
           value={email}
           onChangeText={setEmail}
           placeholder="Nhập email của bạn"
           keyboardType="email-address"
+          placeholderTextColor={colors.textSecondary}
         />
 
         {/* Change Password */}
-        <TouchableOpacity style={styles.passwordRow} onPress={handleChangePassword}>
-          <Text style={styles.passwordLabel}>Đổi mật khẩu</Text>
-          <Text style={styles.arrow}>{'>'}</Text>
+        <TouchableOpacity style={[styles.passwordRow, { borderBottomColor: colors.border }]} onPress={handleChangePassword}>
+          <Text style={[styles.passwordLabel, { color: colors.text }]}>Đổi mật khẩu</Text>
+          <Text style={[styles.arrow, { color: colors.textSecondary }]}>{'>'}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Buttons */}
       <View style={styles.buttons}>
-        <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
-          <Text style={styles.cancelButtonText}>Hủy</Text>
+        <TouchableOpacity style={[styles.cancelButton, { backgroundColor: colors.accent, borderColor: colors.border }]} onPress={handleCancel}>
+          <Text style={[styles.cancelButtonText, { color: '#fff' }]}>Hủy</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>Lưu</Text>
+        <TouchableOpacity style={[styles.saveButton, { backgroundColor: isDark ? colors.text : '#404040' }]} onPress={handleSave}>
+          <Text style={[styles.saveButtonText, { color: isDark ? colors.background : '#fff' }]}>Lưu</Text>
         </TouchableOpacity>
       </View>
     </View>

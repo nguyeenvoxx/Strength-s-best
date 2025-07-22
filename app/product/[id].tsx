@@ -12,6 +12,7 @@ import { Product } from '../../types/product.type'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Fontisto from '@expo/vector-icons/Fontisto';
 import { useFavoriteStore } from '../../store/useFavoriteStore'
+import Feather from '@expo/vector-icons/Feather';
 
 const { width } = Dimensions.get('window')
 
@@ -228,7 +229,8 @@ const ProductScreen = () => {
     )
   }
   return (
-    <ScrollView style={[styles.container, getPlatformContainerStyle()]} showsVerticalScrollIndicator={false}>
+    <View style={{ flex: 1 }}>
+      <ScrollView style={[styles.container, getPlatformContainerStyle()]} showsVerticalScrollIndicator={false}>
       {/* Carousel */}
       <View style={styles.carouselContainer}>
         {/* Back Button */}
@@ -406,7 +408,58 @@ const ProductScreen = () => {
 
     </ScrollView>
 
+    {/* Navigation Tabs */}
+    <View style={styles.tabContainer}>
+      <TouchableOpacity 
+        style={styles.tabItem} 
+        onPress={() => router.push('/(tabs)/home')}
+      >
+        <Image 
+          source={require('../../assets/images/home_icon.png')} 
+          style={styles.tabIcon} 
+        />
+      </TouchableOpacity>
 
+      <TouchableOpacity 
+        style={styles.tabItem} 
+        onPress={() => router.push('/(tabs)/favorite')}
+      >
+        <Image 
+          source={require('../../assets/images/heart_icon.png')} 
+          style={styles.tabIcon} 
+        />
+      </TouchableOpacity>
+
+      <TouchableOpacity 
+        style={[styles.tabItem, styles.cartTab]} 
+        onPress={() => router.push('/(tabs)/cart')}
+      >
+        <View style={styles.cartTabIcon}>
+          <Feather name="shopping-cart" size={24} color="#fff" />
+        </View>
+      </TouchableOpacity>
+
+      <TouchableOpacity 
+        style={styles.tabItem} 
+        onPress={() => router.push('/(tabs)/search')}
+      >
+        <Image 
+          source={require('../../assets/images/search_icon.png')} 
+          style={styles.tabIcon} 
+        />
+      </TouchableOpacity>
+
+      <TouchableOpacity 
+        style={styles.tabItem} 
+        onPress={() => router.push('/(tabs)/profile')}
+      >
+        <Image 
+          source={require('../../assets/images/settings_icon.png')} 
+          style={styles.tabIcon} 
+        />
+      </TouchableOpacity>
+    </View>
+  </View>
   );
 };
 
@@ -716,6 +769,47 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  // Tab styles
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    paddingVertical: 10,
+    paddingBottom: 10,
+    height: 80,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: -2 },
+    shadowRadius: 4,
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabIcon: {
+    width: 24,
+    height: 24,
+    tintColor: '#666',
+  },
+  cartTab: {
+    marginBottom: 20,
+  },
+  cartTabIcon: {
+    width: 50,
+    height: 50,
+    backgroundColor: '#469B43',
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
   },
 });
 

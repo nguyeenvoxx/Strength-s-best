@@ -22,6 +22,8 @@ import TrendingProductItem from '../../modules/HomeScreen/TrendingProductItem';
 import { useRouter } from 'expo-router';
 import { useProductStore } from '../../store/useProductStore';
 import { getPlatformContainerStyle } from '../../utils/platformUtils';
+import { useTheme } from '../../store/ThemeContext';
+import { LightColors, DarkColors } from '../../constants/Colors';
 
 const { width } = Dimensions.get('window');
 const numColumns = 2;
@@ -58,6 +60,9 @@ const SearchScreen: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
 
   const { products, isLoading, error, fetchProducts } = useProductStore();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const colors = isDark ? DarkColors : LightColors;
 
   // Debounce search text with loading state
   useEffect(() => {
@@ -224,16 +229,15 @@ const SearchScreen: React.FC = () => {
 
 // console.log('🧾 Thông tin chi tiết:', products);
   return (
-    <SafeAreaView style={[styles.container, getPlatformContainerStyle()]}>
-      <StatusBar barStyle="dark-content" />
-      <View style={styles.container}>
-        
+    <SafeAreaView style={[styles.container, getPlatformContainerStyle(), { backgroundColor: colors.background }]}> 
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      <View style={[styles.container, { backgroundColor: colors.background }]}> 
         {/* Search Header */}
-        <View style={styles.searchHeader}>
-          <View style={styles.searchBar}>
-            <Ionicons name="search-outline" size={20} color="#888" style={styles.searchIcon} />
+        <View style={[styles.searchHeader, { backgroundColor: colors.card, borderBottomColor: colors.border }]}> 
+          <View style={[styles.searchBar, { backgroundColor: colors.section }]}> 
+            <Ionicons name="search-outline" size={20} color={colors.textSecondary} style={styles.searchIcon} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: colors.text }]}
               placeholder="Tìm kiếm sản phẩm..."
               value={searchText}
               onChangeText={setSearchText}
@@ -242,63 +246,64 @@ const SearchScreen: React.FC = () => {
               clearButtonMode="while-editing"
               accessibilityLabel="Tìm kiếm sản phẩm"
               accessibilityHint="Nhập tên sản phẩm để tìm kiếm"
+              placeholderTextColor={colors.textSecondary}
             />
             {isSearching ? (
-              <ActivityIndicator size="small" color="#4A90E2" />
+              <ActivityIndicator size="small" color={colors.accent} />
             ) : searchText ? (
               <TouchableOpacity 
                 onPress={() => setSearchText('')}
                 accessibilityLabel="Xóa tìm kiếm"
                 accessibilityRole="button"
               >
-                <Ionicons name="close-circle" size={20} color="#888" />
+                <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             ) : null}
           </View>
         </View>
 
         {/* Filter Container */}
-        <View style={styles.filterContainer}>
+        <View style={[styles.filterContainer, { backgroundColor: colors.background }]}> 
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={20} color="#333" />
-            <Text style={styles.backButtonText}>Quay lại</Text>
+            <Ionicons name="chevron-back" size={20} color={colors.text} />
+            <Text style={[styles.backButtonText, { color: colors.text }]}>Quay lại</Text>
           </TouchableOpacity>
           
           <View style={styles.filterButtons}>
             <TouchableOpacity
-              style={[styles.filterButton, showSortOptions && styles.activeFilterButton]}
+              style={[styles.filterButton, showSortOptions && styles.activeFilterButton, { backgroundColor: colors.section, borderColor: colors.border }]}
               onPress={handleSortPress}
               accessibilityLabel="Sắp xếp sản phẩm"
               accessibilityRole="button"
             >
-              <Ionicons name="swap-vertical" size={16} color={showSortOptions ? "#4A90E2" : "#666"} />
-              <Text style={[styles.filterButtonText, showSortOptions && styles.activeFilterText]}>Sắp xếp</Text>
+              <Ionicons name="swap-vertical" size={16} color={showSortOptions ? colors.accent : colors.textSecondary} />
+              <Text style={[styles.filterButtonText, showSortOptions && styles.activeFilterText, { color: colors.textSecondary }]}>Sắp xếp</Text>
             </TouchableOpacity>
             
             <TouchableOpacity
-              style={[styles.filterButton, showPriceFilter && styles.activeFilterButton]}
+              style={[styles.filterButton, showPriceFilter && styles.activeFilterButton, { backgroundColor: colors.section, borderColor: colors.border }]}
               onPress={handlePriceFilterPress}
               accessibilityLabel="Lọc theo giá"
               accessibilityRole="button"
             >
-              <Ionicons name="options" size={16} color={showPriceFilter ? "#4A90E2" : "#666"} />
-              <Text style={[styles.filterButtonText, showPriceFilter && styles.activeFilterText]}>Bộ lọc</Text>
+              <Ionicons name="options" size={16} color={showPriceFilter ? colors.accent : colors.textSecondary} />
+              <Text style={[styles.filterButtonText, showPriceFilter && styles.activeFilterText, { color: colors.textSecondary }]}>Bộ lọc</Text>
               {getActiveFilterCount() > 0 && (
-                <View style={styles.filterBadge}>
-                  <Text style={styles.filterBadgeText}>{getActiveFilterCount()}</Text>
+                <View style={[styles.filterBadge, { backgroundColor: colors.danger }]}> 
+                  <Text style={[styles.filterBadgeText, { color: '#fff' }]}>{getActiveFilterCount()}</Text>
                 </View>
               )}
             </TouchableOpacity>
             
             {getActiveFilterCount() > 0 && (
               <TouchableOpacity
-                style={styles.clearFilterButton}
+                style={[styles.clearFilterButton, { backgroundColor: colors.section, borderColor: colors.danger }]}
                 onPress={handleClearFilters}
                 accessibilityLabel="Xóa tất cả bộ lọc"
                 accessibilityRole="button"
               >
-                <Ionicons name="close" size={16} color="#FF6B6B" />
-                <Text style={styles.clearFilterText}>Xóa</Text>
+                <Ionicons name="close" size={16} color={colors.danger} />
+                <Text style={[styles.clearFilterText, { color: colors.danger }]}>Xóa</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -309,17 +314,17 @@ const SearchScreen: React.FC = () => {
           <TouchableWithoutFeedback onPress={() => setShowSortOptions(false)}>
             <View style={styles.modalOverlay}>
               <TouchableWithoutFeedback>
-                <View style={styles.modalContent}>
-                  <Text style={styles.modalTitle}>Sắp xếp theo</Text>
+                <View style={[styles.modalContent, { backgroundColor: colors.card }]}> 
+                  <Text style={[styles.modalTitle, { color: colors.text }]}>Sắp xếp theo</Text>
                   {sortOptions.map((option) => (
                     <TouchableOpacity
                       key={option.id}
-                      style={styles.optionItem}
+                      style={[styles.optionItem, { borderBottomColor: colors.border }]}
                       onPress={() => handleSelectSortOption(option.id)}
                     >
-                      <Text style={styles.optionText}>{option.label}</Text>
+                      <Text style={[styles.optionText, { color: colors.text }]}>{option.label}</Text>
                       {selectedSort === option.id && (
-                        <Ionicons name="checkmark" size={20} color="#4A90E2" />
+                        <Ionicons name="checkmark" size={20} color={colors.accent} />
                       )}
                     </TouchableOpacity>
                   ))}
@@ -334,17 +339,17 @@ const SearchScreen: React.FC = () => {
           <TouchableWithoutFeedback onPress={() => setShowPriceFilter(false)}>
             <View style={styles.modalOverlay}>
               <TouchableWithoutFeedback>
-                <View style={styles.modalContent}>
-                  <Text style={styles.modalTitle}>Khoảng giá</Text>
+                <View style={[styles.modalContent, { backgroundColor: colors.card }]}> 
+                  <Text style={[styles.modalTitle, { color: colors.text }]}>Khoảng giá</Text>
                   {priceRanges.map((range) => (
                     <TouchableOpacity
                       key={range.id}
-                      style={styles.optionItem}
+                      style={[styles.optionItem, { borderBottomColor: colors.border }]}
                       onPress={() => handleSelectPriceRange(range.id)}
                     >
-                      <Text style={styles.optionText}>{range.label}</Text>
+                      <Text style={[styles.optionText, { color: colors.text }]}>{range.label}</Text>
                       {selectedPriceRange === range.id && (
-                        <Ionicons name="checkmark" size={20} color="#4A90E2" />
+                        <Ionicons name="checkmark" size={20} color={colors.accent} />
                       )}
                     </TouchableOpacity>
                   ))}
@@ -357,28 +362,28 @@ const SearchScreen: React.FC = () => {
         {/* Products Grid */}      
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#4A90E2" />
-            <Text style={styles.loadingText}>Đang tải sản phẩm...</Text>
+            <ActivityIndicator size="large" color={colors.accent} />
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Đang tải sản phẩm...</Text>
           </View>
         ) : error ? (
           <View style={styles.emptyStateContainer}>
-            <Ionicons name="alert-circle-outline" size={64} color="#FF6B6B" />
-            <Text style={styles.emptyStateTitle}>Có lỗi xảy ra</Text>
-            <Text style={styles.emptyStateSubtitle}>{error}</Text>
+            <Ionicons name="alert-circle-outline" size={64} color={colors.danger} />
+            <Text style={[styles.emptyStateTitle, { color: colors.text }]}>Có lỗi xảy ra</Text>
+            <Text style={[styles.emptyStateSubtitle, { color: colors.textSecondary }]}>{error}</Text>
             <TouchableOpacity 
-              style={styles.retryButton} 
+              style={[styles.retryButton, { backgroundColor: colors.accent }]} 
               onPress={() => fetchProducts(50)}
             >
-              <Text style={styles.retryButtonText}>Thử lại</Text>
+              <Text style={[styles.retryButtonText, { color: '#fff' }]}>Thử lại</Text>
             </TouchableOpacity>
           </View>
         ) : filteredProducts.length === 0 ? (
           <View style={styles.emptyStateContainer}>
-            <Ionicons name="search-outline" size={64} color="#CCC" />
-            <Text style={styles.emptyStateTitle}>
+            <Ionicons name="search-outline" size={64} color={colors.textSecondary} />
+            <Text style={[styles.emptyStateTitle, { color: colors.text }]}> 
               {debouncedSearchText ? 'Không tìm thấy sản phẩm' : 'Tìm kiếm sản phẩm'}
             </Text>
-            <Text style={styles.emptyStateSubtitle}>
+            <Text style={[styles.emptyStateSubtitle, { color: colors.textSecondary }]}> 
               {debouncedSearchText 
                 ? `Không có kết quả cho "${debouncedSearchText}"`
                 : 'Nhập từ khóa để tìm kiếm sản phẩm'
@@ -391,7 +396,7 @@ const SearchScreen: React.FC = () => {
             keyExtractor={(item, index) => `${item._id}-${index}`}
             numColumns={numColumns}
             renderItem={({ item }) => (
-              <View style={styles.productCard}>
+              <View style={[styles.productCard, { backgroundColor: colors.card }]}> 
                 <TrendingProductItem
                   image={item.images[0] || item.image || ''}
                   title={item.title}

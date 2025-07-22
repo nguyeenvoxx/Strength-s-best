@@ -9,13 +9,25 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCategoryStore } from '../../store/useCategoryStore';
+import { useTheme } from '../../store/ThemeContext';
+import { LightColors, DarkColors } from '../../constants/Colors';
+
+interface CategoryItem {
+  id: string;
+  title: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  color: string;
+}
 
 interface HomeCategoryProps {
   onCategoryPress?: (categoryId: string) => void;
 }
 
 const HomeCategory: React.FC<HomeCategoryProps> = ({ onCategoryPress }) => {
-  const { categories, isLoading, error, fetchCategories } = useCategoryStore();
+  const { categories: apiCategories, isLoading, error, fetchCategories } = useCategoryStore();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const colors = isDark ? DarkColors : LightColors;
 
   // Predefined icons and colors for categories
   const categoryIcons: { [key: string]: keyof typeof Ionicons.glyphMap } = {
@@ -34,6 +46,40 @@ const HomeCategory: React.FC<HomeCategoryProps> = ({ onCategoryPress }) => {
     'Dinh dưỡng thể thao': '#98D8C8',
   };
 
+  // Fallback categories if API fails
+  const fallbackCategories: CategoryItem[] = [
+    {
+      id: 'health',
+      title: 'Sức khỏe',
+      icon: 'heart',
+      color: '#FF6B6B',
+    },
+    {
+      id: 'mom',
+      title: 'Mẹ',
+      icon: 'woman',
+      color: '#4ECDC4',
+    },
+    {
+      id: 'baby',
+      title: 'Bé',
+      icon: 'happy',
+      color: '#45B7D1',
+    },
+    {
+      id: 'beauty',
+      title: 'Làm đẹp',
+      icon: 'flower',
+      color: '#FFA07A',
+    },
+    {
+      id: 'healthy-nuts',
+      title: 'Hạt healthy',
+      icon: 'nutrition',
+      color: '#98D8C8',
+    },
+  ];
+
   useEffect(() => {
     fetchCategories();
   }, [fetchCategories]);
@@ -41,10 +87,10 @@ const HomeCategory: React.FC<HomeCategoryProps> = ({ onCategoryPress }) => {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>Mua sắm tại đây</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Mua sắm tại đây</Text>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="small" color="#FF6B35" />
-          <Text style={styles.loadingText}>Đang tải danh mục...</Text>
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Đang tải danh mục...</Text>
         </View>
       </View>
     );
@@ -53,9 +99,9 @@ const HomeCategory: React.FC<HomeCategoryProps> = ({ onCategoryPress }) => {
   if (error) {
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>Mua sắm tại đây</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Mua sắm tại đây</Text>
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error}</Text>
+          <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
         </View>
       </View>
     );
@@ -63,30 +109,45 @@ const HomeCategory: React.FC<HomeCategoryProps> = ({ onCategoryPress }) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Mua sắm tại đây</Text>
+      <Text style={[styles.title, { color: colors.text }]}>Mua sắm tại đây</Text>
       
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.categoryContainer}
       >
-        {categories.map((category) => {
-          const icon = categoryIcons[category.nameCategory] || 'nutrition';
-          const color = categoryColors[category.nameCategory] || '#FF6B6B';
-          
-          return (
+        {apiCategories && apiCategories.length > 0 ? (
+          apiCategories.map((category) => {
+            const icon = categoryIcons[category.nameCategory] || 'nutrition';
+            const color = categoryColors[category.nameCategory] || '#FF6B6B';
+            
+            return (
+              <TouchableOpacity
+                key={category._id}
+                style={styles.categoryItem}
+                onPress={() => onCategoryPress?.(category._id)}
+              >
+                <View style={[styles.iconContainer, { backgroundColor: color }]}>
+                  <Ionicons name={icon} size={24} color="#FFFFFF" />
+                </View>
+                <Text style={[styles.categoryTitle, { color: colors.text }]}>{category.nameCategory}</Text>
+              </TouchableOpacity>
+            );
+          })
+        ) : (
+          fallbackCategories.map((category) => (
             <TouchableOpacity
-              key={category._id}
+              key={category.id}
               style={styles.categoryItem}
-              onPress={() => onCategoryPress?.(category._id)}
+              onPress={() => onCategoryPress?.(category.id)}
             >
-              <View style={[styles.iconContainer, { backgroundColor: color }]}>
-                <Ionicons name={icon} size={24} color="#FFFFFF" />
+              <View style={[styles.iconContainer, { backgroundColor: category.color }]}>
+                <Ionicons name={category.icon} size={24} color="#FFFFFF" />
               </View>
-              <Text style={styles.categoryTitle}>{category.nameCategory}</Text>
+              <Text style={[styles.categoryTitle, { color: colors.text }]}>{category.title}</Text>
             </TouchableOpacity>
-          );
-        })}
+          ))
+        )}
       </ScrollView>
     </View>
   );

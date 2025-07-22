@@ -35,7 +35,9 @@ const PurchasedOrdersScreen: React.FC = () => {
       {
         text: 'Có',
         onPress: async () => {
-          const updated = orders.filter((o) => o.id !== orderId);
+          const updated = orders.map((o) =>
+            o.id === orderId ? { ...o, status: 'cancelled' } : o
+          );
           await AsyncStorage.setItem('purchased', JSON.stringify(updated));
           setOrders(updated);
           Alert.alert('Đã hủy đơn hàng thành công.');
@@ -63,7 +65,7 @@ const PurchasedOrdersScreen: React.FC = () => {
               {order.voucher && (
                 <Text style={styles.voucherText}>Mã giảm giá: {order.voucher.code}</Text>
               )}
-             <Text>Số lượng: {order.items?.[0]?.quantity ?? 0}</Text>
+              <Text>Số lượng: {order.items?.[0]?.quantity ?? 0}</Text>
               <Text style={styles.total}>Tổng thanh toán: {formatPrice(order.total)}</Text>
             </View>
             {order.items?.[0]?.image && (
@@ -72,12 +74,19 @@ const PurchasedOrdersScreen: React.FC = () => {
                 style={styles.imageRight}
               />
             )}
+            <Text style={{
+              color: order.status === 'cancelled' ? 'red' : '#28a745',
+              fontWeight: 'bold',
+              marginBottom: 4,
+            }}>
+              {order.status === 'cancelled' ? 'Đã hủy' : 'Đang xử lý'}
+            </Text>
           </View>
-
-          <TouchableOpacity style={styles.cancelButton} onPress={() => handleCancel(order.id)}>
-            <Text style={styles.cancelText}>Hủy đơn</Text>
-          </TouchableOpacity>
-
+          {order.status !== 'cancelled' && (
+            <TouchableOpacity style={styles.cancelButton} onPress={() => handleCancel(order.id)}>
+              <Text style={styles.cancelText}>Hủy đơn</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             style={{ marginTop: 10, padding: 10, backgroundColor: '#007bff', borderRadius: 6 }}
             onPress={() =>
@@ -89,6 +98,10 @@ const PurchasedOrdersScreen: React.FC = () => {
                   total: order.total.toString(), // truyền dạng chuỗi
                   date: order.date,
                   voucher: order.voucher?.code ?? '',
+                  status: order.status ?? 'processing',
+                  customerName: order.customerName ?? '',
+                  customerPhone: order.customerPhone ?? '',
+                  customerAddress: order.customerAddress ?? '',
                 },
               })
             }

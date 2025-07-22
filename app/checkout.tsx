@@ -1,8 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView, Modal } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuthStore } from '../store/useAuthStore';
+
+interface Address {
+  id: string;
+  name: string;
+  phone: string;
+  address: string;
+  isDefault?: boolean;
+}
 
 const paymentMethods = [
   { id: 'bank', icon: require('../assets/images/Bank_icon.png'), last4: '2109', name: 'Ngân hàng' },
@@ -53,6 +63,8 @@ const OrderSummaryScreen: React.FC = () => {
   ];
   const [selectedMethodId, setSelectedMethodId] = useState<string | null>('bank');
   const router = useRouter();
+  const { user } = useAuthStore();
+  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
 
   // truyền du liệu từ giỏ hàng
   const { selected } = useLocalSearchParams();
@@ -73,19 +85,50 @@ const OrderSummaryScreen: React.FC = () => {
       )
       : 0;
   const finalTotal = totalOrder + shippingFee - discount;
-  // Cập nhật tổng tiền sau khi áp dụng voucher
-  
+
+  // Sử dụng useFocusEffect để refresh địa chỉ khi quay lại màn hình
+  useFocusEffect(
+    React.useCallback(() => {
+      loadSelectedAddress();
+    }, [])
+  );
+
+  const loadSelectedAddress = async () => {
+    try {
+      const savedAddress = await AsyncStorage.getItem('selectedDeliveryAddress');
+      if (savedAddress) {
+        setSelectedAddress(JSON.parse(savedAddress));
+      } else {
+        // Tạo địa chỉ mặc định từ thông tin user
+        const defaultAddress: Address = {
+          id: '1',
+          name: user?.name || 'Khách hàng',
+          phone: user?.phoneNumber || '',
+          address: user?.address || 'Chưa có địa chỉ',
+          isDefault: true
+        };
+        setSelectedAddress(defaultAddress);
+      }
+    } catch (error) {
+      console.error('Lỗi khi tải địa chỉ:', error);
+    }
+  };
+
   const handleContinue = () => {
-   const data = {
-  selected: JSON.stringify(selectedItems),
-  voucher: selectedVoucher ? JSON.stringify(selectedVoucher) : '',
-};
+    const data = {
+      selected: JSON.stringify(selectedItems),
+      voucher: selectedVoucher ? JSON.stringify(selectedVoucher) : '',
+    };
 
     if (selectedMethodId === 'bank') {
       router.push({ pathname: '/qr-payment', params: data });
     } else {
       router.push({ pathname: '/payment-success', params: data });
     }
+  };
+
+  const handleSelectAddress = () => {
+    router.push('/select-address');
   };
 
   return (
@@ -95,25 +138,27 @@ const OrderSummaryScreen: React.FC = () => {
           <Image style={styles.iconGroup} source={require('../assets/images/Group_icon.png')} />
           <Text style={styles.tileGroup}>Địa chỉ</Text>
         </View>
-        <View style={styles.Address}>
+        
+        {/* Address Selection */}
+        <TouchableOpacity style={styles.Address} onPress={handleSelectAddress}>
           <View style={styles.addressBox}>
             <TouchableOpacity style={styles.iconEdit}>
               <Image style={styles.EditIcon} source={require('../assets/images/edit_icon.png')} />
             </TouchableOpacity>
             <Text style={styles.tile1}>Địa chỉ:</Text>
-            <Text>Hoàng triệu Tâm Nhân</Text>
-            <Text>120 Quang Trung, P14, Quận Gò Vấp, TPHCM</Text>
-            <Text>SĐT: +84-32842324</Text>
+            <Text style={styles.addressName}>{selectedAddress?.name || 'Chưa có địa chỉ'}</Text>
+            <Text style={styles.addressText}>{selectedAddress?.address || 'Vui lòng chọn địa chỉ'}</Text>
+            <Text style={styles.addressPhone}>SĐT: {selectedAddress?.phone || 'Chưa có số điện thoại'}</Text>
           </View>
-        </View>
+        </TouchableOpacity>
+
         {/* Order Summary */}
         <View style={styles.orderSummary}>
           <Text style={styles.sectionTitle}>Chi tiết đơn hàng</Text>
           <View style={styles.orderSummary}>
 
             {selectedItems.map((item: any) => (
-
-              <View key={item.id} style={styles.productBox}>
+              <View key={item.id || item._id} style={styles.productBox}>
                 <Image
                   source={typeof item.image === 'number' ? item.image : { uri: item.image }}
                   style={styles.productImage}
@@ -224,7 +269,12 @@ const OrderSummaryScreen: React.FC = () => {
           <View style={styles.deliveryInfo}>
             <Ionicons name="location-outline" size={20} color="#007bff" />
             <View style={styles.deliveryText}>
-              <Text style={styles.deliveryAddress}>123 Đường ABC, Quận 1</Text>
+              <Text style={styles.deliveryAddress}>
+                {selectedAddress?.name ? `${selectedAddress.name} - ${selectedAddress.address}` : 'Chưa có địa chỉ'}
+              </Text>
+              <Text style={styles.deliveryPhone}>
+                {selectedAddress?.phone ? `SĐT: ${selectedAddress.phone}` : 'Chưa có số điện thoại'}
+              </Text>
               <Text style={styles.deliveryTime}>Giao hàng trong 2-3 ngày</Text>
             </View>
           </View>
@@ -519,6 +569,11 @@ removeText: {
     fontWeight: '600',
     marginBottom: 4,
   },
+  deliveryPhone: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
+  },
   deliveryTime: {
     fontSize: 14,
     color: '#666',
@@ -543,6 +598,21 @@ removeText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  addressName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  addressText: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
+  },
+  addressPhone: {
+    fontSize: 14,
+    color: '#666',
   },
 });
 

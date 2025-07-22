@@ -1,106 +1,175 @@
 import React, { useState } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-import Feather from '@expo/vector-icons/Feather';
-
-import { useAuthStore } from '../../store/useAuthStore';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuthStore } from '../../store/useAuthStore';
 import { getPlatformContainerStyle } from '../../utils/platformUtils';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTheme } from '../../store/ThemeContext';
+import { LightColors, DarkColors } from '../../constants/Colors';
+
+interface Address {
+  id: string;
+  name: string;
+  phone: string;
+  address: string;
+  isDefault?: boolean;
+}
 
 const ProfileScreen: React.FC = () => {
   const router = useRouter();
-  const { user, isAuthenticated, logout } = useAuthStore();
-  const [logoutVisible, setlougoutVisible] = useState(false);
-  
+  const { user, logout } = useAuthStore();
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === 'dark';
+  const colors = isDark ? DarkColors : LightColors;
+
+  React.useEffect(() => {
+    loadAddresses();
+  }, []);
+
+  const loadAddresses = async () => {
+    try {
+      const savedAddresses = await AsyncStorage.getItem('userAddresses');
+      if (savedAddresses) {
+        setAddresses(JSON.parse(savedAddresses));
+      }
+    } catch (error) {
+      console.error('Lỗi khi tải địa chỉ:', error);
+    }
+  };
+
   const handleLogout = () => {
-    setlougoutVisible(false);
-    logout();
-    alert('Đã đăng xuất thành công!');
-    router.push('/(auth)/sign-in');
+    Alert.alert(
+      'Xác nhận đăng xuất',
+      'Bạn có chắc muốn đăng xuất?',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        { text: 'Đăng xuất', style: 'destructive', onPress: logout }
+      ]
+    );
   };
-  
-  const handleLogin = () => {
-    router.push('/(auth)/sign-in');
+
+  const handleManageAddresses = () => {
+    router.push('/select-address');
   };
-  
-  if (!isAuthenticated || !user) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.guestContainer}>
-          <View style={styles.avatarPlaceholder}>
-            <Ionicons name="person" size={50} color="#666" />
-          </View>
-          <Text style={styles.guestText}>Bạn chưa đăng nhập</Text>
-          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-            <Text style={styles.loginButtonText}>Đăng nhập</Text>
+
+  const handleEditProfile = () => {
+    router.push('/edit-profile');
+  };
+
+  const handleChangePassword = () => {
+    router.push('/change-password');
+  };
+
+  const handleViewOrders = () => {
+    router.push('/purchased-orders');
+  };
+
+  return (
+    <View style={[styles.container, getPlatformContainerStyle(), { backgroundColor: colors.background }]}>
+      {/* Header */}
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Tài khoản</Text>
+      </View>
+
+      {/* User Info */}
+      <View style={[styles.userSection, { backgroundColor: colors.card }]}>
+        <View style={styles.avatarContainer}>
+          <Ionicons name="person-circle" size={80} color={colors.accent} />
+        </View>
+        <View style={styles.userInfo}>
+          <Text style={[styles.userName, { color: colors.text }]}>{user?.name || 'Khách hàng'}</Text>
+          <Text style={[styles.userEmail, { color: colors.text }]}>{user?.email || 'Chưa có email'}</Text>
+          <Text style={[styles.userPhone, { color: colors.text }]}>{user?.phoneNumber || 'Chưa có số điện thoại'}</Text>
+        </View>
+      </View>
+
+      {/* Menu Items */}
+      <ScrollView style={styles.menuContainer} showsVerticalScrollIndicator={false}>
+        <View style={[styles.menuSection, { backgroundColor: colors.section, shadowColor: colors.shadow }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Thông tin cá nhân</Text>
+
+          <TouchableOpacity style={styles.menuItem} onPress={handleEditProfile}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="person-outline" size={24} color={colors.accent} />
+              <Text style={[styles.menuItemText, { color: colors.text }]}>Chỉnh sửa thông tin</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.border} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem} onPress={handleChangePassword}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="lock-closed-outline" size={24} color={colors.accent} />
+              <Text style={[styles.menuItemText, { color: colors.text }]}>Đổi mật khẩu</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.border} />
           </TouchableOpacity>
         </View>
-      </View>
-    );
-  }
-  return (
-    <View style={[styles.container, getPlatformContainerStyle()]}>
-      <View style={styles.profileHeader}>
-        {user.avatarUrl ? (
-          <Image source={{ uri: user.avatarUrl }} style={styles.avatar} />
-        ) : (
-          <View style={styles.avatarPlaceholder}>
-            <Ionicons name="person" size={50} color="#666" />
-          </View>
-        )}
-        <View style={styles.infor}>
-          <Text style={styles.name}>{user.name}</Text>
-          <Text style={styles.email}>{user.email}</Text>
-        </View>
-      </View>
-      <TouchableOpacity style={styles.button} onPress={() => router.push('../../edit-profile')}>
-        <Text style={styles.editText}>Chỉnh sửa thông tin</Text>
-      </TouchableOpacity>
-      <View style={styles.menu}>
-        <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/purchased-orders')}>
-          <Feather style={{marginRight:7}} name="shopping-cart" size={24} color="black" />
-          <Text style={styles.menuText}>Đơn hàng đã mua</Text>
-        </TouchableOpacity>
-        <View style={styles.menuItem}>
-          <Image source={require('../../assets/images/activity.png')} style={styles.icon} />
-          <Text style={styles.menuText}>Trạng thái hoạt động</Text>
-        </View>
 
-        <View style={styles.menuItem}>
-          <Image source={require('../../assets/images/pin.png')} style={styles.icon} />
-          <Text style={styles.menuText}>Địa chỉ</Text>
-          <Image source={require('../../assets/images/arrow.png')} style={styles.arrow} />
-        </View>
+        <View style={[styles.menuSection, { backgroundColor: colors.section, shadowColor: colors.shadow }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Địa chỉ giao hàng</Text>
 
-        <View style={styles.menuItem}>
-          <Image source={require('../../assets/images/Question.png')} style={styles.icon} />
-          <Text style={styles.menuText}>Trợ giúp & phản hồi</Text>
-        </View>
-
-        <TouchableOpacity style={styles.menuItem} onPress={() => setlougoutVisible(true)}>
-          <Image source={require('../../assets/images/exit.png')} style={styles.icon} />
-          <Text style={[styles.menuText, styles.logout]}>Đăng xuất</Text>
-        </TouchableOpacity>
-      </View>
-
-      <Modal transparent visible={logoutVisible} animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Image source={require('../../assets/images/exit.png')} style={styles.modalIcon} />
-            <Text style={styles.modalTitle}>Xác nhận đăng xuất</Text>
-            <Text style={styles.modalMessage}>Bạn có chắc chắn muốn đăng xuất không ?</Text>
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity style={styles.cancelButton} onPress={() => setlougoutVisible(false)}>
-                <Text style={styles.cancelText}>Hủy</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-                <Text style={styles.logoutText}>Đăng xuất</Text>
-              </TouchableOpacity>
+          <TouchableOpacity style={styles.menuItem} onPress={handleManageAddresses}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="location-outline" size={24} color={colors.accent} />
+              <Text style={[styles.menuItemText, { color: colors.text }]}>Quản lý địa chỉ</Text>
             </View>
-          </View>
+            <View style={styles.menuItemRight}>
+              <Text style={[styles.addressCount, { color: colors.accent }]}>{addresses.length} địa chỉ</Text>
+              <Ionicons name="chevron-forward" size={20} color={colors.border} />
+            </View>
+          </TouchableOpacity>
         </View>
-      </Modal>
+
+        <View style={[styles.menuSection, { backgroundColor: colors.section, shadowColor: colors.shadow }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Đơn hàng</Text>
+
+          <TouchableOpacity style={styles.menuItem} onPress={handleViewOrders}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="receipt-outline" size={24} color={colors.accent} />
+              <Text style={[styles.menuItemText, { color: colors.text }]}>Đơn hàng đã mua</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.border} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={[styles.menuSection, { backgroundColor: colors.section, shadowColor: colors.shadow }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Giao diện sáng/tối</Text>
+          <TouchableOpacity style={styles.menuItem} onPress={toggleTheme}>
+            <Ionicons name={isDark ? 'sunny' : 'moon-sharp'} size={24} color={colors.accent} />
+            <Text style={[styles.menuItemText, { color: colors.text }]}>{isDark ? 'Giao diện sáng' : 'Giao diện tối'}</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={[styles.menuSection, { backgroundColor: colors.section, shadowColor: colors.shadow }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Hỗ trợ</Text>
+
+          <TouchableOpacity style={styles.menuItem}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="help-circle-outline" size={24} color={colors.accent} />
+              <Text style={[styles.menuItemText, { color: colors.text }]}>Trợ giúp</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.border} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="information-circle-outline" size={24} color={colors.accent} />
+              <Text style={[styles.menuItemText, { color: colors.text }]}>Về ứng dụng</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.border} />
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+
+      {/* Logout Button */}
+      <View style={[styles.logoutContainer, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
+        <TouchableOpacity style={[styles.logoutButton, { backgroundColor: colors.danger }]} onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={24} color="#fff" />
+          <Text style={styles.logoutText}>Đăng xuất</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -108,262 +177,119 @@ const ProfileScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 10
-  },
-  profileHeader: {
-    alignItems: 'center',
-    marginBottom: 20,
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    paddingVertical: 20,
-    paddingHorizontal: 15,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowRadius: 4,
-    elevation: 10,
-    marginHorizontal: 10,
-    marginTop: 20,
-  },
-  infor: {
-    flexDirection: 'column'
-  },
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    marginRight: 25,
-  },
-  avatarPlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#e9ecef',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 25,
-  },
-  guestContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  guestText: {
-    fontSize: 18,
-    color: '#666',
-    marginVertical: 20,
-    textAlign: 'center',
-  },
-  loginButton: {
-    backgroundColor: '#000',
-    paddingVertical: 15,
-    paddingHorizontal: 40,
-    borderRadius: 10,
-  },
-  loginButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  button: {
-    backgroundColor: '#000',
-    padding: 20,
-    alignItems: 'center',
-    marginBottom: 20,
-    borderRadius: 10,
-    marginHorizontal: 10,
-  },
-  menu: {
-    padding: 10
-  },
-  name: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginTop: 10,
-    marginBottom: 15
-  },
-  email: {
-    color: '#666',
-    fontSize: 13
-  },
-  menuItem: {
-    fontSize: 15,
-    paddingVertical: 10,
-    flexDirection: 'row',
-    alignItems: 'center'
-  },
-  logout: {
-    color: 'red'
-  },
-  editText: {
-    color: '#fff',
-    fontSize: 14
-  },
-  icon: {
-    width: 20,
-    height: 20,
-    resizeMode: 'contain',
-    marginRight: 10,
-  },
-  menuText: {
-    fontSize: 15,
-  },
-  arrow: {
-    width: 16,
-    height: 16,
-    resizeMode: 'contain',
-    marginLeft: 'auto',
-    tintColor: '#888',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: '#00000099',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: 'white',
-    width: '80%',
-    borderRadius: 10,
-    padding: 20,
-    alignItems: 'center',
-  },
-  modalMessage: {
-    textAlign: 'center',
-    color: '#666',
-    marginVertical: 10
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    marginTop: 10,
-    width: '100%'
-  },
-  modalIcon: {
-    width: 50,
-    height: 50,
-    tintColor: 'red',
-    marginBottom: 10
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold'
-  },
-  cancelButton: {
-    flex: 1,
-    backgroundColor: '#000000',
-    padding: 10,
-    borderRadius: 8,
-    marginRight: 25,
-    alignItems: 'center',
-    width: 102
-  },
-  logoutButton: {
-    flex: 1,
-    backgroundColor: '#6AF039',
-    padding: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-    width: 102
-  },
-  cancelText: {
-    color: '#FFFFFF'
-  },
-  logoutText: {
-    color: '#000000'
+    backgroundColor: '#f5f5f5',
   },
   header: {
     backgroundColor: '#fff',
     paddingHorizontal: 20,
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
+    borderBottomColor: '#e0e0e0',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
+    textAlign: 'center',
   },
-  content: {
-    flex: 1,
-  },
-  profileSection: {
+  userSection: {
     backgroundColor: '#fff',
     padding: 20,
+    flexDirection: 'row',
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
+    marginBottom: 20,
   },
   avatarContainer: {
-    position: 'relative',
-    marginBottom: 15,
-  },
-  editAvatarButton: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#007bff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
+    marginRight: 15,
   },
   userInfo: {
-    alignItems: 'center',
+    flex: 1,
   },
   userName: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 5,
+    marginBottom: 4,
   },
   userEmail: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#666',
-    marginBottom: 3,
+    marginBottom: 2,
   },
   userPhone: {
-    fontSize: 16,
-    color: '#666',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    marginTop: 10,
-    paddingVertical: 20,
-    justifyContent: 'space-around',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#007bff',
-    marginBottom: 5,
-  },
-  statLabel: {
     fontSize: 14,
     color: '#666',
   },
   menuContainer: {
-    backgroundColor: '#fff',
-    marginTop: 10,
+    flex: 1,
   },
-  menuLeft: {
+  menuSection: {
+    backgroundColor: '#fff',
+    marginBottom: 20,
+    borderRadius: 12,
+    marginHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  menuItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  menuItemText: {
+    fontSize: 16,
+    color: '#333',
+    marginLeft: 12,
+  },
+  menuItemRight: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  versionText: {
-    textAlign: 'center',
+  addressCount: {
     fontSize: 14,
-    color: '#999',
-    marginTop: 30,
-    marginBottom: 20,
+    color: '#469B43',
+    marginRight: 8,
+    fontWeight: '500',
+  },
+  logoutContainer: {
+    padding: 16,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  logoutButton: {
+    backgroundColor: '#ff4444',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+  },
+  logoutText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 8,
   },
 });
 

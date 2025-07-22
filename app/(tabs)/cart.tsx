@@ -9,20 +9,61 @@ import { useCallback } from 'react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useCartStore } from '../../store/useCartStore';
 import { API_CONFIG } from '../../constants/config';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTheme } from '../../store/ThemeContext';
+import { LightColors, DarkColors } from '../../constants/Colors';
+
+interface Address {
+  id: string;
+  name: string;
+  phone: string;
+  address: string;
+  isDefault?: boolean;
+}
 
 const CartScreen: React.FC = () => {
   const router = useRouter();
-  const { token } = useAuthStore();
+  const { token, user } = useAuthStore();
   const { cart, items: cartItems, loading, error, fetchCart, addToCart, removeFromCart, clearCart, clearError } = useCartStore();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const colors = isDark ? DarkColors : LightColors;
 
   useFocusEffect(
     useCallback(() => {
       if (token) {
         fetchCart(token);
       }
+      loadSelectedAddress();
     }, [token])
   );
+
+  const loadSelectedAddress = async () => {
+    try {
+      const savedAddress = await AsyncStorage.getItem('selectedDeliveryAddress');
+      if (savedAddress) {
+        setSelectedAddress(JSON.parse(savedAddress));
+      } else {
+        // Tạo địa chỉ mặc định từ thông tin user
+        const defaultAddress: Address = {
+          id: '1',
+          name: user?.name || 'Khách hàng',
+          phone: user?.phoneNumber || '',
+          address: user?.address || 'Chưa có địa chỉ',
+          isDefault: true
+        };
+        setSelectedAddress(defaultAddress);
+      }
+    } catch (error) {
+      console.error('Lỗi khi tải địa chỉ:', error);
+    }
+  };
+
+  const handleSelectAddress = () => {
+    router.push('/select-address');
+  };
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev =>
@@ -107,7 +148,7 @@ const CartScreen: React.FC = () => {
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Giỏ hàng</Text>
         </View>
@@ -120,7 +161,7 @@ const CartScreen: React.FC = () => {
 
   if (error) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Giỏ hàng</Text>
         </View>
@@ -136,7 +177,7 @@ const CartScreen: React.FC = () => {
 
   if (cartItems.length === 0) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Giỏ hàng</Text>
         </View>
@@ -159,7 +200,7 @@ const CartScreen: React.FC = () => {
   }
 
   return (
-    <View style={[styles.container, getPlatformContainerStyle()]}>
+    <View style={[styles.container, getPlatformContainerStyle(), { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Giỏ hàng ({cartItems.length})</Text>
         <TouchableOpacity onPress={handleClearCart} style={styles.clearButton}>
@@ -173,20 +214,21 @@ const CartScreen: React.FC = () => {
           <Text style={styles.tileGroup}>Địa chỉ</Text>
         </View>
 
-        <View style={styles.Address}>
+        <TouchableOpacity style={styles.Address} onPress={handleSelectAddress}>
           <View style={styles.addressBox}>
             <TouchableOpacity style={styles.iconEdit}>
               <Image style={styles.EditIcon} source={require('../../assets/images/edit_icon.png')} />
             </TouchableOpacity>
             <Text style={styles.tile1}>Địa chỉ:</Text>
-            <Text>Hoàng triệu Tâm Nhân</Text>
-            <Text>120 Quang Trung, P14, Quận Gò Vấp, TPHCM</Text>
-            <Text>SĐT: +84-32842324</Text>
+            <Text style={styles.addressName}>{selectedAddress?.name || 'Chưa có địa chỉ'}</Text>
+            <Text style={styles.addressText}>{selectedAddress?.address || 'Vui lòng chọn địa chỉ'}</Text>
+            <Text style={styles.addressPhone}>SĐT: {selectedAddress?.phone || 'Chưa có số điện thoại'}</Text>
           </View>
           <TouchableOpacity style={styles.plusBox}>
             <Image source={require('../../assets/images/plus_icon.png')} />
           </TouchableOpacity>
-        </View>
+        </TouchableOpacity>
+        
         <View>
           <Text style={styles.shoppingListTitle}>
             Danh sách mua sắm
@@ -218,24 +260,9 @@ const CartScreen: React.FC = () => {
                   {formatPrice(item.price)}
                 </Text>
                 <View style={{ flexDirection: 'row', marginTop: 4, alignItems: 'center' }}>
-                  {/* <TouchableOpacity onPress={() => handleDecrease(item)} style={styles.qtyButton}>
-                    <Text style={styles.qtyText_}>-</Text>
-                  </TouchableOpacity>
-                  <Text style={{ marginHorizontal: 10, fontSize: 16, fontWeight: 'bold' }}>
-                    {item.quantity}
-                  </Text>
-                  <TouchableOpacity onPress={() => handleIncrease(item)} style={styles.qtyButton}>
-                    <Text style={styles.qtyText}>+</Text>
-                  </TouchableOpacity> */}
                   <Text style={{ fontSize: 16, fontWeight: '300' }}>
                     Số lượng: {item.quantity}
                   </Text>
-                  {/* <TouchableOpacity 
-                    onPress={() => handleDelete(item.idProduct._id)}
-                    style={styles.deleteButton}
-                  >
-                    <Ionicons name="trash-outline" size={20} color="#ff4444" />
-                  </TouchableOpacity> */}
                 </View>
               </View>
             </View>
@@ -458,6 +485,20 @@ const styles = StyleSheet.create({
   deleteButton: {
     marginLeft: 15,
     padding: 5,
+  },
+  addressName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  addressText: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 5,
+  },
+  addressPhone: {
+    fontSize: 14,
+    color: '#666',
   },
 });
 

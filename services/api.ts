@@ -19,9 +19,7 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // Add response interceptor to handle auth errors
@@ -108,17 +106,19 @@ export const productApi = {
     return response.data;
   },
 
-  // Cập nhật sản phẩm (admin)
-  updateProduct: async (id: string, productData: Partial<{
-    nameProduct: string;
-    priceProduct: number;
-    quantity: number;
-    image: string;
-    status: string;
-    idBrand: string;
-    idCategory: string;
-    description: string;
-  }>): Promise<ApiResponse<{ product: ApiProduct }>> => {
+  updateProduct: async (
+    id: string,
+    productData: Partial<{
+      nameProduct: string;
+      priceProduct: number;
+      quantity: number;
+      image: string;
+      status: string;
+      idBrand: string;
+      idCategory: string;
+      description: string;
+    }>
+  ): Promise<ApiResponse<{ product: ApiProduct }>> => {
     const response = await api.patch(`/products/${id}`, productData);
     return response.data;
   },

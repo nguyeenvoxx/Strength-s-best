@@ -21,6 +21,8 @@ export default function RootLayout() {
       <Stack.Screen name="select-address" options={{ title: 'Chọn địa chỉ nhận hàng', headerShown: false }} />
       <Stack.Screen name="add-address" options={{ title: 'Thêm địa chỉ mới', headerShown: false }} />
       <Stack.Screen name="edit-address" options={{ title: 'Chỉnh sửa địa chỉ', headerShown: false }} />
+      <Stack.Screen name="about" options={{ title: 'Về chúng tôi', headerShown: false }} />
+      <Stack.Screen name="help" options={{ title: 'Trợ giúp', headerShown: false }} />
     </Stack>
     </ThemeProvider>
   );

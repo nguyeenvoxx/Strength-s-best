@@ -9,11 +9,13 @@ import {
   Modal,
   TouchableWithoutFeedback,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../store/ThemeContext';
 import { LightColors, DarkColors } from '../../constants/Colors';
 import { useRouter } from 'expo-router';
+import { useAuthStore } from '../../store/useAuthStore';
 
 interface User {
   _id: string;
@@ -51,6 +53,7 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
   const isDark = theme === 'dark';
   const colors = isDark ? DarkColors : LightColors;
   const router = useRouter();
+  const { logout } = useAuthStore();
 
   const handleMenuPress = () => {
     setShowMenuModal(true);
@@ -58,6 +61,24 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
 
   const handleCloseModal = () => {
     setShowMenuModal(false);
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Xác nhận đăng xuất',
+      'Bạn có chắc muốn đăng xuất?',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Đăng xuất',
+          style: 'destructive',
+          onPress: () => {
+            logout();
+            router.replace('/(auth)/sign-in');
+          }
+        }
+      ]
+    );
   };
 
   return (
@@ -180,7 +201,7 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
                           style={styles.menuItem} 
                           onPress={() => {
                             handleCloseModal();
-                            onCartPress?.();
+                            router.push('/(tabs)/cart');
                           }}
                         >
                           <Ionicons name="cart-outline" size={24} color={colors.accent} />
@@ -192,7 +213,7 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
                           style={styles.menuItem} 
                           onPress={() => {
                             handleCloseModal();
-                            onFavoritesPress?.();
+                            router.push('/(tabs)/favorite');
                           }}
                         >
                           <Ionicons name="heart-outline" size={24} color={colors.accent} />
@@ -204,7 +225,7 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
                           style={styles.menuItem} 
                           onPress={() => {
                             handleCloseModal();
-                            onSettingsPress?.();
+                            router.push('/(tabs)/profile');
                           }}
                         >
                           <Ionicons name="settings-outline" size={24} color={colors.accent} />
@@ -230,7 +251,7 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
                           style={styles.menuItem} 
                           onPress={() => {
                             handleCloseModal();
-                            // Add help press handler
+                            router.push('/help');
                           }}
                         >
                           <Ionicons name="help-circle-outline" size={24} color={colors.accent} />
@@ -242,7 +263,7 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
                           style={styles.menuItem} 
                           onPress={() => {
                             handleCloseModal();
-                            // Add about press handler
+                            router.push('/about');
                           }}
                         >
                           <Ionicons name="information-circle-outline" size={24} color={colors.accent} />
@@ -256,7 +277,7 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
                           style={[styles.menuItem, styles.logoutItem]} 
                           onPress={() => {
                             handleCloseModal();
-                            onLogoutPress?.();
+                            handleLogout();
                           }}
                         >
                           <Ionicons name="log-out-outline" size={24} color={colors.danger} />

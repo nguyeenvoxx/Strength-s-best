@@ -78,6 +78,15 @@ export const authService = {
   },
 };
 
+export const updateProfile = async (token: string, data: { name?: string; email?: string; phoneNumber?: string; address?: string; avatarUrl?: string }) => {
+  const res = await axios.patch(
+    `${API_CONFIG.BASE_URL}/users/profile`,
+    data,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return res.data;
+};
+
 export const changePassword = async (token: string, currentPassword: string, newPassword: string) => {
   const res = await axios.post(
     `${API_CONFIG.BASE_URL}/users/change-password`, 

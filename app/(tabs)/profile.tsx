@@ -45,7 +45,14 @@ const ProfileScreen: React.FC = () => {
       'Bạn có chắc muốn đăng xuất?',
       [
         { text: 'Hủy', style: 'cancel' },
-        { text: 'Đăng xuất', style: 'destructive', onPress: logout }
+        {
+          text: 'Đăng xuất',
+          style: 'destructive',
+          onPress: () => {
+            logout();
+            router.replace('/(auth)/sign-in');
+          }
+        }
       ]
     );
   };

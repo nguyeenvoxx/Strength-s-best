@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { getPlatformContainerStyle } from '../utils/platformUtils';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
 import { useAuthStore } from '../store/useAuthStore';
-import { changePassword } from '../services/authApi';
+import { updateProfile } from '../services/authApi';
 import { useTheme } from '../store/ThemeContext';
 import { LightColors, DarkColors } from '../constants/Colors';
 import * as ImagePicker from 'expo-image-picker';
@@ -19,27 +19,29 @@ const EditProfileScreen: React.FC = () => {
   const isDark = theme === 'dark';
   const colors = isDark ? DarkColors : LightColors;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!user || !user._id) {
       Alert.alert('Lỗi', 'Không tìm thấy thông tin người dùng');
       return;
     }
-    // Tạo object user mới (giữ lại các trường cũ, chỉ đổi tên/email/avatar)
-    const updatedUser = {
-      ...user,
-      name,
-      email,
-      avatarUrl: avatarUrl ?? undefined, // fix type: không truyền null
-      _id: user._id, // đảm bảo _id luôn là string
-    };
-    setUser(updatedUser);
-
-    Alert.alert('Thành công', 'Thông tin đã được cập nhật', [
-      {
-        text: 'OK',
-        onPress: () => router.back()
-      }
-    ]);
+    try {
+      const token = useAuthStore.getState().token;
+      if (!token) throw new Error('Không tìm thấy token');
+      const updated = await updateProfile(token, {
+        name,
+        email,
+        avatarUrl: avatarUrl ?? undefined,
+      });
+      setUser(updated.data.user);
+      Alert.alert('Thành công', 'Thông tin đã được cập nhật', [
+        {
+          text: 'OK',
+          onPress: () => router.back()
+        }
+      ]);
+    } catch (err) {
+      Alert.alert('Lỗi', 'Cập nhật thông tin thất bại');
+    }
   };
 
   const handleCancel = () => {

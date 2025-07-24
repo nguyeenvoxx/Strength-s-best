@@ -4,6 +4,7 @@ import { getPlatformContainerStyle } from '../utils/platformUtils';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
 import { useAuthStore } from '../store/useAuthStore';
 import { changePassword, updateProfile } from '../services/authApi';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const EditProfileScreen: React.FC = () => {
   const user = useAuthStore((state) => state.user);
@@ -11,6 +12,7 @@ const EditProfileScreen: React.FC = () => {
   const token = useAuthStore((state) => state.token);
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
+  const [address, setAddress] = useState(user?.address || '');
   // Hàm format số điện thoại về dạng +84 123456789
   function formatPhone(raw: string | undefined): string {
     if (!raw) return '';
@@ -19,29 +21,32 @@ const EditProfileScreen: React.FC = () => {
     if (/^\+84\d{9}$/.test(raw)) return '+84 ' + raw.slice(3); // +849xxxxxxxx => +84 9xxxxxxxx
     return raw;
   }
-  const [phone, setPhone] = useState(formatPhone(user?.phone));
+  const [phone, setPhone] = useState(user?.phone || (user as any)?.phoneNumber || '');
   const [phoneError, setPhoneError] = useState('');
+  // Xóa trường address vì API không hỗ trợ
+  // const [address, setAddress] = useState(user?.address || '');
   const router = useRouter();
 
+  // Khi mở màn hình, lấy địa chỉ đầu tiên từ AsyncStorage nếu có
+  React.useEffect(() => {
+    setAddress(user?.address || '');
+  }, [user?.address]);
+
   const handleSave = async () => {
-    // Validate phone
-    let valid = true;
-    let error = '';
-    if (!phone.startsWith('+84 ')) {
-      error = 'Số điện thoại phải bắt đầu bằng +84 và có khoảng cách';
-      valid = false;
-    } else if (!/^\+84\s\d{9}$/.test(phone)) {
-      error = 'Số điện thoại phải có đúng 9 số sau +84';
-      valid = false;
+    // Tự động thêm +84 nếu cần khi lưu
+    let phoneToSave = phone.trim();
+    if (phoneToSave.startsWith('0') && phoneToSave.length === 10) {
+      phoneToSave = '+84' + phoneToSave.slice(1);
+    } else if (!phoneToSave.startsWith('+84')) {
+      // Nếu không có +84 và không bắt đầu bằng 0, giữ nguyên
     }
-    setPhoneError(error);
-    if (!valid) return;
     if (!user || !user._id || !token) {
       Alert.alert('Lỗi', 'Không tìm thấy thông tin người dùng');
       return;
     }
     try {
-      const res = await updateProfile(token, { name, email, phoneNumber: phone });
+      // Không truyền address vào updateProfile vì API không nhận
+      const res = await updateProfile(token, { name, email, phoneNumber: phoneToSave, address });
       setUser(res.data.user);
       Alert.alert('Thành công', 'Thông tin đã được cập nhật', [
         {
@@ -65,14 +70,13 @@ const EditProfileScreen: React.FC = () => {
   return (
     <View style={[styles.container, getPlatformContainerStyle()]}>
       {/* Header */}
-      {/* <View style={styles.headerContainer}>
+      <View style={styles.headerContainer}>
         <TouchableOpacity onPress={() => router.back()}>
           <Text style={styles.backButton}>‹</Text>
         </TouchableOpacity>
         <Text style={styles.header}>Chỉnh sửa hồ sơ</Text>
         <View style={styles.placeholder} />
-      </View> */}
-
+      </View>
       {/* Profile Avatar */}
       <View style={styles.profileHeader}>
         <View style={styles.avatarContainer}>
@@ -86,48 +90,40 @@ const EditProfileScreen: React.FC = () => {
       {/* Form */}
       <View style={styles.formContainer}>
         <Text style={styles.label}>Tên người dùng</Text>
-        <TextInput 
-          style={styles.input} 
+        <TextInput
+          style={styles.input}
           value={name}
           onChangeText={setName}
-          placeholder="Nhập tên của bạn" 
+          placeholder="Nhập tên của bạn"
         />
 
         <Text style={styles.label}>Email</Text>
-        <TextInput 
-          style={styles.input} 
+        <TextInput
+          style={styles.input}
           value={email}
           onChangeText={setEmail}
           placeholder="Nhập email của bạn"
           keyboardType="email-address"
         />
-          <Text style={styles.label}>Số điện thoại</Text>
-        <TextInput 
-          style={styles.input} 
+        <Text style={styles.label}>Số điện thoại</Text>
+        <TextInput
+          style={styles.input}
           value={phone}
-          onChangeText={text => {
-            // Nếu xóa hết thì để trống
-            if (text === '' || text === '+') {
-              setPhone('');
-              setPhoneError('');
-              return;
-            }
-            // Nếu chưa có +84 thì tự động thêm
-            let formatted = text;
-            if (!formatted.startsWith('+84 ')) {
-              formatted = '+84 ' + formatted.replace(/[^0-9]/g, '');
-            } else {
-              formatted = '+84 ' + formatted.slice(4).replace(/[^0-9]/g, '');
-            }
-            if (formatted.length > 13) formatted = formatted.slice(0, 13); // +84 + space + 9 số = 13 ký tự
-            setPhone(formatted);
-            setPhoneError('');
-          }}
+          onChangeText={setPhone}
           placeholder="Nhập số điện thoại của bạn"
           keyboardType="phone-pad"
           maxLength={13}
         />
-        {phoneError ? <Text style={{color: 'red', marginBottom: 8}}>{phoneError}</Text> : null}
+
+
+        <Text style={styles.label}>Địa chỉ</Text>
+        <TextInput
+          style={styles.input}
+          value={address}
+          onChangeText={setAddress}
+          placeholder="Nhập địa chỉ của bạn"
+        />
+        {phoneError ? <Text style={{ color: 'red', marginBottom: 8 }}>{phoneError}</Text> : null}
 
         {/* Change Password */}
         <TouchableOpacity style={styles.passwordRow} onPress={handleChangePassword}>

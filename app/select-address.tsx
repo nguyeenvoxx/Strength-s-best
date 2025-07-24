@@ -26,11 +26,12 @@ const SelectAddressScreen: React.FC = () => {
 
   const loadAddresses = async () => {
     try {
-      const savedAddresses = await AsyncStorage.getItem('userAddresses');
+      const userId = user?._id || (user as any)?.id;
+      if (!userId) return;
+      const savedAddresses = await AsyncStorage.getItem(`userAddresses_${userId}`);
       if (savedAddresses) {
         const parsedAddresses = JSON.parse(savedAddresses);
         setAddresses(parsedAddresses);
-        
         // Tìm địa chỉ mặc định hoặc địa chỉ đầu tiên
         const defaultAddress = parsedAddresses.find((addr: Address) => addr.isDefault) || parsedAddresses[0];
         if (defaultAddress) {
@@ -39,15 +40,15 @@ const SelectAddressScreen: React.FC = () => {
       } else {
         // Tạo địa chỉ mặc định từ thông tin user
         const defaultAddress: Address = {
-          id: '1',
+          id: userId,
           name: user?.name || 'Khách hàng',
-          phone: user?.phoneNumber || '',
+          phone: user?.phone || (user as any)?.phoneNumber || '',
           address: user?.address || 'Chưa có địa chỉ',
           isDefault: true
         };
         setAddresses([defaultAddress]);
         setSelectedAddressId(defaultAddress.id);
-        await AsyncStorage.setItem('userAddresses', JSON.stringify([defaultAddress]));
+        await AsyncStorage.setItem(`userAddresses_${userId}`, JSON.stringify([defaultAddress]));
       }
     } catch (error) {
       console.error('Lỗi khi tải địa chỉ:', error);
@@ -74,12 +75,12 @@ const SelectAddressScreen: React.FC = () => {
       Alert.alert('Thông báo', 'Vui lòng chọn một địa chỉ nhận hàng');
       return;
     }
-
     const selectedAddress = addresses.find(addr => addr.id === selectedAddressId);
     if (selectedAddress) {
-      // Lưu địa chỉ đã chọn
+      const userId = user?._id || (user as any)?.id;
       await AsyncStorage.setItem('selectedDeliveryAddress', JSON.stringify(selectedAddress));
-      
+      // Đảm bảo chỉ lưu địa chỉ cho user hiện tại
+      await AsyncStorage.setItem(`userAddresses_${userId}`, JSON.stringify(addresses));
       // Quay lại màn hình checkout với địa chỉ mới
       router.back();
     }
@@ -90,9 +91,9 @@ const SelectAddressScreen: React.FC = () => {
       ...addr,
       isDefault: addr.id === addressId
     }));
-    
     setAddresses(updatedAddresses);
-    await AsyncStorage.setItem('userAddresses', JSON.stringify(updatedAddresses));
+    const userId = user?._id || (user as any)?.id;
+    await AsyncStorage.setItem(`userAddresses_${userId}`, JSON.stringify(updatedAddresses));
   };
 
   return (

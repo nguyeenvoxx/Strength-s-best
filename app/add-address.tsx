@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getPlatformContainerStyle } from '../utils/platformUtils';
+import { useAuthStore } from '../store/useAuthStore';
 
 interface Address {
   id: string;
@@ -18,6 +19,7 @@ const AddAddressScreen: React.FC = () => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const user = useAuthStore.getState().user;
 
   const handleSave = async () => {
     if (!name.trim() || !phone.trim() || !address.trim()) {
@@ -34,15 +36,15 @@ const AddAddressScreen: React.FC = () => {
         isDefault: false
       };
 
-      // Lấy danh sách địa chỉ hiện tại
-      const savedAddresses = await AsyncStorage.getItem('userAddresses');
+      const userId = user?._id || (user as any)?.id;
+      if (!userId) throw new Error('Không xác định được user');
+      // Lấy danh sách địa chỉ hiện tại của user
+      const savedAddresses = await AsyncStorage.getItem(`userAddresses_${userId}`);
       const addresses = savedAddresses ? JSON.parse(savedAddresses) : [];
-      
       // Thêm địa chỉ mới
       addresses.push(newAddress);
-      
       // Lưu lại
-      await AsyncStorage.setItem('userAddresses', JSON.stringify(addresses));
+      await AsyncStorage.setItem(`userAddresses_${userId}`, JSON.stringify(addresses));
       
       Alert.alert('Thành công', 'Đã thêm địa chỉ mới', [
         { text: 'OK', onPress: () => router.back() }

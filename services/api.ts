@@ -63,6 +63,18 @@ export interface ApiResponse<T> {
   data: T;
 }
 
+// Interface cho Voucher từ API
+export interface ApiVoucher {
+  _id: string;
+  code: string;
+  discount: number;
+  description: string;
+  count: number;
+  expiryDate: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // Product API services
 export const productApi = {
   // Lấy tất cả sản phẩm
@@ -118,6 +130,15 @@ export const productApi = {
   // Xóa sản phẩm (admin)
   deleteProduct: async (id: string): Promise<ApiResponse<null>> => {
     const response = await api.delete(`/products/${id}`);
+    return response.data;
+  },
+};
+
+// Voucher API services
+export const voucherApi = {
+  // Lấy tất cả voucher
+  getVouchers: async (): Promise<ApiResponse<{ vouchers: ApiVoucher[] }>> => {
+    const response = await api.get('/vouchers');
     return response.data;
   },
 };

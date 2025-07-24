@@ -74,7 +74,17 @@ const ProductScreen = () => {
     }
 
     try {
-      await addToFavorites(product, token);
+      await addToFavorites({
+        _id: product._id,
+        id: product.id || product._id,
+        title: product.title,
+        image: product.images && product.images[0] ? product.images[0] : (product.image || ''),
+        images: product.images || [],
+        price: product.price,
+        priceProduct: product.priceProduct,
+        rating: product.rating,
+        sections: product.sections || [],
+      }, token);
       Alert.alert('Đã thêm vào yêu thích!');
     } catch (err) {
       console.error('Lỗi thêm yêu thích:', err);
@@ -131,6 +141,9 @@ const ProductScreen = () => {
     )
   }
 
+  // Thêm log để debug giá trị product
+  console.log('Chi tiết sản phẩm:', product);
+
   const productImages = (product.images && product.images.length > 0
     ? product.images
     : product.image
@@ -138,7 +151,14 @@ const ProductScreen = () => {
       : []) as ImageSourcePropType[]
   const productTitle = product.title
   const rating = product.rating || 0
-  const price = product.price || 0
+  // Sửa logic hiển thị giá: nếu product.price có giá trị thì dùng, nếu không thì hiển thị 'Liên hệ'
+  // Đảm bảo priceProduct là số và nhân 1000 để đúng đơn vị
+  const numericPrice = typeof product.priceProduct === 'string'
+    ? parseFloat((product.priceProduct as string).replace(/[^0-9.-]+/g, ''))
+    : product.priceProduct;
+  const price = isNaN(numericPrice) || !numericPrice
+    ? 'Liên hệ'
+    : (numericPrice * 1000).toLocaleString() + ' đ';
   const sections: Section[] = (product.sections || []).map((section: any) => ({
     title: section.title,
     items: section.items.map((text: any, idx: any) => {
@@ -212,7 +232,15 @@ const ProductScreen = () => {
   };
   const handleBuyNow = async () => {
     try {
-      await AsyncStorage.setItem('buyNowProduct', JSON.stringify(product));
+      await AsyncStorage.setItem('buyNowProduct', JSON.stringify({
+        ...product,
+        quantity: quantity,
+        name: product.title,
+        description: (product.sections && product.sections.length > 0) ? product.sections[0].items.join(' ') : '',
+        image: product.image || (product.images && product.images[0]) || '',
+        images: product.images || [],
+        price: product.price || product.priceProduct,
+      }));
       router.push('/checkout');
     } catch (err) {
       console.error('Lỗi mua ngay:', err);
@@ -361,7 +389,7 @@ const ProductScreen = () => {
                   />
                   <View style={styles.productDetails}>
                     <Text style={styles.modalProductTitle}>{product.title}</Text>
-                    <Text style={styles.modalProductPrice}>{product.price}</Text>
+                    <Text style={styles.modalProductPrice}>{price}</Text>
                   </View>
                 </View>
 

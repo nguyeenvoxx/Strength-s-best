@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getPlatformContainerStyle } from '../utils/platformUtils';
@@ -19,8 +19,10 @@ export default function OrderSummaryScreen() {
   const { selected, id, total, date, voucher, status, customerName, customerPhone, customerAddress, customerEmail } = useLocalSearchParams();
   const orderItems = selected ? JSON.parse(selected as string) : [];
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
+  const [localStatus, setLocalStatus] = useState(status);
 
-  const formatPrice = (price: number) => {
+  const formatPrice = (price: number | null | undefined) => {
+    if (typeof price !== 'number' || isNaN(price)) return '0 đ';
     return price.toLocaleString('vi-VN') + ' đ';
   };
 
@@ -36,7 +38,7 @@ export default function OrderSummaryScreen() {
     voucher: voucher,
     status: status,
     customerName: user?.name || '',
-    customerPhone: user?.phoneNumber || '',
+    customerPhone: user?.phone || '',
     customerAddress: user?.address || '',
   };
 
@@ -64,40 +66,47 @@ export default function OrderSummaryScreen() {
     loadSelectedAddress();
   }, []);
 
+  // Lấy thông tin đơn hàng từ params nếu có
+  const orderId = id || newOrder.id;
+  const orderDate = date ? new Date(date as string) : new Date(newOrder.date);
+  const orderTotal = total ? Number(total) : newOrder.total;
+  const orderQuantity = orderItems.length > 0 ? orderItems.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0) : 0;
+
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 30 }}>
       <Text style={styles.header}>Xem đơn hàng</Text>
       
-      {/* Thông tin giao hàng */}
+      {/* Thông tin giao hàng
       <View style={styles.deliverySection}>
         <Text style={styles.sectionTitle}>Thông tin giao hàng</Text>
         <View style={styles.deliveryInfo}>
           <Ionicons name="location-outline" size={20} color="#469B43" />
           <View style={styles.deliveryText}>
             <Text style={styles.deliveryName}>
-              {selectedAddress?.name || user?.name || 'Khách hàng'}
+              {selectedAddress?.name || customerName || user?.name || 'Khách hàng'}
             </Text>
             <Text style={styles.deliveryAddress}>
-              {selectedAddress?.address || user?.address || 'Chưa có địa chỉ'}
+              {selectedAddress?.address || customerAddress || user?.address || 'Chưa có địa chỉ'}
             </Text>
             <Text style={styles.deliveryPhone}>
-              SĐT: {selectedAddress?.phone || user?.phoneNumber || 'Chưa có số điện thoại'}
+              SĐT: {selectedAddress?.phone || customerPhone || user?.phone || 'Chưa có số điện thoại'}
             </Text>
           </View>
         </View>
-      </View>
+      </View> */}
 
+      {/* Thông tin người đặt */}
       <View style={styles.customerBox}>
         <Text style={styles.customerTitle}>Thông tin người đặt</Text>
-        <Text style={[styles.customerInfo, { fontWeight: 'bold' }]}>{newOrder.customerName || 'Không rõ'}</Text>
-        <Text style={styles.customerInfo}>Địa chỉ: {newOrder.customerAddress || 'Không rõ'}</Text>
-        <Text style={styles.customerInfo}>SĐT: {newOrder.customerPhone || 'Không rõ'}</Text>
+        <Text style={[styles.customerInfo, { fontWeight: 'bold' }]}>{customerName || user?.name || 'Không rõ'}</Text>
+        <Text style={styles.customerInfo}>Địa chỉ: {customerAddress || user?.address || 'Không rõ'}</Text>
+        <Text style={styles.customerInfo}>SĐT: {(customerPhone && customerPhone !== 'null' && customerPhone !== 'undefined') ? customerPhone : (user?.phone || 'Không rõ')}</Text>
       </View>
       
-      <Text style={styles.orderInfo}>Mã đơn hàng: {id}</Text>
-      <Text style={styles.orderInfo}>Ngày: {new Date(date as string).toLocaleDateString('vi-VN')}</Text>
+      <Text style={styles.orderInfo}>Mã đơn hàng: {orderId}</Text>
+      <Text style={styles.orderInfo}>Ngày: {orderDate.toString() !== 'Invalid Date' ? orderDate.toLocaleDateString('vi-VN') : 'Không rõ'}</Text>
       {voucher && <Text style={styles.orderInfo}>Mã giảm giá: {voucher}</Text>}
-      <Text style={styles.orderInfo}>Tổng tiền (lưu): {formatPrice(Number(total))}</Text>
+      <Text style={styles.orderInfo}>Tổng tiền (lưu): {formatPrice(orderTotal)}</Text>
       
       <View style={styles.itemsSection}>
         <Text style={styles.sectionTitle}>Chi tiết sản phẩm</Text>
@@ -116,14 +125,41 @@ export default function OrderSummaryScreen() {
         ))}
       </View>
 
+      {/* Control View: Trạng thái, Hủy đơn, Mua lại */}
+      <View style={{ marginTop: 20, alignItems: 'center' }}>
+        <Text style={{
+          color: localStatus === 'cancelled' ? 'red' : '#28a745',
+          fontWeight: 'bold',
+          marginBottom: 8,
+        }}>
+          {localStatus === 'cancelled' ? 'Đã hủy' : 'Đang xử lý'}
+        </Text>
+        {localStatus !== 'cancelled' && (
+          <TouchableOpacity
+            style={{ backgroundColor: '#ff4d4d', paddingVertical: 10, paddingHorizontal: 30, borderRadius: 8, marginBottom: 10 }}
+            onPress={() => setLocalStatus('cancelled')}
+          >
+            <Text style={{ color: 'white', fontWeight: 'bold' }}>Hủy đơn</Text>
+          </TouchableOpacity>
+        )}
+        {localStatus === 'cancelled' && (
+          <TouchableOpacity
+            style={{ backgroundColor: '#007bff', paddingVertical: 10, paddingHorizontal: 30, borderRadius: 8 }}
+            onPress={() => Alert.alert('Mua lại', 'Chức năng mua lại sẽ được cập nhật!')}
+          >
+            <Text style={{ color: 'white', fontWeight: 'bold' }}>Mua lại</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
       <View style={styles.summarySection}>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>Tổng số lượng:</Text>
-          <Text style={styles.summaryValue}>{totalQuantity}</Text>
+          <Text style={styles.summaryValue}>{orderQuantity}</Text>
         </View>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>Tổng tiền:</Text>
-          <Text style={styles.summaryValue}>{formatPrice(totalPrice)}</Text>
+          <Text style={styles.summaryValue}>{formatPrice(orderTotal)}</Text>
         </View>
       </View>
 
@@ -133,7 +169,7 @@ export default function OrderSummaryScreen() {
       >
         <Text style={styles.backButtonText}>Về trang chủ</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 

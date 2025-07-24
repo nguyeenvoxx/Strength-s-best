@@ -59,33 +59,26 @@ const SearchScreen: React.FC = () => {
 
   const { products, isLoading, error, fetchProducts } = useProductStore();
 
-  // Debounce search text with loading state
   useEffect(() => {
     if (searchText) {
       setIsSearching(true);
     }
-    
     const timer = setTimeout(() => {
       setDebouncedSearchText(searchText);
       setIsSearching(false);
     }, 300);
-
     return () => {
       clearTimeout(timer);
       setIsSearching(false);
     };
   }, [searchText]);
 
-  // Fetch products on component mount
   useEffect(() => {
-    fetchProducts(50); // Fetch more products for search
+    fetchProducts(50);
   }, [fetchProducts]);
 
-  // Helper function to check if price is in range
   const isPriceInRange = (priceStr: string, range: string): boolean => {
-    // Convert price string to number (remove currency symbols and parse)
-    const price = parseFloat(priceStr.replace(/[^0-9.-]+/g, '')) || 0;
-    
+    const price = parseFloat(priceStr.replace(/[^0-9.-]+/g, '')) * 1000 || 0;
     switch (range) {
       case 'under_100':
         return price < 100000;
@@ -102,38 +95,24 @@ const SearchScreen: React.FC = () => {
     }
   };
 
-  // Helper function for search matching
   const isSearchMatch = (product: Product, searchTerm: string): boolean => {
     if (!searchTerm) return true;
-    
     const searchLower = searchTerm.toLowerCase().trim();
     const productTitle = product.title.toLowerCase();
-    
-    // Search in title and sections content
-    const sectionsText = product.sections
-      ?.map(section => `${section.title} ${section.items.join(' ')}`)
-      .join(' ')
-      .toLowerCase() || '';
-    
-    return productTitle.includes(searchLower) || sectionsText.includes(searchLower);
+    return productTitle.includes(searchLower);
   };
 
-  // Memoized filtered and sorted products for better performance
   const filteredProducts = React.useMemo(() => {
     return products
       .filter(product => {
-        // Search filter - now includes description
         if (!isSearchMatch(product, debouncedSearchText)) {
           return false;
         }
-        
-        // Price range filter
         if (selectedPriceRange !== 'all') {
           if (!isPriceInRange(product.price, selectedPriceRange)) {
             return false;
           }
         }
-        
         return true;
       })
       .sort((a, b) => {
@@ -143,13 +122,13 @@ const SearchScreen: React.FC = () => {
           case 'name_desc':
             return b.title.localeCompare(a.title, 'vi', { sensitivity: 'base' });
           case 'price_asc': {
-            const priceA = parseFloat(a.price.replace(/[^0-9.-]+/g, '')) || 0;
-            const priceB = parseFloat(b.price.replace(/[^0-9.-]+/g, '')) || 0;
+            const priceA = parseFloat(a.price.replace(/[^0-9.-]+/g, '')) * 1000 || 0;
+            const priceB = parseFloat(b.price.replace(/[^0-9.-]+/g, '')) * 1000 || 0;
             return priceA - priceB;
           }
           case 'price_desc': {
-            const priceA = parseFloat(a.price.replace(/[^0-9.-]+/g, '')) || 0;
-            const priceB = parseFloat(b.price.replace(/[^0-9.-]+/g, '')) || 0;
+            const priceA = parseFloat(a.price.replace(/[^0-9.-]+/g, '')) * 1000 || 0;
+            const priceB = parseFloat(b.price.replace(/[^0-9.-]+/g, '')) * 1000 || 0;
             return priceB - priceA;
           }
           default:
@@ -178,14 +157,12 @@ const SearchScreen: React.FC = () => {
     setShowPriceFilter(false);
   };
 
-  // Clear all filters
   const handleClearFilters = () => {
     setSelectedSort('name_asc');
     setSelectedPriceRange('all');
     setSearchText('');
   };
 
-  // Get filter count for UI indication
   const getActiveFilterCount = () => {
     let count = 0;
     if (selectedSort !== 'name_asc') count++;
@@ -210,24 +187,19 @@ const SearchScreen: React.FC = () => {
   };
 
   const parsePrice = (rawPrice: string | number | undefined): number => {
-  if (typeof rawPrice === 'string') {
-    const cleaned = rawPrice.replace(/[^0-9.-]+/g, '');
-    const parsed = parseFloat(cleaned);
-    return isNaN(parsed) ? 0 : parsed;
-  }
+    if (typeof rawPrice === 'string') {
+      const cleaned = rawPrice.replace(/[^0-9.-]+/g, '');
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    if (typeof rawPrice === 'number') return rawPrice;
+    return 0;
+  };
 
-  if (typeof rawPrice === 'number') return rawPrice;
-
-  return 0;
-};
-// console.log('🛒 Sản phẩm:', products);
-
-// console.log('🧾 Thông tin chi tiết:', products);
   return (
     <SafeAreaView style={[styles.container, getPlatformContainerStyle()]}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.container}>
-        
         {/* Search Header */}
         <View style={styles.searchHeader}>
           <View style={styles.searchBar}>
@@ -246,7 +218,7 @@ const SearchScreen: React.FC = () => {
             {isSearching ? (
               <ActivityIndicator size="small" color="#4A90E2" />
             ) : searchText ? (
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => setSearchText('')}
                 accessibilityLabel="Xóa tìm kiếm"
                 accessibilityRole="button"
@@ -263,7 +235,7 @@ const SearchScreen: React.FC = () => {
             <Ionicons name="chevron-back" size={20} color="#333" />
             <Text style={styles.backButtonText}>Quay lại</Text>
           </TouchableOpacity>
-          
+
           <View style={styles.filterButtons}>
             <TouchableOpacity
               style={[styles.filterButton, showSortOptions && styles.activeFilterButton]}
@@ -274,7 +246,7 @@ const SearchScreen: React.FC = () => {
               <Ionicons name="swap-vertical" size={16} color={showSortOptions ? "#4A90E2" : "#666"} />
               <Text style={[styles.filterButtonText, showSortOptions && styles.activeFilterText]}>Sắp xếp</Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={[styles.filterButton, showPriceFilter && styles.activeFilterButton]}
               onPress={handlePriceFilterPress}
@@ -289,7 +261,7 @@ const SearchScreen: React.FC = () => {
                 </View>
               )}
             </TouchableOpacity>
-            
+
             {getActiveFilterCount() > 0 && (
               <TouchableOpacity
                 style={styles.clearFilterButton}
@@ -354,7 +326,7 @@ const SearchScreen: React.FC = () => {
           </TouchableWithoutFeedback>
         </Modal>
 
-        {/* Products Grid */}      
+        {/* Products Grid */}
         {isLoading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#4A90E2" />
@@ -365,8 +337,8 @@ const SearchScreen: React.FC = () => {
             <Ionicons name="alert-circle-outline" size={64} color="#FF6B6B" />
             <Text style={styles.emptyStateTitle}>Có lỗi xảy ra</Text>
             <Text style={styles.emptyStateSubtitle}>{error}</Text>
-            <TouchableOpacity 
-              style={styles.retryButton} 
+            <TouchableOpacity
+              style={styles.retryButton}
               onPress={() => fetchProducts(50)}
             >
               <Text style={styles.retryButtonText}>Thử lại</Text>
@@ -379,7 +351,7 @@ const SearchScreen: React.FC = () => {
               {debouncedSearchText ? 'Không tìm thấy sản phẩm' : 'Tìm kiếm sản phẩm'}
             </Text>
             <Text style={styles.emptyStateSubtitle}>
-              {debouncedSearchText 
+              {debouncedSearchText
                 ? `Không có kết quả cho "${debouncedSearchText}"`
                 : 'Nhập từ khóa để tìm kiếm sản phẩm'
               }
@@ -395,8 +367,8 @@ const SearchScreen: React.FC = () => {
                 <TrendingProductItem
                   image={item.images[0] || item.image || ''}
                   title={item.title}
-                  price={formatPrice(parsePrice(item.price))}
-                  originalPrice={getOriginalPrice(parseFloat(item.price))}
+                  price={formatPrice(parsePrice(item.priceProduct) * 1000)}
+                  originalPrice={getOriginalPrice(parsePrice(item.priceProduct) * 1000)}
                   discount="20%"
                   onPress={() => onProductPress(item._id)}
                 />

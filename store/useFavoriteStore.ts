@@ -49,8 +49,15 @@ export const useFavoriteStore = create<FavoriteState>((set) => ({
             const products: Product[] = rawFavorites
                 .filter((fav: any) => fav?.idProduct)
                 .map((fav: any) => ({
-                    ...fav.idProduct,
-                    favoriteId: fav._id, // ✅ Gắn thêm favoriteId từ API
+                    _id: fav.idProduct._id,
+                    title: fav.idProduct.title || 'Không có tên',
+                    images: fav.idProduct.images || [],
+                    image: fav.idProduct.image || '',
+                    price: fav.idProduct.price || '',
+                    priceProduct: fav.idProduct.priceProduct || 0,
+                    rating: fav.idProduct.rating || 0,
+                    sections: fav.idProduct.sections || [],
+                    favoriteId: fav._id,
                 }));
 
             set({ favorites: products });

@@ -10,23 +10,56 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import { useAuthStore } from '../store/useAuthStore';
 
-// định dạng giá tiền
-const formatPrice = (value: number) => {
+// Helper function to get price in VND
+const getPriceVND = (price: any) => {
+  const n = Number(String(price).replace(/[^0-9.-]+/g, ''));
+  return n < 1000 ? n * 1000 : n;
+};
+// định dạng giá tiền an toàn
+const formatPrice = (value: number | null | undefined) => {
+  if (typeof value !== 'number' || isNaN(value)) return '0 đ';
   return value.toLocaleString('vi-VN') + ' đ';
+};
+// Helper to safely stringify
+const safeString = (val: any) => (val === null || val === undefined ? 'Không rõ' : val.toString());
+// Helper to safely format date
+const safeDate = (val: any) => {
+  if (!val) return 'Không rõ';
+  const d = new Date(val);
+  return d.toString() === 'Invalid Date' ? 'Không rõ' : d.toLocaleDateString('vi-VN');
 };
 //khai báo kiểu dữ liệu cho đơn hàng
 const PurchasedOrdersScreen: React.FC = () => {
   const [orders, setOrders] = useState<any[]>([]);
   const router = useRouter();
+  const user = useAuthStore.getState().user;
+  const userId = user?._id || (user as any)?.id;
+  const [addresses, setAddresses] = useState([]);
 
   useEffect(() => {
     const fetchOrders = async () => {
       const data = await AsyncStorage.getItem('purchased');
-      if (data) setOrders(JSON.parse(data));
+      if (data) {
+        const allOrders = JSON.parse(data);
+        const user = useAuthStore.getState().user;
+        const userId = user?._id || (user as any)?.id;
+        setOrders(allOrders.filter((o: any) => o.userId === userId));
+      }
     };
     fetchOrders();
   }, []);
+
+  useEffect(() => {
+    const loadAddresses = async () => {
+      if (!userId) return;
+      const savedAddresses = await AsyncStorage.getItem(`userAddresses_${userId}`);
+      setAddresses(savedAddresses ? JSON.parse(savedAddresses) : []);
+    };
+    loadAddresses();
+  }, [userId]);
+
   // xử lý hủy đơn hàng
   // hiển thị cảnh báo xác nhận trước khi hủy đơn
   const handleCancel = (orderId: string) => {
@@ -60,8 +93,8 @@ const PurchasedOrdersScreen: React.FC = () => {
                   {order.items?.[0]?.name ?? 'Không rõ'}
                 </Text>
               </Text>
-              <Text style={styles.orderId}>Mã đơn: <Text style={{ fontWeight: 'bold' }}>{order.id}</Text></Text>
-              <Text style={styles.orderDate}>Ngày: {new Date(order.date).toLocaleDateString('vi-VN')}</Text>
+              <Text style={styles.orderId}>Mã đơn: <Text style={{ fontWeight: 'bold' }}>{safeString(order.id)}</Text></Text>
+              <Text style={styles.orderDate}>Ngày: {safeDate(order.date)}</Text>
               {order.voucher && (
                 <Text style={styles.voucherText}>Mã giảm giá: {order.voucher.code}</Text>
               )}
@@ -94,8 +127,8 @@ const PurchasedOrdersScreen: React.FC = () => {
                 pathname: '/order-summary',
                 params: {
                   selected: JSON.stringify(order.items),
-                  id: order.id,
-                  total: order.total.toString(), // truyền dạng chuỗi
+                  id: safeString(order.id),
+                  total: safeString(order.total), // truyền dạng chuỗi an toàn
                   date: order.date,
                   voucher: order.voucher?.code ?? '',
                   status: order.status ?? 'processing',

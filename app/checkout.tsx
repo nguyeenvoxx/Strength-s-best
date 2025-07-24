@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '../store/useAuthStore';
+import { useVoucherStore } from '../store/useVoucherStore';
+import VoucherListModal from './components/VoucherListModal';
 
 interface Address {
   id: string;
@@ -31,58 +33,83 @@ const OrderSummaryScreen: React.FC = () => {
     maxDiscount: number;
     minOrder: number;
   }>(null);
-
-  const vouchers = [
-    {
-      id: 'v1',
-      code: 'GIAM10',
-      description: 'Khuyến mãi thân thiện | giảm 10% (tối đa 5.000đ) cho chuyến từ 20.000đ',
-      date: '24/11/2025',
-      discountPercent: 10,
-      maxDiscount: 5000,
-      minOrder: 20000,
-    },
-    {
-      id: 'v2',
-      code: 'GIAM10',
-      description: 'Khuyến mãi thân thiện | giảm 10% (tối đa 5.000đ) cho chuyến từ 20.000đ',
-      date: '24/11/2025',
-      discountPercent: 10,
-      maxDiscount: 5000,
-      minOrder: 20000,
-    },
-    {
-      id: 'v3',
-      code: 'GIAM10',
-      description: 'Khuyến mãi thân thiện | giảm 10% (tối đa 5.000đ) cho chuyến từ 20.000đ',
-      date: '24/11/2025',
-      discountPercent: 10,
-      maxDiscount: 5000,
-      minOrder: 20000,
-    },
-  ];
-  const [selectedMethodId, setSelectedMethodId] = useState<string | null>('bank');
+  const { vouchers: backendVouchers, fetchVouchers, isLoading: voucherLoading, error: voucherError } = useVoucherStore();
   const router = useRouter();
   const { user } = useAuthStore();
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
+  useEffect(() => {
+    const loadAddress = async () => {
+      const userId = user?._id || (user as any)?.id;
+      if (!userId) return;
+      // Ưu tiên lấy địa chỉ đã chọn gần nhất
+      const selected = await AsyncStorage.getItem(`selectedDeliveryAddress_${userId}`);
+      if (selected) {
+        setSelectedAddress(JSON.parse(selected));
+        return;
+      }
+      // Nếu chưa có, lấy địa chỉ mặc định
+      const savedAddresses = await AsyncStorage.getItem(`userAddresses_${userId}`);
+      let addresses = savedAddresses ? JSON.parse(savedAddresses) : [];
+      if (addresses.length === 0) {
+        // Nếu chưa có địa chỉ nào, tạo địa chỉ mặc định cho user này
+        const defaultAddress: Address = {
+          id: userId,
+          name: user?.name || 'Khách hàng',
+          phone: user?.phone || (user as any)?.phoneNumber || '',
+          address: user?.address || 'Chưa có địa chỉ',
+          isDefault: true
+        };
+        addresses = [defaultAddress];
+        await AsyncStorage.setItem(`userAddresses_${userId}`, JSON.stringify(addresses));
+      }
+      const defaultAddress = addresses.find((addr: any) => addr.isDefault) || addresses[0];
+      setSelectedAddress(defaultAddress || null);
+    };
+    loadAddress();
+  }, [user?._id]);
+  const [selectedMethodId, setSelectedMethodId] = useState<string | null>('bank');
 
-  // truyền du liệu từ giỏ hàng
+  // truyền du liệu từ giỏ hàng hoặc mua ngay
   const { selected } = useLocalSearchParams();
-  const selectedItems = selected ? JSON.parse(selected as string) : [];
+  const [selectedItems, setSelectedItems] = useState<any[]>(selected ? JSON.parse(selected as string) : []);
 
+  useEffect(() => {
+    const checkBuyNow = async () => {
+      if (!selected && selectedItems.length === 0) {
+        const buyNow = await AsyncStorage.getItem('buyNowProduct');
+        if (buyNow) {
+          const product = JSON.parse(buyNow);
+          setSelectedItems([{ 
+            ...product, 
+            quantity: 1, 
+            name: product.name || product.nameProduct || product.title // Đảm bảo có trường name
+          }]);
+          await AsyncStorage.removeItem('buyNowProduct');
+        }
+      }
+    };
+    checkBuyNow();
+  }, []);
+
+  // Helper function to get price in VND
+  const getPriceVND = (price: any) => {
+    const n = Number(String(price).replace(/[^0-9.-]+/g, ''));
+    return n < 1000 ? n * 1000 : n;
+  };
+  // Tính tổng tiền sản phẩm (đảm bảo item.price là số và đúng đơn vị VND)
   const totalOrder = selectedItems.reduce(
-    (sum: number, item: any) => sum + item.price * item.quantity,
+    (sum: number, item: any) => sum + getPriceVND(item.price) * item.quantity,
     0
   );
-  const shippingFee = 30000;
-  const totalAmount = totalOrder + shippingFee;
-  // Tính toán giảm giá voucher
+  // Phí vận chuyển (nếu backend trả là 30 thì đổi thành 30 * 1000)
+  const shippingFee = 30000; // Nếu cần thì đổi thành 30 * 1000
+  // Tính toán giảm giá voucher (dùng voucher từ backend)
   const discount =
-    selectedVoucher && totalOrder >= selectedVoucher?.minOrder
+    selectedVoucher && totalOrder >= (selectedVoucher.minOrder || 0)
       ? Math.min(
-        (totalOrder * (selectedVoucher?.discountPercent || 0)) / 100,
-        selectedVoucher?.maxDiscount || 0
-      )
+          (totalOrder * (selectedVoucher.discountPercent || 0)) / 100,
+          selectedVoucher.maxDiscount || 9999999
+        )
       : 0;
   const finalTotal = totalOrder + shippingFee - discount;
 
@@ -103,7 +130,7 @@ const OrderSummaryScreen: React.FC = () => {
         const defaultAddress: Address = {
           id: '1',
           name: user?.name || 'Khách hàng',
-          phone: user?.phoneNumber || '',
+          phone: user?.phone || '',
           address: user?.address || 'Chưa có địa chỉ',
           isDefault: true
         };
@@ -129,6 +156,12 @@ const OrderSummaryScreen: React.FC = () => {
 
   const handleSelectAddress = () => {
     router.push('/select-address');
+  };
+
+  // Khi bấm nút áp dụng mã giảm giá, fetch voucher từ backend và mở modal
+  const handleApplyVoucher = async () => {
+    await fetchVouchers();
+    setVoucherModalVisible(true);
   };
 
   return (
@@ -158,15 +191,23 @@ const OrderSummaryScreen: React.FC = () => {
           <View style={styles.orderSummary}>
 
             {selectedItems.map((item: any) => (
-              <View key={item.id || item._id} style={styles.productBox}>
+              <View key={item.idProduct?._id || item._id || item.id} style={styles.productBox}>
                 <Image
-                  source={typeof item.image === 'number' ? item.image : { uri: item.image }}
+                  source={item.idProduct?.image ? { uri: `${require('../constants/config').API_CONFIG.BASE_URL}/uploads/${item.idProduct.image}` } : (item.image ? (typeof item.image === 'number' ? item.image : { uri: item.image }) : require('../assets/images/logo.png'))}
                   style={styles.productImage}
                 />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.label}>{item.name}</Text>
-                  <Text style={styles.value}>
-                    {item.price.toLocaleString()} VND x {item.quantity}
+                  <Text style={styles.label}>{item.idProduct?.nameProduct || item.name || item.title}</Text>
+                  {item.idProduct?.description || item.description ? (
+                    <Text style={{ color: '#666', marginBottom: 5 }}>
+                      {item.idProduct?.description || item.description}
+                    </Text>
+                  ) : null}
+                  <Text style={[styles.value, { color: '#469B43', fontWeight: 'bold' }]}> 
+                    {getPriceVND(item.price).toLocaleString('vi-VN')} đ
+                  </Text>
+                  <Text style={{ fontSize: 16, fontWeight: '300' }}>
+                    Số lượng: {item.quantity}
                   </Text>
                 </View>
               </View>
@@ -174,19 +215,25 @@ const OrderSummaryScreen: React.FC = () => {
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>Đặt hàng:</Text>
-            <Text style={styles.value}>{totalOrder.toLocaleString()} VND</Text>
+            <Text style={styles.value}>{totalOrder.toLocaleString('vi-VN')} đ</Text>
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>Vận chuyển:</Text>
-            <Text style={styles.value}>{shippingFee.toLocaleString()} VND</Text>
+            <Text style={styles.value}>{shippingFee.toLocaleString('vi-VN')} đ</Text>
           </View>
+          {discount > 0 && (
+            <View style={styles.row}>
+              <Text style={styles.label}>Giảm giá:</Text>
+              <Text style={[styles.value, { color: 'green' }]}>- {discount.toLocaleString('vi-VN')} đ</Text>
+            </View>
+          )}
           <View style={styles.divider} />
           <View style={styles.row}>
             <Text style={styles.totalLabel}>Tổng cộng:</Text>
-            <Text style={styles.totalValue}>{finalTotal.toLocaleString()} VND</Text>
+            <Text style={styles.totalValue}>{finalTotal.toLocaleString('vi-VN')} đ</Text>
           </View>
         </View>
-        <TouchableOpacity onPress={() => setVoucherModalVisible(true)} style={styles.voucherButton}>
+        <TouchableOpacity onPress={handleApplyVoucher} style={styles.voucherButton}>
           <Text style={styles.voucherText}>
             {selectedVoucher ? `Voucher: ${selectedVoucher.code}` : 'Áp dụng mã giảm giá'}
           </Text>
@@ -197,42 +244,25 @@ const OrderSummaryScreen: React.FC = () => {
           transparent={true}
         >
           <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Chọn mã giảm giá</Text>
-
-              {vouchers.map((voucher) => (
-                <View key={voucher.id} style={styles.voucherCard}>
-                  <Text>{voucher.description}</Text>
-                  <Text style={styles.voucherDate}>{voucher.date}</Text>
-
-                  <View style={styles.voucherActions}>
-                    <TouchableOpacity
-                      style={styles.applyButton}
-                      onPress={() => {
-                        setSelectedVoucher(voucher);
-                        setVoucherModalVisible(false);
-                      }}
-                    >
-                      <Text style={styles.applyText}>Áp dụng</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      onPress={() => {
-                        if (selectedVoucher?.id === voucher.id) {
-                          setSelectedVoucher(null);
-                        }
-                      }}
-                    >
-                      <Text style={styles.removeText}>Xoá</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))}
-
-              <TouchableOpacity onPress={() => setVoucherModalVisible(false)}>
-                <Text style={{ color: '#007bff', marginTop: 20, textAlign: 'center' }}>Đóng</Text>
-              </TouchableOpacity>
-            </View>
+            <VoucherListModal
+              vouchers={backendVouchers}
+              onApply={voucher => {
+                const v = voucher as import('../services/api').ApiVoucher;
+                setSelectedVoucher({
+                  id: v._id,
+                  code: v.code,
+                  description: v.description,
+                  discountPercent: v.discount,
+                  maxDiscount: 9999999,
+                  minOrder: 0
+                });
+                setVoucherModalVisible(false);
+              }}
+              onDelete={voucherId => {
+                // Xử lý xoá voucher nếu cần
+              }}
+              onClose={() => setVoucherModalVisible(false)}
+            />
           </View>
         </Modal>
 

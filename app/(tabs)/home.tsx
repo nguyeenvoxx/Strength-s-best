@@ -96,6 +96,21 @@ const HomeScreen: React.FC = () => {
     const shortDescription = getShortDescription(product.sections);
     const originalPrice = calculateOriginalPrice(product.price, 40);
 
+    // Đảm bảo price là số và nhân 1000
+    const numericPrice = typeof product.price === 'string'
+      ? parseFloat(product.price.replace(/[^0-9.-]+/g, ''))
+      : product.price;
+    const displayPrice = isNaN(numericPrice) || !numericPrice
+      ? 'Liên hệ'
+      : (numericPrice * 1000).toLocaleString() + ' đ';
+    // Giá gốc nếu có
+    const numericOriginalPrice = typeof originalPrice === 'string'
+      ? parseFloat(originalPrice.replace(/[^0-9.-]+/g, ''))
+      : originalPrice;
+    const displayOriginalPrice = isNaN(numericOriginalPrice) || !numericOriginalPrice
+      ? ''
+      : (numericOriginalPrice * 1000).toLocaleString() + ' đ';
+
     return {
       id: product.id || `product-${index}`,
       image: product.images && product.images[0] ? 
@@ -104,8 +119,8 @@ const HomeScreen: React.FC = () => {
           product.images[0]
         ) : require('../../assets/images_sp/dau_ca_omega.png'),
       title: product.title || 'Tên sản phẩm',
-      price: product.price || '899.000 ₫',
-      originalPrice: originalPrice,
+      price: displayPrice,
+      originalPrice: displayOriginalPrice,
       discount: '40% OFF',
       description: shortDescription,
       rating: product.rating || 5,

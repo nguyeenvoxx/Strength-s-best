@@ -176,28 +176,38 @@ const ProductListScreen: React.FC = () => {
     );
   }
 
-  const renderProduct = ({ item }: { item: any }) => (
-    <TouchableOpacity
-      style={styles.productItem}
-      onPress={() => handleProductPress(item.id)}
-    >
-      <View style={styles.productImageContainer}>
-        <Image
-          source={item.image}
-          style={styles.productImage}
-          resizeMode="contain"
-        />
-      </View>
-      <View style={styles.productInfo}>
-        <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
-        <Text style={styles.productPrice}>{item.price}</Text>
-        <TouchableOpacity style={styles.addToCartButton} onPress={() => addToCart(item.originalProduct)}>
-          <Ionicons name="add" size={16} color="#fff" style={styles.addIcon} />
-          <Text style={styles.addToCartText}>Thêm vào giỏ hàng</Text>
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
-  );
+  const renderProduct = ({ item }: { item: any }) => {
+    // Đảm bảo price là số
+    const numericPrice = typeof item.price === 'string'
+      ? parseFloat(item.price.replace(/[^0-9.-]+/g, ''))
+      : item.price;
+    return (
+      <TouchableOpacity
+        style={styles.productItem}
+        onPress={() => handleProductPress(item.id)}
+      >
+        <View style={styles.productImageContainer}>
+          <Image
+            source={item.image}
+            style={styles.productImage}
+            resizeMode="contain"
+          />
+        </View>
+        <View style={styles.productInfo}>
+          <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
+          <Text style={styles.productPrice}>
+            {isNaN(numericPrice) || !numericPrice
+              ? 'Liên hệ'
+              : (numericPrice * 1000).toLocaleString() + ' đ'}
+          </Text>
+          <TouchableOpacity style={styles.addToCartButton} onPress={() => addToCart(item.originalProduct)}>
+            <Ionicons name="add" size={16} color="#fff" style={styles.addIcon} />
+            <Text style={styles.addToCartText}>Thêm vào giỏ hàng</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const renderPagination = () => {
     const pages = [1, 2, 3, 4, 5];

@@ -78,9 +78,9 @@ export const authService = {
   },
 };
 
-export const updateProfile = async (token: string, data: { name?: string; email?: string; phoneNumber?: string }) => {
-  const res = await axios.put(
-    `${API_CONFIG.BASE_URL}/users/me`,
+export const updateProfile = async (token: string, data: { name?: string; email?: string; phoneNumber?: string; address?: string }) => {
+  const res = await axios.patch(
+    `${API_CONFIG.BASE_URL}/users/profile`,
     data,
     { headers: { Authorization: `Bearer ${token}` } }
   );

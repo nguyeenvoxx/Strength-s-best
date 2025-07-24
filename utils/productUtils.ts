@@ -50,7 +50,8 @@ export const transformApiProductToProduct = (apiProduct: ApiProduct): Product =>
 
 // Format giá tiền theo định dạng VND
 export const formatPrice = (price: number): string => {
-  return `${(price / 1000).toFixed(0)}.000 ₫`;
+  if (!price || price <= 0) return 'Liên hệ';
+  return price.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
 };
 
 // Tạo URL image đầy đủ nếu cần

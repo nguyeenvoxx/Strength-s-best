@@ -26,35 +26,27 @@ const CartScreen: React.FC = () => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
 
-  useFocusEffect(
-    useCallback(() => {
-      if (token) {
-        fetchCart(token);
+  // Khi user đổi, load lại địa chỉ giao hàng của user hiện tại
+  React.useEffect(() => {
+    const loadSelectedAddress = async () => {
+      try {
+        const userId = user?._id || (user as any)?.id;
+        if (!userId) return;
+        const savedAddresses = await AsyncStorage.getItem(`userAddresses_${userId}`);
+        if (savedAddresses) {
+          const addresses = JSON.parse(savedAddresses);
+          // Ưu tiên địa chỉ mặc định, nếu không có thì lấy đầu tiên
+          const defaultAddress = addresses.find((addr: any) => addr.isDefault) || addresses[0];
+          setSelectedAddress(defaultAddress);
+        } else {
+          setSelectedAddress(null);
+        }
+      } catch (e) {
+        setSelectedAddress(null);
       }
-      loadSelectedAddress();
-    }, [token])
-  );
-
-  const loadSelectedAddress = async () => {
-    try {
-      const savedAddress = await AsyncStorage.getItem('selectedDeliveryAddress');
-      if (savedAddress) {
-        setSelectedAddress(JSON.parse(savedAddress));
-      } else {
-        // Tạo địa chỉ mặc định từ thông tin user
-        const defaultAddress: Address = {
-          id: '1',
-          name: user?.name || 'Khách hàng',
-          phone: user?.phoneNumber || '',
-          address: user?.address || 'Chưa có địa chỉ',
-          isDefault: true
-        };
-        setSelectedAddress(defaultAddress);
-      }
-    } catch (error) {
-      console.error('Lỗi khi tải địa chỉ:', error);
-    }
-  };
+    };
+    loadSelectedAddress();
+  }, [user?._id]);
 
   const handleSelectAddress = () => {
     router.push('/select-address');
@@ -139,6 +131,12 @@ const CartScreen: React.FC = () => {
 
   const formatPrice = (price: number) => {
     return price.toLocaleString('vi-VN') + ' đ';
+  };
+
+  // Helper function to get price in VND
+  const getPriceVND = (price: any) => {
+    const n = Number(String(price).replace(/[^0-9.-]+/g, ''));
+    return n < 1000 ? n * 1000 : n;
   };
 
   if (loading) {
@@ -229,7 +227,6 @@ const CartScreen: React.FC = () => {
             Danh sách mua sắm
           </Text>
         </View>
-
         <View>
           {cartItems.map(item => (
             <View key={item._id} style={styles.cartItem}>
@@ -252,7 +249,7 @@ const CartScreen: React.FC = () => {
                   {item.idProduct.description}
                 </Text>
                 <Text style={{ fontWeight: 'bold', color: '#469B43', fontSize: 16 }}>
-                  {formatPrice(item.price)}
+                  {formatPrice(getPriceVND(item.price))}
                 </Text>
                 <View style={{ flexDirection: 'row', marginTop: 4, alignItems: 'center' }}>
                   <Text style={{ fontSize: 16, fontWeight: '300' }}>
@@ -265,7 +262,7 @@ const CartScreen: React.FC = () => {
         </View>
         <View style={{ padding: 10, marginTop: 10 }}>
           <Text>Tổng số lượng: {totalQuantity}</Text>
-          <Text style={{ fontWeight: 'bold' }}> {`Tổng tiền: ${formatPrice(totalPrice)}`}</Text></View>
+          <Text style={{ fontWeight: 'bold' }}> {`Tổng tiền: ${formatPrice(getPriceVND(totalPrice))}`}</Text></View>
         <TouchableOpacity style={styles.checkoutButton} onPress={handleCheckout}>
           <Text style={styles.textButton}>Thanh Toán</Text>
         </TouchableOpacity>

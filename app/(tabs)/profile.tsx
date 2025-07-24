@@ -20,19 +20,20 @@ const ProfileScreen: React.FC = () => {
   const [addresses, setAddresses] = useState<Address[]>([]);
 
   React.useEffect(() => {
-    loadAddresses();
-  }, []);
-
-  const loadAddresses = async () => {
-    try {
-      const savedAddresses = await AsyncStorage.getItem('userAddresses');
-      if (savedAddresses) {
-        setAddresses(JSON.parse(savedAddresses));
+    const loadAddresses = async () => { // hàm này để tải địa chỉ từ AsyncStorage
+      try {
+        const userId = user?._id || (user as any)?.id;
+        if (!userId) return;
+        const savedAddresses = await AsyncStorage.getItem(`userAddresses_${userId}`);
+        if (savedAddresses) {
+          setAddresses(JSON.parse(savedAddresses));
+        }
+      } catch (error) {
+        console.error('Lỗi khi tải địa chỉ:', error);
       }
-    } catch (error) {
-      console.error('Lỗi khi tải địa chỉ:', error);
-    }
-  };
+    };
+    loadAddresses();
+  }, [user?._id]);
 
   const handleLogout = () => {
     Alert.alert(
@@ -76,7 +77,7 @@ const ProfileScreen: React.FC = () => {
         <View style={styles.userInfo}>
           <Text style={styles.userName}>{user?.name || 'Khách hàng'}</Text>
           <Text style={styles.userEmail}>{user?.email || 'Chưa có email'}</Text>
-          <Text style={styles.userPhone}>{user?.phone || 'Chưa có số điện thoại'}</Text>
+          <Text style={styles.userPhone}>{user?.phone || (user as any)?.phoneNumber || 'Chưa có số điện thoại'}</Text>
         </View>
       </View>
       {/* Nút Đăng nhập/Đăng ký cho khách hàng */}

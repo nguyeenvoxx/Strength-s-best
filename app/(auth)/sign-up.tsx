@@ -24,7 +24,7 @@ const SignUpScreen: React.FC = () => {
     return emailRegex.test(email);
   };
 
-  const handleSignUp = async () => {
+  const handleSignUp = async (data: any) => {
     // Clear previous errors
     clearError();
 
@@ -71,12 +71,7 @@ const SignUpScreen: React.FC = () => {
     }
 
     try {
-      await signup({ 
-        name: fullName.trim(), 
-        email: email.trim().toLowerCase(), 
-        password,
-        phone: phone.trim()
-      });
+      await signup(data);
       // Sau khi đăng ký thành công, chuyển đến trang xác thực email
       router.push('./email-verification');
     } catch (error: any) {
@@ -85,6 +80,17 @@ const SignUpScreen: React.FC = () => {
       Alert.alert('Đăng ký thất bại', errorMessage);
     }
   };
+
+  // Thay vì gọi handleSignUp trực tiếp, tạo hàm mới để truyền phone đã chuẩn hóa
+  const handleSignUpWithPhone = (phoneToSave: string) => {
+    handleSignUp({ 
+      name: fullName.trim(), 
+      email: email.trim().toLowerCase(), 
+      password,
+      phone: phoneToSave
+    });
+  };
+
   return (
     <View style={[styles.container, getPlatformContainerStyle()]}>
       <Image source={require('../../assets/images/logo.png')} style={styles.logo} />
@@ -170,7 +176,16 @@ const SignUpScreen: React.FC = () => {
       </View>
       <TouchableOpacity 
         style={[styles.signUpButton, isLoading && styles.buttonDisabled]} 
-        onPress={handleSignUp}
+        onPress={() => {
+          // Tự động thêm +84 nếu cần khi đăng ký
+          let phoneToSave = phone.trim();
+          if (phoneToSave.startsWith('0') && phoneToSave.length === 10) {
+            phoneToSave = '+84' + phoneToSave.slice(1);
+          } else if (!phoneToSave.startsWith('+84')) {
+            // Nếu không có +84 và không bắt đầu bằng 0, giữ nguyên
+          }
+          handleSignUpWithPhone(phoneToSave);
+        }}
         disabled={isLoading}
       >
         {isLoading ? (

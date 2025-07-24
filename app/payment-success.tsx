@@ -42,6 +42,7 @@ const PaymentSuccessScreen: React.FC = () => {
             0
           ),
           date: new Date().toISOString(),
+          userId: (useAuthStore.getState().user?._id || (useAuthStore.getState().user as any)?.id),
         };
 
         setOrderId(orderIdGenerated);
@@ -110,21 +111,6 @@ const PaymentSuccessScreen: React.FC = () => {
         <Text style={styles.message}>
           Cảm ơn bạn đã đặt hàng. Đơn hàng của bạn đang được xử lý và sẽ được giao sớm nhất.
         </Text>
-
-        {/* Thông tin giao hàng */}
-        {selectedAddress && (
-          <View style={styles.deliverySection}>
-            <Text style={styles.sectionTitle}>Thông tin giao hàng</Text>
-            <View style={styles.deliveryInfo}>
-              <Ionicons name="location-outline" size={20} color="#469B43" />
-              <View style={styles.deliveryText}>
-                <Text style={styles.deliveryName}>{selectedAddress.name}</Text>
-                <Text style={styles.deliveryAddress}>{selectedAddress.address}</Text>
-                <Text style={styles.deliveryPhone}>SĐT: {selectedAddress.phone}</Text>
-              </View>
-            </View>
-          </View>
-        )}
 
         <View style={styles.orderInfo}>
           <Text style={styles.orderLabel}>Mã đơn hàng:</Text>

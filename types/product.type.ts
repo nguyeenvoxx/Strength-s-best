@@ -14,7 +14,11 @@ export interface Product {
   rating: number
   price: string
   priceProduct: number
-  sections: ProductSection[]  
+  sections: ProductSection[]
+  idCategory?: string | {
+    _id: string;
+    nameCategory: string;
+  }
   favoriteId?: string
 }
 
@@ -26,6 +30,10 @@ export enum ProductSectionType {
   CONTRAINDICATIONS = "Chống chỉ định và cảnh cáo",
   SIDE_EFFECTS = "Tác dụng phụ",
   PHYSICAL_DESCRIPTION = "Mô tả vật lý"
+}
+
+export interface User {
+  avatar?: string;
 }
 
 export default {};

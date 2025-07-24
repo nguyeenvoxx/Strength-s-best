@@ -84,7 +84,7 @@ const SignInScreen: React.FC = () => {
             {rememberMe && <View style={styles.checkboxInner} />}
           </View>
         </TouchableOpacity>
-        <Text style={styles.optionText}>Ghi nhớ đăng nhập</Text>
+        <Text style={styles.optionText}>Bạn có nhớ</Text>
         <TouchableOpacity onPress={() => router.push('./forgot-password')}>
           <Text style={styles.forgotText}>Quên mật khẩu</Text>
         </TouchableOpacity>

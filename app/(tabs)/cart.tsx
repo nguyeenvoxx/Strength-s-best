@@ -10,6 +10,8 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useCartStore } from '../../store/useCartStore';
 import { API_CONFIG } from '../../constants/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTheme } from '../../store/ThemeContext';
+import { LightColors, DarkColors } from '../../constants/Colors';
 
 interface Address {
   id: string;
@@ -25,6 +27,9 @@ const CartScreen: React.FC = () => {
   const { cart, items: cartItems, loading, error, fetchCart, addToCart, removeFromCart, clearCart, clearError } = useCartStore();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const colors = isDark ? DarkColors : LightColors;
 
   // Khi user đổi, load lại địa chỉ giao hàng của user hiện tại
   React.useEffect(() => {
@@ -141,7 +146,7 @@ const CartScreen: React.FC = () => {
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Giỏ hàng</Text>
         </View>
@@ -154,7 +159,7 @@ const CartScreen: React.FC = () => {
 
   if (error) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Giỏ hàng</Text>
         </View>
@@ -170,7 +175,7 @@ const CartScreen: React.FC = () => {
 
   if (cartItems.length === 0) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Giỏ hàng</Text>
         </View>
@@ -193,7 +198,7 @@ const CartScreen: React.FC = () => {
   }
 
   return (
-    <View style={[styles.container, getPlatformContainerStyle()]}>
+    <View style={[styles.container, getPlatformContainerStyle(), { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Giỏ hàng ({cartItems.length})</Text>
         <TouchableOpacity onPress={handleClearCart} style={styles.clearButton}>

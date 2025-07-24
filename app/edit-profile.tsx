@@ -3,8 +3,10 @@ import React, { useState } from 'react';
 import { getPlatformContainerStyle } from '../utils/platformUtils';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
 import { useAuthStore } from '../store/useAuthStore';
-import { changePassword, updateProfile } from '../services/authApi';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { updateProfile } from '../services/authApi';
+import { useTheme } from '../store/ThemeContext';
+import { LightColors, DarkColors } from '../constants/Colors';
+import * as ImagePicker from 'expo-image-picker';
 
 const EditProfileScreen: React.FC = () => {
   const user = useAuthStore((state) => state.user);
@@ -23,9 +25,14 @@ const EditProfileScreen: React.FC = () => {
   }
   const [phone, setPhone] = useState(user?.phone || (user as any)?.phoneNumber || '');
   const [phoneError, setPhoneError] = useState('');
+  // Thêm dòng này để fix lỗi avatarUrl chưa khai báo
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || '');
   // Xóa trường address vì API không hỗ trợ
   // const [address, setAddress] = useState(user?.address || '');
   const router = useRouter();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const colors = isDark ? DarkColors : LightColors;
 
   // Khi mở màn hình, lấy địa chỉ đầu tiên từ AsyncStorage nếu có
   React.useEffect(() => {
@@ -67,8 +74,25 @@ const EditProfileScreen: React.FC = () => {
     router.push('./change-password');
   };
 
+  const handlePickAvatar = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permissionResult.granted) {
+      Alert.alert('Bạn cần cho phép truy cập thư viện ảnh!');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setAvatarUrl(result.assets[0].uri);
+    }
+  };
+
   return (
-    <View style={[styles.container, getPlatformContainerStyle()]}>
+    <View style={[styles.container, getPlatformContainerStyle(), { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={styles.headerContainer}>
         <TouchableOpacity onPress={() => router.back()}>
@@ -80,8 +104,8 @@ const EditProfileScreen: React.FC = () => {
       {/* Profile Avatar */}
       <View style={styles.profileHeader}>
         <View style={styles.avatarContainer}>
-          <Image source={require('../assets/images/avatar.png')} style={styles.avatar} />
-          <TouchableOpacity style={styles.cameraButton}>
+          <Image source={avatarUrl ? { uri: avatarUrl } : require('../assets/images/avatar.png')} style={styles.avatar} />
+          <TouchableOpacity style={[styles.cameraButton, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={handlePickAvatar}>
             <Image source={require('../assets/images/camera.png')} style={styles.cameraImage} />
           </TouchableOpacity>
         </View>
@@ -104,6 +128,7 @@ const EditProfileScreen: React.FC = () => {
           onChangeText={setEmail}
           placeholder="Nhập email của bạn"
           keyboardType="email-address"
+          placeholderTextColor={colors.textSecondary}
         />
         <Text style={styles.label}>Số điện thoại</Text>
         <TextInput
@@ -112,7 +137,7 @@ const EditProfileScreen: React.FC = () => {
           onChangeText={setPhone}
           placeholder="Nhập số điện thoại của bạn"
           keyboardType="phone-pad"
-          maxLength={13}
+          
         />
 
 
@@ -126,19 +151,19 @@ const EditProfileScreen: React.FC = () => {
         {phoneError ? <Text style={{ color: 'red', marginBottom: 8 }}>{phoneError}</Text> : null}
 
         {/* Change Password */}
-        <TouchableOpacity style={styles.passwordRow} onPress={handleChangePassword}>
-          <Text style={styles.passwordLabel}>Đổi mật khẩu</Text>
-          <Text style={styles.arrow}>{'>'}</Text>
+        <TouchableOpacity style={[styles.passwordRow, { borderBottomColor: colors.border }]} onPress={handleChangePassword}>
+          <Text style={[styles.passwordLabel, { color: colors.text }]}>Đổi mật khẩu</Text>
+          <Text style={[styles.arrow, { color: colors.textSecondary }]}>{'>'}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Buttons */}
       <View style={styles.buttons}>
-        <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
-          <Text style={styles.cancelButtonText}>Hủy</Text>
+        <TouchableOpacity style={[styles.cancelButton, { backgroundColor: colors.accent, borderColor: colors.border }]} onPress={handleCancel}>
+          <Text style={[styles.cancelButtonText, { color: '#fff' }]}>Hủy</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>Lưu</Text>
+        <TouchableOpacity style={[styles.saveButton, { backgroundColor: isDark ? colors.text : '#404040' }]} onPress={handleSave}>
+          <Text style={[styles.saveButtonText, { color: isDark ? colors.background : '#fff' }]}>Lưu</Text>
         </TouchableOpacity>
       </View>
     </View>

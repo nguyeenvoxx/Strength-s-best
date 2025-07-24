@@ -78,7 +78,7 @@ export const authService = {
   },
 };
 
-export const updateProfile = async (token: string, data: { name?: string; email?: string; phoneNumber?: string; address?: string }) => {
+export const updateProfile = async (token: string, data: { name?: string; email?: string; phoneNumber?: string; address?: string; avatarUrl?: string }) => {
   const res = await axios.patch(
     `${API_CONFIG.BASE_URL}/users/profile`,
     data,

@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/useAuthStore';
 import { getPlatformContainerStyle } from '../../utils/platformUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTheme } from '../../store/ThemeContext';
+import { LightColors, DarkColors } from '../../constants/Colors';
 
 interface Address {
   id: string;
@@ -18,6 +20,9 @@ const ProfileScreen: React.FC = () => {
   const router = useRouter();
   const { user, logout } = useAuthStore();
   const [addresses, setAddresses] = useState<Address[]>([]);
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === 'dark';
+  const colors = isDark ? DarkColors : LightColors;
 
   React.useEffect(() => {
     const loadAddresses = async () => { // hàm này để tải địa chỉ từ AsyncStorage
@@ -41,7 +46,14 @@ const ProfileScreen: React.FC = () => {
       'Bạn có chắc muốn đăng xuất?',
       [
         { text: 'Hủy', style: 'cancel' },
-        { text: 'Đăng xuất', style: 'destructive', onPress: logout }
+        {
+          text: 'Đăng xuất',
+          style: 'destructive',
+          onPress: () => {
+            logout();
+            router.replace('/(auth)/sign-in');
+          }
+        }
       ]
     );
   };
@@ -63,16 +75,26 @@ const ProfileScreen: React.FC = () => {
   };
 
   return (
-    <View style={[styles.container, getPlatformContainerStyle()]}>
+    <View style={[styles.container, getPlatformContainerStyle(), { backgroundColor: colors.card }]}>
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Tài khoản</Text>
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Tài khoản</Text>
       </View>
 
       {/* User Info */}
-      <View style={styles.userSection}>
+      <View style={[styles.userSection, { backgroundColor: colors.card }]}>
         <View style={styles.avatarContainer}>
-          <Ionicons name="person-circle" size={80} color="#469B43" />
+          {user?.avatarUrl ? (
+            <Image
+              source={{ uri: user.avatarUrl }}
+              style={{ width: 80, height: 80, borderRadius: 40 }}
+            />
+          ) : (
+            <Image
+              source={require('../../assets/images/avatar.png')}
+              style={{ width: 80, height: 80, borderRadius: 40 }}
+            />
+          )}
         </View>
         <View style={styles.userInfo}>
           <Text style={styles.userName}>{user?.name || 'Khách hàng'}</Text>
@@ -99,76 +121,91 @@ const ProfileScreen: React.FC = () => {
       )}
 
       {/* Menu Items */}
-      <ScrollView style={styles.menuContainer} showsVerticalScrollIndicator={false}>
-        <View style={styles.menuSection}>
-          <Text style={styles.sectionTitle}>Thông tin cá nhân</Text>
-          
-          <TouchableOpacity style={styles.menuItem} onPress={handleEditProfile}>
+      <ScrollView style={[styles.menuContainer, { backgroundColor: colors.card }]} showsVerticalScrollIndicator={false}>
+        <View style={[styles.menuSection, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Thông tin cá nhân</Text>
+
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/edit-profile')}>
             <View style={styles.menuItemLeft}>
-              <Ionicons name="person-outline" size={24} color="#469B43" />
-              <Text style={styles.menuItemText}>Chỉnh sửa thông tin</Text>
+              <Ionicons name="person-outline" size={24} color={colors.accent} />
+              <Text style={[styles.menuItemText, { color: colors.text }]}>Chỉnh sửa thông tin</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+            <Ionicons name="chevron-forward" size={20} color={isDark ? '#fff' : '#ccc'} />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.menuItem} onPress={handleChangePassword}>
             <View style={styles.menuItemLeft}>
-              <Ionicons name="lock-closed-outline" size={24} color="#469B43" />
-              <Text style={styles.menuItemText}>Đổi mật khẩu</Text>
+              <Ionicons name="lock-closed-outline" size={24} color={colors.accent} />
+              <Text style={[styles.menuItemText, { color: colors.text }]}>Đổi mật khẩu</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+            <Ionicons name="chevron-forward" size={20} color={isDark ? '#fff' : '#ccc'} />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.menuSection}>
-          <Text style={styles.sectionTitle}>Địa chỉ giao hàng</Text>
-          
+        <View style={[styles.menuSection, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Địa chỉ giao hàng</Text>
+
           <TouchableOpacity style={styles.menuItem} onPress={handleManageAddresses}>
             <View style={styles.menuItemLeft}>
-              <Ionicons name="location-outline" size={24} color="#469B43" />
-              <Text style={styles.menuItemText}>Quản lý địa chỉ</Text>
+              <Ionicons name="location-outline" size={24} color={colors.accent} />
+              <Text style={[styles.menuItemText, { color: colors.text }]}>Quản lý địa chỉ</Text>
             </View>
             <View style={styles.menuItemRight}>
-              <Text style={styles.addressCount}>{addresses.length} địa chỉ</Text>
-              <Ionicons name="chevron-forward" size={20} color="#ccc" />
+              <Text style={[styles.addressCount, { color: colors.accent }]}>{addresses.length} địa chỉ</Text>
+              <Ionicons name="chevron-forward" size={20} color={isDark ? '#fff' : '#ccc'} />
             </View>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.menuSection}>
-          <Text style={styles.sectionTitle}>Đơn hàng</Text>
-          
+        <View style={[styles.menuSection, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Đơn hàng</Text>
+
           <TouchableOpacity style={styles.menuItem} onPress={handleViewOrders}>
             <View style={styles.menuItemLeft}>
-              <Ionicons name="receipt-outline" size={24} color="#469B43" />
-              <Text style={styles.menuItemText}>Đơn hàng đã mua</Text>
+              <Ionicons name="receipt-outline" size={24} color={colors.accent} />
+              <Text style={[styles.menuItemText, { color: colors.text }]}>Đơn hàng đã mua</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+            <Ionicons name="chevron-forward" size={20} color={isDark ? '#fff' : '#ccc'} />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.menuSection}>
-          <Text style={styles.sectionTitle}>Hỗ trợ</Text>
-          
+        <View style={[styles.menuSection, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Giao diện sáng/tối</Text>
+          <TouchableOpacity style={styles.menuItem} onPress={toggleTheme}>
+            <Ionicons name={isDark ? 'sunny' : 'moon-sharp'} size={24} color={colors.accent} />
+            <Text style={[styles.menuItemText, { color: colors.text }]}>{isDark ? 'Giao diện sáng' : 'Giao diện tối'}</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={[styles.menuSection, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Hỗ trợ</Text>
+
           <TouchableOpacity style={styles.menuItem}>
             <View style={styles.menuItemLeft}>
-              <Ionicons name="help-circle-outline" size={24} color="#469B43" />
-              <Text style={styles.menuItemText}>Trợ giúp</Text>
+              <Ionicons name="help-circle-outline" size={24} color={colors.accent} />
+              <Text style={[styles.menuItemText, { color: colors.text }]}>Trợ giúp</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+            <Ionicons name="chevron-forward" size={20} color={isDark ? '#fff' : '#ccc'} />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.menuItem}>
             <View style={styles.menuItemLeft}>
-              <Ionicons name="information-circle-outline" size={24} color="#469B43" />
-              <Text style={styles.menuItemText}>Về ứng dụng</Text>
+              <Ionicons name="information-circle-outline" size={24} color={colors.accent} />
+              <Text style={[styles.menuItemText, { color: colors.text }]}>Về ứng dụng</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+            <Ionicons name="chevron-forward" size={20} color={isDark ? '#fff' : '#ccc'} />
           </TouchableOpacity>
         </View>
       </ScrollView>
 
       {/* Logout Button */}
+      {/* <View style={[styles.logoutContainer, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
+        <TouchableOpacity style={[styles.logoutButton, { backgroundColor: colors.danger }]} onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={24} color="#fff" />
+          <Text style={styles.logoutText}>Đăng xuất</Text>
+        </TouchableOpacity>
+     </View> */}
+     
       {user && user._id && (
         <View style={styles.logoutContainer}>
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>

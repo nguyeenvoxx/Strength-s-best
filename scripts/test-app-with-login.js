@@ -2,7 +2,7 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 
-const BASE_URL = 'http://172.22.192.1:3000/api/v1';
+const BASE_URL = 'http://192.168.1.138:3000/api/v1';
 const TOKEN_FILE = path.join(__dirname, 'test-token.txt');
 
 async function testAppWithLogin() {

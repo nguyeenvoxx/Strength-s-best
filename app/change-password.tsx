@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { getPlatformContainerStyle } from '../utils/platformUtils';
 import { useAuthStore } from '../store/useAuthStore';
 import { changePassword } from '../services/authApi';
+import { useTheme } from '../store/ThemeContext';
+import { LightColors, DarkColors } from '../constants/Colors';
 
 const ChangePasswordScreen: React.FC = () => {
   const router = useRouter();
@@ -15,6 +17,9 @@ const ChangePasswordScreen: React.FC = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const token = useAuthStore((state) => state.token);
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const colors = isDark ? DarkColors : LightColors;
 
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
@@ -57,7 +62,7 @@ const ChangePasswordScreen: React.FC = () => {
   };
 
   return (
-    <View style={[styles.container, getPlatformContainerStyle()]}>
+    <View style={[styles.container, getPlatformContainerStyle(), { backgroundColor: colors.background }]}>
       {/* Header */}
       {/* <View style={styles.headerContainer}>
         <TouchableOpacity onPress={() => router.back()}>
@@ -71,13 +76,14 @@ const ChangePasswordScreen: React.FC = () => {
       <View style={styles.formContainer}>
         {/* Current Password */}
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Mật khẩu hiện tại</Text>
-          <View style={styles.passwordContainer}>
+          <Text style={[styles.label, { color: colors.text }]}>Mật khẩu hiện tại</Text>
+          <View style={[styles.passwordContainer, { borderBottomColor: colors.border }] }>
             <TextInput 
-              style={styles.passwordInput}
+              style={[styles.passwordInput, { color: colors.text }]} 
               value={currentPassword}
               onChangeText={setCurrentPassword}
               placeholder="Nhập mật khẩu hiện tại"
+              placeholderTextColor={colors.textSecondary}
               secureTextEntry={!showCurrentPassword}
             />
             <TouchableOpacity 
@@ -87,7 +93,7 @@ const ChangePasswordScreen: React.FC = () => {
               <Ionicons 
                 name={showCurrentPassword ? "eye-off" : "eye"} 
                 size={20} 
-                color="#666" 
+                color={colors.textSecondary} 
               />
             </TouchableOpacity>
           </View>
@@ -95,13 +101,14 @@ const ChangePasswordScreen: React.FC = () => {
 
         {/* New Password */}
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Mật khẩu mới</Text>
-          <View style={styles.passwordContainer}>
+          <Text style={[styles.label, { color: colors.text }]}>Mật khẩu mới</Text>
+          <View style={[styles.passwordContainer, { borderBottomColor: colors.border }] }>
             <TextInput 
-              style={styles.passwordInput}
+              style={[styles.passwordInput, { color: colors.text }]} 
               value={newPassword}
               onChangeText={setNewPassword}
               placeholder="Nhập mật khẩu mới"
+              placeholderTextColor={colors.textSecondary}
               secureTextEntry={!showNewPassword}
             />
             <TouchableOpacity 
@@ -111,7 +118,7 @@ const ChangePasswordScreen: React.FC = () => {
               <Ionicons 
                 name={showNewPassword ? "eye-off" : "eye"} 
                 size={20} 
-                color="#666" 
+                color={colors.textSecondary} 
               />
             </TouchableOpacity>
           </View>
@@ -119,13 +126,14 @@ const ChangePasswordScreen: React.FC = () => {
 
         {/* Confirm Password */}
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Xác nhận mật khẩu mới</Text>
-          <View style={styles.passwordContainer}>
+          <Text style={[styles.label, { color: colors.text }]}>Xác nhận mật khẩu mới</Text>
+          <View style={[styles.passwordContainer, { borderBottomColor: colors.border }] }>
             <TextInput 
-              style={styles.passwordInput}
+              style={[styles.passwordInput, { color: colors.text }]} 
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               placeholder="Nhập lại mật khẩu mới"
+              placeholderTextColor={colors.textSecondary}
               secureTextEntry={!showConfirmPassword}
             />
             <TouchableOpacity 
@@ -135,28 +143,28 @@ const ChangePasswordScreen: React.FC = () => {
               <Ionicons 
                 name={showConfirmPassword ? "eye-off" : "eye"} 
                 size={20} 
-                color="#666" 
+                color={colors.textSecondary} 
               />
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Password Requirements */}
-        <View style={styles.requirementsContainer}>
-          <Text style={styles.requirementsTitle}>Yêu cầu mật khẩu:</Text>
-          <Text style={styles.requirement}>• Ít nhất 6 ký tự</Text>
-          <Text style={styles.requirement}>• Bao gồm chữ và số</Text>
-          <Text style={styles.requirement}>• Khác với mật khẩu hiện tại</Text>
+        <View style={[styles.requirementsContainer, { backgroundColor: colors.card }] }>
+          <Text style={[styles.requirementsTitle, { color: colors.text }]}>Yêu cầu mật khẩu:</Text>
+          <Text style={[styles.requirement, { color: colors.textSecondary }]}>• Ít nhất 6 ký tự</Text>
+          <Text style={[styles.requirement, { color: colors.textSecondary }]}>• Bao gồm chữ và số</Text>
+          <Text style={[styles.requirement, { color: colors.textSecondary }]}>• Khác với mật khẩu hiện tại</Text>
         </View>
       </View>
 
       {/* Buttons */}
       <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
-          <Text style={styles.cancelButtonText}>Hủy</Text>
+        <TouchableOpacity style={[styles.cancelButton, { backgroundColor: colors.accent, borderColor: colors.border }]} onPress={handleCancel}>
+          <Text style={[styles.cancelButtonText, { color: '#fff' }]}>Hủy</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.saveButton} onPress={handleChangePassword}>
-          <Text style={styles.saveButtonText}>Đổi mật khẩu</Text>
+        <TouchableOpacity style={[styles.saveButton, { backgroundColor: isDark ? colors.text : '#404040' }]} onPress={handleChangePassword}>
+          <Text style={[styles.saveButtonText, { color: isDark ? colors.background : '#fff' }]}>Đổi mật khẩu</Text>
         </TouchableOpacity>
       </View>
     </View>

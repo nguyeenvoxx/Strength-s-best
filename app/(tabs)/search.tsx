@@ -202,9 +202,6 @@ const SearchScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.container, getPlatformContainerStyle()]}>
-      <StatusBar barStyle="dark-content" />
-      <View style={styles.container}>
     <SafeAreaView style={[styles.container, getPlatformContainerStyle(), { backgroundColor: colors.background }]}> 
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.container, { backgroundColor: colors.background }]}> 
@@ -344,14 +341,9 @@ const SearchScreen: React.FC = () => {
         ) : error ? (
           <View style={styles.emptyStateContainer}>
             <Ionicons name="alert-circle-outline" size={64} color="#FF6B6B" />
-            <Text style={styles.emptyStateTitle}>Có lỗi xảy ra</Text>
-            <Text style={styles.emptyStateSubtitle}>{error}</Text>
-            <TouchableOpacity
-              style={styles.retryButton}
-            <Ionicons name="alert-circle-outline" size={64} color={colors.danger} />
             <Text style={[styles.emptyStateTitle, { color: colors.text }]}>Có lỗi xảy ra</Text>
             <Text style={[styles.emptyStateSubtitle, { color: colors.textSecondary }]}>{error}</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.retryButton, { backgroundColor: colors.accent }]} 
               onPress={() => fetchProducts(50)}
             >
@@ -364,8 +356,6 @@ const SearchScreen: React.FC = () => {
             <Text style={[styles.emptyStateTitle, { color: colors.text }]}> 
               {debouncedSearchText ? 'Không tìm thấy sản phẩm' : 'Tìm kiếm sản phẩm'}
             </Text>
-            <Text style={styles.emptyStateSubtitle}>
-              {debouncedSearchText
             <Text style={[styles.emptyStateSubtitle, { color: colors.textSecondary }]}> 
               {debouncedSearchText 
                 ? `Không có kết quả cho "${debouncedSearchText}"`
@@ -597,7 +587,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-  }
+  },
 });
 
 export default SearchScreen;

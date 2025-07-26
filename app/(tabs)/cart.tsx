@@ -182,7 +182,7 @@ const CartScreen: React.FC = () => {
 
         <View style={styles.emptyCart}>
           <Ionicons name="cart-outline" size={80} color="#469B43" />
-          <Text style={styles.emptyTitle}>Giỏ hàng trống</Text>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>Giỏ hàng trống</Text>
           <Text style={styles.emptySubtitle}>
             Thêm sản phẩm vào giỏ hàng để bắt đầu mua sắm
           </Text>
@@ -422,7 +422,6 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
     marginTop: 20,
     marginBottom: 10,
   },

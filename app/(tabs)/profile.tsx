@@ -97,9 +97,9 @@ const ProfileScreen: React.FC = () => {
           )}
         </View>
         <View style={styles.userInfo}>
-          <Text style={styles.userName}>{user?.name || 'Khách hàng'}</Text>
-          <Text style={styles.userEmail}>{user?.email || 'Chưa có email'}</Text>
-          <Text style={styles.userPhone}>{user?.phone || (user as any)?.phoneNumber || 'Chưa có số điện thoại'}</Text>
+          <Text style={[styles.userName, { color: colors.text }]}>{user?.name || 'Khách hàng'}</Text>
+          <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{user?.email || 'Chưa có email'}</Text>
+          <Text style={[styles.userPhone, { color: colors.textSecondary }]}>{user?.phone || (user as any)?.phoneNumber || 'Chưa có số điện thoại'}</Text>
         </View>
       </View>
       {/* Nút Đăng nhập/Đăng ký cho khách hàng */}
@@ -207,7 +207,7 @@ const ProfileScreen: React.FC = () => {
      </View> */}
      
       {user && user._id && (
-        <View style={styles.logoutContainer}>
+        <View style={[styles.logoutContainer, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={24} color="#fff" />
             <Text style={styles.logoutText}>Đăng xuất</Text>
@@ -252,17 +252,14 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
     marginBottom: 4,
   },
   userEmail: {
     fontSize: 14,
-    color: '#666',
     marginBottom: 2,
   },
   userPhone: {
     fontSize: 14,
-    color: '#666',
   },
   menuContainer: {
     flex: 1,
@@ -317,12 +314,10 @@ const styles = StyleSheet.create({
   },
   logoutContainer: {
     padding: 16,
-    backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
   },
   logoutButton: {
-    backgroundColor: '#ff4444',
+    backgroundColor: '#7ED957',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

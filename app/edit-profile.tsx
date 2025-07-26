@@ -96,9 +96,9 @@ const EditProfileScreen: React.FC = () => {
       {/* Header */}
       <View style={styles.headerContainer}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.backButton}>‹</Text>
+          <Text style={[styles.backButton, { color: colors.text }]}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.header}>Chỉnh sửa hồ sơ</Text>
+        <Text style={[styles.header, { color: colors.text }]}>Chỉnh sửa hồ sơ</Text>
         <View style={styles.placeholder} />
       </View>
       {/* Profile Avatar */}
@@ -113,40 +113,41 @@ const EditProfileScreen: React.FC = () => {
 
       {/* Form */}
       <View style={styles.formContainer}>
-        <Text style={styles.label}>Tên người dùng</Text>
+        <Text style={[styles.label, { color: colors.text }]}>Tên người dùng</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { color: colors.text, borderBottomColor: colors.border }]}
           value={name}
           onChangeText={setName}
           placeholder="Nhập tên của bạn"
+          placeholderTextColor={colors.textSecondary}
         />
 
-        <Text style={styles.label}>Email</Text>
+        <Text style={[styles.label, { color: colors.text }]}>Email</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { color: colors.text, borderBottomColor: colors.border }]}
           value={email}
           onChangeText={setEmail}
           placeholder="Nhập email của bạn"
           keyboardType="email-address"
           placeholderTextColor={colors.textSecondary}
         />
-        <Text style={styles.label}>Số điện thoại</Text>
+        <Text style={[styles.label, { color: colors.text }]}>Số điện thoại</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { color: colors.text, borderBottomColor: colors.border }]}
           value={phone}
           onChangeText={setPhone}
           placeholder="Nhập số điện thoại của bạn"
           keyboardType="phone-pad"
-          
+          placeholderTextColor={colors.textSecondary}
         />
 
-
-        <Text style={styles.label}>Địa chỉ</Text>
+        <Text style={[styles.label, { color: colors.text }]}>Địa chỉ</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { color: colors.text, borderBottomColor: colors.border }]}
           value={address}
           onChangeText={setAddress}
           placeholder="Nhập địa chỉ của bạn"
+          placeholderTextColor={colors.textSecondary}
         />
         {phoneError ? <Text style={{ color: 'red', marginBottom: 8 }}>{phoneError}</Text> : null}
 
@@ -185,13 +186,11 @@ const styles = StyleSheet.create({
   },
   backButton: {
     fontSize: 24,
-    color: '#333',
     fontWeight: 'bold',
   },
   header: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
   },
   placeholder: {
     width: 24,
@@ -229,15 +228,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 8,
     fontWeight: '600',
-    color: '#333',
   },
   input: {
     borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
     paddingVertical: 12,
     marginBottom: 24,
     fontSize: 16,
-    color: '#333',
   },
   passwordRow: {
     flexDirection: 'row',
@@ -250,11 +246,9 @@ const styles = StyleSheet.create({
   },
   passwordLabel: {
     fontSize: 16,
-    color: '#333',
   },
   arrow: {
     fontSize: 18,
-    color: '#666',
   },
   buttons: {
     flexDirection: 'row',

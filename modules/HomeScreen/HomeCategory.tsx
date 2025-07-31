@@ -84,6 +84,10 @@ const HomeCategory: React.FC<HomeCategoryProps> = ({ onCategoryPress }) => {
     fetchCategories();
   }, [fetchCategories]);
 
+  useEffect(() => {
+    console.log('apiCategories', apiCategories);
+  }, [apiCategories]);
+
   if (isLoading) {
     return (
       <View style={styles.container}>

@@ -142,4 +142,44 @@ export const productApi = {
   },
 };
 
+// Category API services
+export const categoryApi = {
+  // Lấy tất cả danh mục
+  getCategories: async (): Promise<ApiResponse<{ categories: ApiCategory[] }>> => {
+    const response = await api.get('/categories');
+    return response.data;
+  },
+
+  // Lấy danh mục theo ID
+  getCategory: async (id: string): Promise<ApiResponse<{ category: ApiCategory }>> => {
+    const response = await api.get(`/categories/${id}`);
+    return response.data;
+  },
+
+  // Tạo danh mục mới (admin)
+  createCategory: async (categoryData: {
+    nameCategory: string;
+  }): Promise<ApiResponse<{ category: ApiCategory }>> => {
+    const response = await api.post('/categories', categoryData);
+    return response.data;
+  },
+
+  // Cập nhật danh mục (admin)
+  updateCategory: async (
+    id: string,
+    categoryData: Partial<{
+      nameCategory: string;
+    }>
+  ): Promise<ApiResponse<{ category: ApiCategory }>> => {
+    const response = await api.patch(`/categories/${id}`, categoryData);
+    return response.data;
+  },
+
+  // Xóa danh mục (admin)
+  deleteCategory: async (id: string): Promise<ApiResponse<null>> => {
+    const response = await api.delete(`/categories/${id}`);
+    return response.data;
+  },
+};
+
 export default api;

@@ -82,8 +82,9 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.card }]}>
-      <View style={[styles.header, { backgroundColor: colors.card }]}>
+    <View style={[styles.container, { backgroundColor: colors.card }]}>
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.card }]}>
+        <View style={[styles.header, { backgroundColor: colors.card }]}>
         {/* Menu Icon */}        
         <TouchableOpacity 
           style={[styles.iconButton, { backgroundColor: isDark ? '#181818' : '#fff' }]}
@@ -189,11 +190,11 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
                           style={styles.menuItem} 
                           onPress={() => {
                             handleCloseModal();
-                            router.push('/edit-profile');
+                            router.push('/rewards');
                           }}
                         >
-                          <Ionicons name="person-outline" size={24} color={colors.accent} />
-                          <Text style={[styles.menuItemText, { color: colors.text }]}>Hồ sơ cá nhân</Text>
+                          <Ionicons name="gift-outline" size={24} color={colors.accent} />
+                          <Text style={[styles.menuItemText, { color: colors.text }]}>Quà tặng</Text>
                           <Ionicons name="chevron-forward" size={20} color={isDark ? '#fff' : '#ccc'} />
                         </TouchableOpacity>
 
@@ -333,13 +334,18 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
           </View>
         </TouchableWithoutFeedback>
       </Modal>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#FFFFFF',
+  },
+  safeArea: {
+    backgroundColor: '#FFFFFF',
+    paddingTop: 20
   },
   header: {
     flexDirection: 'row',

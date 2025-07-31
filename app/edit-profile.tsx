@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { getPlatformContainerStyle } from '../utils/platformUtils';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
 import { useAuthStore } from '../store/useAuthStore';
-import { updateProfile } from '../services/authApi';
+import { updateProfile, uploadAvatar } from '../services/authApi';
 import { useTheme } from '../store/ThemeContext';
 import { LightColors, DarkColors } from '../constants/Colors';
 import * as ImagePicker from 'expo-image-picker';
@@ -52,8 +52,28 @@ const EditProfileScreen: React.FC = () => {
       return;
     }
     try {
-      // Không truyền address vào updateProfile vì API không nhận
-      const res = await updateProfile(token, { name, email, phoneNumber: phoneToSave, address });
+      let finalAvatarUrl = avatarUrl;
+      
+      // Nếu có avatar mới (không phải từ server), upload lên server trước
+      if (avatarUrl && avatarUrl.startsWith('file://') || avatarUrl.startsWith('content://')) {
+        try {
+          const uploadRes = await uploadAvatar(token, avatarUrl);
+          finalAvatarUrl = uploadRes.data.imageUrl;
+        } catch (uploadErr: any) {
+          console.log('Upload avatar error:', uploadErr?.response?.data || uploadErr?.message || uploadErr);
+          Alert.alert('Lỗi', 'Không thể upload ảnh. Vui lòng thử lại.');
+          return;
+        }
+      }
+      
+      // Gửi avatarUrl cùng với các thông tin khác
+      const res = await updateProfile(token, { 
+        name, 
+        email, 
+        phoneNumber: phoneToSave, 
+        address,
+        avatarUrl: finalAvatarUrl 
+      });
       setUser(res.data.user);
       Alert.alert('Thành công', 'Thông tin đã được cập nhật', [
         {

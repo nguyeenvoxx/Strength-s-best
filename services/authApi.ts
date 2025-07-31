@@ -87,6 +87,27 @@ export const updateProfile = async (token: string, data: { name?: string; email?
   return res.data;
 };
 
+export const uploadAvatar = async (token: string, imageUri: string) => {
+  const formData = new FormData();
+  formData.append('avatar', {
+    uri: imageUri,
+    type: 'image/jpeg',
+    name: 'avatar.jpg'
+  } as any);
+
+  const res = await axios.post(
+    `${API_CONFIG.BASE_URL}/users/upload-avatar`,
+    formData,
+    { 
+      headers: { 
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data'
+      } 
+    }
+  );
+  return res.data;
+};
+
 export const changePassword = async (token: string, currentPassword: string, newPassword: string) => {
   const res = await axios.post(
     `${API_CONFIG.BASE_URL}/users/change-password`, 

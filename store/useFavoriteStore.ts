@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import axios from 'axios';
 import { Product } from '../types/product.type';
-
-const BASE_URL = 'http://192.168.100.28:3000/api/v1';
+import { API_CONFIG } from '../constants/config';
 
 interface FavoriteState {
     favorites: Product[];
@@ -21,7 +20,7 @@ export const useFavoriteStore = create<FavoriteState>((set) => ({
       return;
     }
 
-    await axios.post(`${BASE_URL}/favorites`, {
+    await axios.post(`${API_CONFIG.BASE_URL}/favorites`, {
       idProduct: product._id,
     }, {
       headers: {
@@ -38,7 +37,7 @@ export const useFavoriteStore = create<FavoriteState>((set) => ({
 },
     fetchFavorites: async (token) => {
         try {
-            const res = await axios.get(`${BASE_URL}/favorites`, {
+            const res = await axios.get(`${API_CONFIG.BASE_URL}/favorites`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 }
@@ -68,7 +67,7 @@ export const useFavoriteStore = create<FavoriteState>((set) => ({
     },
     removeFromFavorites: async (favoriteId: string, token: string) => {
         try {
-            await axios.delete(`${BASE_URL}/favorites/${favoriteId}`, {
+            await axios.delete(`${API_CONFIG.BASE_URL}/favorites/${favoriteId}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
 

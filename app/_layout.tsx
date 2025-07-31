@@ -23,6 +23,7 @@ export default function RootLayout() {
       <Stack.Screen name="edit-address" options={{ title: 'Chỉnh sửa địa chỉ', headerShown: false }} />
       <Stack.Screen name="about" options={{ title: 'Về chúng tôi', headerShown: false }} />
       <Stack.Screen name="help" options={{ title: 'Trợ giúp', headerShown: false }} />
+      <Stack.Screen name="rewards" options={{ title: 'Điểm thưởng', headerShown: false }} />
     </Stack>
     </ThemeProvider>
   );

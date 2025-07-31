@@ -18,7 +18,7 @@ const ProductListScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Predefined icons and colors for categories (same as HomeCategory)
+  // Predefined icons for categories
   const categoryIcons: { [key: string]: keyof typeof Ionicons.glyphMap } = {
     'Vitamin & Khoáng chất': 'nutrition',
     'Bột Protein': 'fitness',
@@ -27,13 +27,8 @@ const ProductListScreen: React.FC = () => {
     'Dinh dưỡng thể thao': 'barbell',
   };
 
-  const categoryColors: { [key: string]: string } = {
-    'Vitamin & Khoáng chất': '#FF6B6B',
-    'Bột Protein': '#4ECDC4',
-    'Thực phẩm bổ sung năng lượng': '#45B7D1',
-    'Thực phẩm chức năng': '#FFA07A',
-    'Dinh dưỡng thể thao': '#98D8C8',
-  };
+  // Single green color for all categories
+  const categoryColor = '#4CAF50';
 
   // Load products and categories when component mounts
   useEffect(() => {
@@ -128,7 +123,7 @@ const ProductListScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
         <View style={styles.loginPromptContainer}>
-          <Ionicons name="lock-closed-outline" size={48} color="#007bff" />
+                     <Ionicons name="lock-closed-outline" size={48} color="#4CAF50" />
           <Text style={styles.loginPromptTitle}>Đăng nhập để xem sản phẩm</Text>
           <Text style={styles.loginPromptText}>Vui lòng đăng nhập để khám phá các sản phẩm tuyệt vời của chúng tôi</Text>
           <TouchableOpacity style={styles.loginButton} onPress={() => router.push('/(auth)/sign-in')}>
@@ -151,10 +146,10 @@ const ProductListScreen: React.FC = () => {
             <Ionicons name="search" size={24} color="#333" />
           </TouchableOpacity>
         </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007bff" />
-          <Text style={styles.loadingText}>Đang tải...</Text>
-        </View>
+                 <View style={styles.loadingContainer}>
+           <ActivityIndicator size="large" color="#4CAF50" />
+           <Text style={styles.loadingText}>Đang tải...</Text>
+         </View>
       </View>
     );
   }
@@ -242,14 +237,14 @@ const ProductListScreen: React.FC = () => {
           <TouchableOpacity
             style={[
               styles.tabChip,
-              activeTab === 'all' && { backgroundColor: '#007bff' }
+              activeTab === 'all' && { backgroundColor: categoryColor }
             ]}
             onPress={() => setActiveTab('all')}
           >
             <Ionicons 
               name="grid" 
               size={16} 
-              color={activeTab === 'all' ? '#fff' : '#007bff'} 
+              color={activeTab === 'all' ? '#fff' : categoryColor} 
               style={styles.tabIcon}
             />
             <Text style={[
@@ -263,21 +258,20 @@ const ProductListScreen: React.FC = () => {
           {/* Category Tabs */}
           {categories.map(category => {
             const icon = categoryIcons[category.nameCategory] || 'nutrition';
-            const color = categoryColors[category.nameCategory] || '#FF6B6B';
             
             return (
               <TouchableOpacity
                 key={category._id}
                 style={[
                   styles.tabChip,
-                  activeTab === category._id && { backgroundColor: color }
+                  activeTab === category._id && { backgroundColor: categoryColor }
                 ]}
                 onPress={() => setActiveTab(category._id)}
               >
                 <Ionicons 
                   name={icon} 
                   size={16} 
-                  color={activeTab === category._id ? '#fff' : color} 
+                  color={activeTab === category._id ? '#fff' : categoryColor} 
                   style={styles.tabIcon}
                 />
                 <Text style={[
@@ -432,14 +426,14 @@ const styles = StyleSheet.create({
   productPrice: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#007bff',
+    color: '#4CAF50',
     marginBottom: 10,
   },
   addToCartButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#007bff',
+    backgroundColor: '#4CAF50',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
@@ -471,8 +465,8 @@ const styles = StyleSheet.create({
     borderColor: '#e9ecef',
   },
   activePageButton: {
-    backgroundColor: '#007bff',
-    borderColor: '#007bff',
+    backgroundColor: '#4CAF50',
+    borderColor: '#4CAF50',
   },
   pageText: {
     fontSize: 14,
@@ -512,7 +506,7 @@ const styles = StyleSheet.create({
   },
   footerLinkText: {
     fontSize: 14,
-    color: '#007bff',
+    color: '#4CAF50',
     fontWeight: '500',
   },
   footerCopyright: {
@@ -542,7 +536,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   loginButton: {
-    backgroundColor: '#007bff',
+    backgroundColor: '#4CAF50',
     paddingHorizontal: 30,
     paddingVertical: 12,
     borderRadius: 25,

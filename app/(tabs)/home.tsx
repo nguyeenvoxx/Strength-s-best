@@ -14,13 +14,12 @@ import {
   ActivityIndicator,
   Alert
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { LIST_PRODUCT_SAMPLE } from '../../constants/app.constant';
+import { Ionicons } from '@expo/vector-icons';    
 import { Product } from '../../types/product.type';
 import { useProductStore } from '../../store/useProductStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useCategoryStore } from '../../store/useCategoryStore';
-import { transformApiProductToProduct, getShortDescription, calculateOriginalPrice, getFullImageUrl } from '../../utils/productUtils';
+import { getShortDescription, calculateOriginalPrice, getFullImageUrl, getProductImages } from '../../utils/productUtils';
 import { getPlatformContainerStyle } from '../../utils/platformUtils';
 import DailyDealItem from '../../modules/HomeScreen/DailyDealItem';
 import TrendingProductItem from '../../modules/HomeScreen/TrendingProductItem';
@@ -55,19 +54,15 @@ const HomeScreen: React.FC = () => {
     { uri: 'https://cdnv2.tgdd.vn/mwg-static/common/News/1579137/20-06-22-06-flash-sale-cuoi-tuan-tung-bung-thumb.jpg' },
     { uri: 'https://cdnv2.tgdd.vn/mwg-static/common/News/1578821/13-06-15-06-mung-ngay-cua-cha-cham-cha-vui-khoe-thumb.jpg' },
   ];
+  
   const handleViewAllProducts = () => {
     router.push('../products');
   };
 
-  // Load products using store
+  // Load products using store - không cần đăng nhập
   const loadProducts = async () => {
-    if (!isAuthenticated) {
-      console.log('User not authenticated, skipping product fetch');
-      return;
-    }
-    
     try {
-      await fetchProducts(20);
+      await fetchProducts({ limit: 100 });
     } catch (error: any) {
       console.error('Error fetching products:', error);
       // Store will handle error state, no need to crash the app
@@ -83,67 +78,69 @@ const HomeScreen: React.FC = () => {
     router.push('/(auth)/sign-in');
   };
 
-  function getShortDescription(sections: any[]): string {
-    if (!sections || !Array.isArray(sections)) return 'Mô tả ngắn sản phẩm';
-    const overview = sections.find(s => s && s.title === 'Tổng quan');
-    if (overview && overview.items && Array.isArray(overview.items) && overview.items.length > 0) {
-      const item = overview.items[0];
-      return (typeof item === 'string' && item) ? item : 'Mô tả ngắn sản phẩm';
-    }
-    if (sections[0] && sections[0].items && Array.isArray(sections[0].items) && sections[0].items.length > 0) {
-      const item = sections[0].items[0];
-      return (typeof item === 'string' && item) ? item : 'Mô tả ngắn sản phẩm';
-    }
-    return 'Mô tả ngắn sản phẩm';
-  }
+  const formatPrice = (price: number) => {
+    return price.toLocaleString('vi-VN');
+  };
 
-  // Debug logs moved to useEffect to prevent spam
-  
-  const saleProducts = products.map((product: Product, index: number) => {
-    const shortDescription = getShortDescription(product.sections);
-    const originalPrice = calculateOriginalPrice(product.price, 40);
+  const getOriginalPrice = (price: number) => {
+    // Giá gốc là giá từ API (không cần tăng)
+    return formatPrice(price);
+  };
 
-    // Đảm bảo price là số và nhân 1000
-    const numericPrice = typeof product.price === 'string'
-      ? parseFloat(product.price.replace(/[^0-9.-]+/g, ''))
-      : product.price;
-    const displayPrice = isNaN(numericPrice) || !numericPrice
-      ? 'Liên hệ'
-      : (numericPrice * 1000).toLocaleString() + ' đ';
-    // Giá gốc nếu có
-    const numericOriginalPrice = typeof originalPrice === 'string'
-      ? parseFloat(originalPrice.replace(/[^0-9.-]+/g, ''))
-      : originalPrice;
-    const displayOriginalPrice = isNaN(numericOriginalPrice) || !numericOriginalPrice
-      ? ''
-      : (numericOriginalPrice * 1000).toLocaleString() + ' đ';
+  // Lọc sản phẩm có giảm giá (chỉ 10 sản phẩm đầu tiên)
+  const discountedProducts = products
+    .filter((product: Product) => product.discount && product.discount > 0)
+    .slice(0, 10);
+
+  // Hoàn thiện tính năng ưu đãi đặc biệt
+  const saleProducts = discountedProducts.map((product: Product, index: number) => {
+    const shortDescription = getShortDescription(product);
+    
+    // Tính toán giá thực tế từ API
+    const numericPrice = typeof product.priceProduct === 'number' 
+      ? product.priceProduct 
+      : typeof product.priceProduct === 'string'
+        ? parseFloat(String(product.priceProduct).replace(/[^0-9.-]+/g, ''))
+        : 0;
+    
+    // Giá gốc là giá từ API
+    const originalPrice = numericPrice;
+    
+    // Tính giá khuyến mãi dựa trên discount từ backend
+    const discountPercent = product.discount || 0;
+    const salePrice = originalPrice * (1 - discountPercent / 100);
+    
+    // Chỉ hiển thị giá khuyến mãi nếu có discount
+    const displayPrice = discountPercent > 0 
+      ? salePrice.toLocaleString('vi-VN') + ' ₫'
+      : originalPrice.toLocaleString('vi-VN') + ' ₫';
+      
+    const displayOriginalPrice = discountPercent > 0 && originalPrice > 0 
+      ? originalPrice.toLocaleString('vi-VN') + ' ₫'
+      : '';
+
+    // Sử dụng utility function để xử lý hình ảnh
+    const productImages = getProductImages(product);
+    const imageUrl = productImages.length > 0 ? productImages[0] : null;
 
     return {
-      id: product.id || `product-${index}`,
-      image: product.images && product.images[0] ? 
-        (typeof product.images[0] === 'string' && product.images[0].startsWith('http') ? 
-          { uri: product.images[0] } : 
-          product.images[0]
-        ) : require('../../assets/images_sp/dau_ca_omega.png'),
+      id: product._id || `product-${index}`,
+      image: imageUrl,
       title: product.title || 'Tên sản phẩm',
       price: displayPrice,
       originalPrice: displayOriginalPrice,
-      discount: '40% OFF',
+      discount: discountPercent > 0 ? `${discountPercent}% OFF` : '',
       description: shortDescription,
       rating: product.rating || 5,
       reviewCount: 123,
       onPress: () => {
-        console.log('🔍 DEBUG: onPress được gọi cho sản phẩm:', product.id, product.title);
-        console.log('🔍 DEBUG: Điều hướng đến:', `/product/${product.id}`);
-        router.push(`/product/${product.id}`);
+        router.push(`/product/${product._id}`);
       },
     };
   });
 
   useEffect(() => {
     // Load products khi component mount
-    console.log('🔍 DEBUG Home: Component mounted, isAuthenticated =', isAuthenticated);
-    console.log('🔍 DEBUG Home: Initial products.length =', products.length);
     loadProducts();
     
     const interval = setInterval(() => {
@@ -176,8 +173,7 @@ const HomeScreen: React.FC = () => {
   // Log products changes only when they actually change
   useEffect(() => {
     if (products.length > 0) {
-      console.log('🔍 DEBUG Home: Products updated, length =', products.length);
-      console.log('🔍 DEBUG Home: Products =', products.slice(0, 2)); // Only log first 2 products to avoid spam
+      // Products loaded successfully
     }
   }, [products]);
 
@@ -286,14 +282,10 @@ const HomeScreen: React.FC = () => {
           onViewAll={handleViewAllProducts}
         />
         
-        {!isAuthenticated ? (
-          <View style={styles.loginPromptContainer}>
-            <Ionicons name="lock-closed-outline" size={48} color="#FF6B35" />
-            <Text style={[styles.loginPromptTitle, { color: colors.text }]}>Đăng nhập để xem sản phẩm</Text>
-            <Text style={[styles.loginPromptText, { color: colors.textSecondary }]}>Vui lòng đăng nhập để khám phá các sản phẩm tuyệt vời của chúng tôi</Text>
-            <TouchableOpacity style={styles.loginButton} onPress={handleLoginPress}>
-              <Text style={[styles.loginButtonText, { color: colors.text }]}>Đăng nhập ngay</Text>
-            </TouchableOpacity>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.accent} />
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Đang tải sản phẩm...</Text>
           </View>
         ) : (
           <View>
@@ -309,73 +301,9 @@ const HomeScreen: React.FC = () => {
                   description={item.description}
                   price={item.price}
                   originalPrice={item.originalPrice}
-                  discount={'40% OFF'}
+                  discount={item.discount}
                   rating={5}
                   reviewCount={123}
-                  onPress={item.onPress}
-                />
-            )}
-             contentContainerStyle={styles.productList}
-           />
-         </View>
-        )}
-
-        <View style={[styles.specialOfferSection, { backgroundColor: colors.card }]}>
-          <Image
-            source={require('../../assets/images/special_offer.png')}
-            style={styles.specialOfferImage}
-          />
-          <View style={styles.specialOfferContent}>
-            <Text style={[styles.specialOfferTitle, { color: colors.text }]}>Ưu đãi đặc biệt</Text>
-            <Text style={[styles.specialOfferDescription, { color: colors.textSecondary }]}>Chúng tôi đảm bảo bạn nhận được ưu đãi mà bạn cần với giá tốt nhất.</Text>
-          </View>
-        </View>
-
-        <View style={[styles.healthComboSection, { backgroundColor: colors.card }]}>
-          <Image
-            source={require('../../assets/images/combo.png')}
-            style={styles.healthComboImage}
-          />
-          <View style={styles.healthComboContent}>
-            <Text style={[styles.healthComboTitle, { color: colors.text }]}>Combo sức khỏe</Text>
-            <Text style={[styles.healthComboDescription, { color: colors.textSecondary }]}>Có cơ hội nhận thưởng</Text>
-            <TouchableOpacity style={styles.viewAllButtonSmall} onPress={handleViewAllProducts}>
-              <Text style={[styles.viewAllTextSmall, { color: colors.accent }]}>Xem tất cả</Text>
-              <Ionicons name="chevron-forward" size={14} color={colors.accent} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <HeaderSection
-          title="Sản phẩm thịnh hành"
-          remainingTime="22h 55m 20s còn lại"
-          color="#FF3B30"
-          onViewAll={handleViewAllProducts}
-        />
-
-        {!isAuthenticated ? (
-          <View style={styles.loginPromptContainer}>
-            <Ionicons name="trending-up-outline" size={48} color="#FF3B30" />
-            <Text style={[styles.loginPromptTitle, { color: colors.text }]}>Khám phá sản phẩm thịnh hành</Text>
-            <Text style={[styles.loginPromptText, { color: colors.textSecondary }]}>Đăng nhập để xem các sản phẩm được yêu thích nhất</Text>
-            <TouchableOpacity style={[styles.loginButton, {backgroundColor: '#FF3B30'}]} onPress={handleLoginPress}>
-              <Text style={[styles.loginButtonText, { color: colors.text }]}>Đăng nhập ngay</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View>
-            <FlatList
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              data={saleProducts.slice().reverse()}
-              keyExtractor={(_, index) => `trending-product-${index}`}
-              renderItem={({ item }) => (
-                <TrendingProductItem
-                  image={item.image}
-                  title={item.title}
-                  price={item.price}
-                  originalPrice={item.originalPrice}
-                  discount={'40% OFF'}
                   onPress={item.onPress}
                 />
               )}
@@ -384,22 +312,83 @@ const HomeScreen: React.FC = () => {
           </View>
         )}
 
-        <View style={styles.newArrivalsCard}>
-          <Image
-            source={require('../../assets/images/hot_sale.png')}
-            style={styles.newArrivalsImage}
-          />
-          <View style={styles.newArrivalsContent}>
-            <View style={{ flex: 1, marginRight: 10 }}>
-              <Text style={[styles.newArrivalsTitle, { color: colors.text }]}>Hàng mới về</Text>
-              <Text style={[styles.newArrivalsDescription, { color: colors.textSecondary }]}>Tươi mát ngày hè, khỏe mạnh từ bên trong</Text>
+        {products.length > 0 && (
+          <View style={[styles.specialOfferSection, { backgroundColor: colors.card }]}>
+            <Image
+              source={getProductImages(products[0])[0] || require('../../assets/images/special_offer.png')}
+              style={styles.specialOfferImage}
+              resizeMode="cover"
+            />
+            <View style={styles.specialOfferContent}>
+              <Text style={[styles.specialOfferTitle, { color: colors.text }]}>Ưu đãi đặc biệt</Text>
+              <Text style={[styles.specialOfferDescription, { color: colors.textSecondary }]}>Chúng tôi đảm bảo bạn nhận được ưu đãi mà bạn cần với giá tốt nhất.</Text>
             </View>
-            <TouchableOpacity style={styles.viewAllButtonRed} onPress={handleViewAllProducts}>
-              <Text style={[styles.viewAllTextRed, { color: colors.text }]}>Xem tất cả</Text>
-              <Ionicons name="chevron-forward" size={14} color={colors.text} />
-            </TouchableOpacity>
           </View>
+        )}
+
+        {products.length > 1 && (
+          <View style={[styles.healthComboSection, { backgroundColor: colors.card }]}>
+            <Image
+              source={getProductImages(products[1])[0] || require('../../assets/images/combo.png')}
+              style={styles.healthComboImage}
+              resizeMode="cover"
+            />
+            <View style={styles.healthComboContent}>
+              <Text style={[styles.healthComboTitle, { color: colors.text }]}>Combo sức khỏe</Text>
+              <Text style={[styles.healthComboDescription, { color: colors.textSecondary }]}>Có cơ hội nhận thưởng</Text>
+              <TouchableOpacity style={styles.viewAllButtonSmall} onPress={handleViewAllProducts}>
+                <Text style={[styles.viewAllTextSmall, { color: colors.accent }]}>Xem tất cả</Text>
+                <Ionicons name="chevron-forward" size={14} color={colors.accent} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        <HeaderSection
+          title="Sản phẩm thịnh hành"
+          color="#FF3B30"
+          onViewAll={handleViewAllProducts}
+        />
+
+        <View>
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            data={saleProducts.slice().reverse()}
+            keyExtractor={(_, index) => `trending-product-${index}`}
+            renderItem={({ item }) => (
+              <TrendingProductItem
+                image={item.image}
+                title={item.title}
+                price={item.price}
+                originalPrice={item.originalPrice}
+                discount={item.discount}
+                onPress={item.onPress}
+              />
+            )}
+            contentContainerStyle={styles.productList}
+          />
         </View>
+
+        {products.length > 2 && (
+          <View style={styles.newArrivalsCard}>
+            <Image
+              source={getProductImages(products[2])[0] || require('../../assets/images_sp/dau_ca_omega.png')}
+              style={styles.newArrivalsImage}
+              resizeMode="cover"
+            />
+            <View style={styles.newArrivalsContent}>
+              <View style={{ flex: 1, marginRight: 10 }}>
+                <Text style={[styles.newArrivalsTitle, { color: colors.text }]}>Hàng mới về</Text>
+                <Text style={[styles.newArrivalsDescription, { color: colors.textSecondary }]}>Tươi mát ngày hè, khỏe mạnh từ bên trong</Text>
+              </View>
+              <TouchableOpacity style={styles.viewAllButtonRed} onPress={handleViewAllProducts}>
+                <Text style={[styles.viewAllTextRed, { color: colors.text }]}>Xem tất cả</Text>
+                <Ionicons name="chevron-forward" size={14} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         <View>
           <View style={styles.newsHeader}>
@@ -628,7 +617,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#999',
   },
-
   categoriesContainer: {
     paddingHorizontal: 20,
     marginBottom: 20,
@@ -794,6 +782,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  loadingContainer: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
   },
 });
 

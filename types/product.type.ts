@@ -2,7 +2,12 @@
 
 export interface ProductSection {
   title: string
-  items: string[]
+  items: SectionItem[]
+}
+
+export interface SectionItem {
+  text: string
+  hasBullet: boolean
 }
 
 export interface Product {
@@ -12,12 +17,19 @@ export interface Product {
   image?: string
   images: string[]
   rating: number
-  price: string
+  price: number
   priceProduct: number
+  discount?: number // Thêm trường discount
+  quantity?: number // Thêm trường quantity
+  status?: string // Thêm trường status
   sections: ProductSection[]
   idCategory?: string | {
     _id: string;
     nameCategory: string;
+  }
+  idBrand?: string | {
+    _id: string;
+    nameBrand: string;
   }
   favoriteId?: string
 }

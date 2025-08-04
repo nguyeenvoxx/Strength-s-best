@@ -4,19 +4,21 @@ import { Ionicons } from '@expo/vector-icons';
 
 interface HeaderSectionProps {
   title: string;
-  remainingTime: string;
   color: string;
   onViewAll?: () => void;
+  remainingTime?: string;
 }
 
-const HeaderSection: React.FC<HeaderSectionProps> = ({ title, remainingTime, color, onViewAll }) => (
+const HeaderSection: React.FC<HeaderSectionProps> = ({ title, color, onViewAll, remainingTime }) => (
   <View style={[styles.sectionHeader, { backgroundColor: color }]}>
     <View style={styles.sectionTitleContainer}>
       <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.timerContainer}>
-        <Ionicons name="time-outline" size={12} color="#FFFFFF" />
-        <Text style={styles.timerText}>{remainingTime}</Text>
-      </View>
+      {remainingTime && (
+        <View style={styles.timerContainer}>
+          <Ionicons name="time-outline" size={12} color="#FFFFFF" />
+          <Text style={styles.timerText}>{remainingTime}</Text>
+        </View>
+      )}
     </View>
     <TouchableOpacity style={styles.viewAllButton} onPress={onViewAll}>
       <Text style={styles.viewAllText}>Xem tất cả</Text>

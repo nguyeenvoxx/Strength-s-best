@@ -7,10 +7,13 @@ import {
   Image,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../store/useAuthStore';
+import { getUserOrders, Order } from '../services/orderApi';
+import { API_CONFIG } from '../constants/config';
 
 // Helper function to get price in VND
 const getPriceVND = (price: any) => {
@@ -32,24 +35,33 @@ const safeDate = (val: any) => {
 };
 //khai báo kiểu dữ liệu cho đơn hàng
 const PurchasedOrdersScreen: React.FC = () => {
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const user = useAuthStore.getState().user;
+  const { user, token } = useAuthStore();
   const userId = user?._id || (user as any)?.id;
   const [addresses, setAddresses] = useState([]);
 
   useEffect(() => {
     const fetchOrders = async () => {
-      const data = await AsyncStorage.getItem('purchased');
-      if (data) {
-        const allOrders = JSON.parse(data);
-        const user = useAuthStore.getState().user;
-        const userId = user?._id || (user as any)?.id;
-        setOrders(allOrders.filter((o: any) => o.userId === userId));
+      if (!token || !userId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const userOrders = await getUserOrders(token);
+        setOrders(userOrders);
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+        Alert.alert('Lỗi', 'Không thể tải danh sách đơn hàng');
+      } finally {
+        setLoading(false);
       }
     };
     fetchOrders();
-  }, []);
+  }, [token, userId]);
 
   useEffect(() => {
     const loadAddresses = async () => {
@@ -62,61 +74,103 @@ const PurchasedOrdersScreen: React.FC = () => {
 
   // xử lý hủy đơn hàng
   // hiển thị cảnh báo xác nhận trước khi hủy đơn
-  const handleCancel = (orderId: string) => {
+  const handleCancel = async (orderId: string) => {
     Alert.alert('Xác nhận', 'Bạn có chắc chắn muốn hủy đơn này?', [
       { text: 'Không' },
       {
         text: 'Có',
         onPress: async () => {
-          const updated = orders.map((o) =>
-            o.id === orderId ? { ...o, status: 'cancelled' } : o
-          );
-          await AsyncStorage.setItem('purchased', JSON.stringify(updated));
-          setOrders(updated);
-          Alert.alert('Đã hủy đơn hàng thành công.');
+          try {
+            const response = await fetch(`${API_CONFIG.BASE_URL}/orders/${orderId}/cancel`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              }
+            });
+
+            if (response.ok) {
+              Alert.alert('Thành công', 'Đơn hàng đã được hủy');
+              // Refresh danh sách đơn hàng
+              if (token) {
+                const userOrders = await getUserOrders(token);
+                setOrders(userOrders);
+              }
+            } else {
+              const errorData = await response.json();
+              Alert.alert('Lỗi', errorData.message || 'Không thể hủy đơn hàng');
+            }
+          } catch (error) {
+            console.error('Error canceling order:', error);
+            Alert.alert('Lỗi', 'Không thể hủy đơn hàng');
+          }
         },
       },
     ]);
   };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#FF6B35" />
+        <Text style={styles.loadingText}>Đang tải đơn hàng...</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Đơn hàng đã mua</Text>
 
       {orders.map((order) => (
-        <View key={order.id} style={styles.card}>
+        <View key={order._id} style={styles.card}>
           <View style={styles.orderHeader}>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14 }}>
-                Sản phẩm:{' '}
-                <Text style={{ fontWeight: 'bold', fontSize: 16 }}>
-                  {order.items?.[0]?.name ?? 'Không rõ'}
+              <Text style={styles.orderDate}>Ngày: {safeDate(order.createdAt)}</Text>
+              <Text style={styles.orderId}>Mã đơn: <Text style={{ fontWeight: 'bold' }}>{order._id}</Text></Text>
+              
+              {/* Hiển thị tên sản phẩm đầu tiên và số lượng */}
+              {order.items && order.items.length > 0 && (
+                <Text style={{ fontSize: 14, marginTop: 4 }}>
+                  <Text style={{ fontWeight: 'bold' }}>
+                    {(order.items[0].productId as any)?.nameProduct || 'Sản phẩm'}
+                  </Text>
+                  {order.items.length > 1 && (
+                    <Text style={{ color: '#666' }}> và {order.items.length - 1} sản phẩm khác</Text>
+                  )}
+                </Text>
+              )}
+              
+              <Text style={{ fontSize: 14, marginTop: 4 }}>
+                Số lượng: <Text style={{ fontWeight: 'bold' }}>
+                  {order.items?.reduce((total, item) => total + item.quantity, 0) ?? 0}
                 </Text>
               </Text>
-              <Text style={styles.orderId}>Mã đơn: <Text style={{ fontWeight: 'bold' }}>{safeString(order.id)}</Text></Text>
-              <Text style={styles.orderDate}>Ngày: {safeDate(order.date)}</Text>
-              {order.voucher && (
-                <Text style={styles.voucherText}>Mã giảm giá: {order.voucher.code}</Text>
+              
+              {(order.voucherDiscount || 0) > 0 && (
+                <Text style={styles.voucherText}>Giảm giá: {formatPrice(order.voucherDiscount || 0)}</Text>
               )}
-              <Text>Số lượng: {order.items?.[0]?.quantity ?? 0}</Text>
-              <Text style={styles.total}>Tổng thanh toán: {formatPrice(order.total)}</Text>
+              
+              <Text style={styles.total}>Tổng thanh toán: {formatPrice(order.totalAmount)}</Text>
+              <Text style={styles.paymentMethod}>
+                Phương thức: {order.paymentMethod === 'cod' ? 'Thanh toán khi nhận hàng' : 'Thanh toán online'}
+              </Text>
             </View>
-            {order.items?.[0]?.image && (
-              <Image
-                source={typeof order.items[0].image === 'number' ? order.items[0].image : { uri: order.items[0].image }}
-                style={styles.imageRight}
-              />
-            )}
             <Text style={{
-              color: order.status === 'cancelled' ? 'red' : '#28a745',
+              color: order.status === 'cancelled' ? 'red' : 
+                     order.status === 'delivered' ? '#28a745' : 
+                     order.status === 'shipped' ? '#007bff' : '#ffa500',
               fontWeight: 'bold',
               marginBottom: 4,
             }}>
-              {order.status === 'cancelled' ? 'Đã hủy' : 'Đang xử lý'}
+              {order.status === 'cancelled' ? 'Đã hủy' : 
+               order.status === 'delivered' ? 'Đã giao' :
+               order.status === 'shipped' ? 'Đang giao' :
+               order.status === 'processing' ? 'Đang xử lý' : 'Chờ xử lý'}
             </Text>
           </View>
-          {order.status !== 'cancelled' && (
-            <TouchableOpacity style={styles.cancelButton} onPress={() => handleCancel(order.id)}>
+          {order.status !== 'cancelled' && order.status !== 'delivered' && (
+            <TouchableOpacity style={styles.cancelButton} onPress={() => handleCancel(order._id)}>
               <Text style={styles.cancelText}>Hủy đơn</Text>
             </TouchableOpacity>
           )}
@@ -127,14 +181,14 @@ const PurchasedOrdersScreen: React.FC = () => {
                 pathname: '/order-summary',
                 params: {
                   selected: JSON.stringify(order.items),
-                  id: safeString(order.id),
-                  total: safeString(order.total), // truyền dạng chuỗi an toàn
-                  date: order.date,
-                  voucher: order.voucher?.code ?? '',
-                  status: order.status ?? 'processing',
-                  customerName: order.customerName ?? '',
-                  customerPhone: order.customerPhone ?? '',
-                  customerAddress: order.customerAddress ?? '',
+                  id: order._id,
+                  total: order.totalAmount.toString(),
+                  date: order.createdAt,
+                  voucher: (order.voucherDiscount || 0) > 0 ? `Giảm ${formatPrice(order.voucherDiscount || 0)}` : '',
+                  status: order.status,
+                  customerName: order.shippingAddress?.fullName ?? '',
+                  customerPhone: order.shippingAddress?.phone ?? '',
+                  customerAddress: order.shippingAddress?.address ?? '',
                 },
               })
             }
@@ -203,6 +257,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginTop: 4,
   },
+  paymentMethod: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
   imageRight: {
     width: 89,
     height: 89,
@@ -232,6 +291,17 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
   },
 });
 

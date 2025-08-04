@@ -25,6 +25,11 @@ const DailyDealItem: React.FC<DailyDealItemProps> = ({
   reviewCount,
   onPress,
 }) => {
+  // Xử lý image source
+  const imageSource = typeof image === 'string' 
+    ? { uri: image } 
+    : image;
+
   return (
     <TouchableOpacity 
       style={styles.container} 
@@ -40,7 +45,17 @@ const DailyDealItem: React.FC<DailyDealItemProps> = ({
       }}
       activeOpacity={0.7}
     >
-      <Image source={image} style={styles.image} />
+      <Image 
+        source={imageSource} 
+        style={styles.image}
+        defaultSource={require('../../assets/images_sp/dau_ca_omega.png')}
+        onError={(error) => {
+          console.log('🔍 Image load error:', error.nativeEvent.error);
+        }}
+        onLoad={() => {
+          console.log('🔍 Image loaded successfully');
+        }}
+      />
       <View style={styles.infoContainer}>
         <Text style={styles.title} numberOfLines={2}>{title}</Text>
         <Text style={styles.description} numberOfLines={1}>{description}</Text>

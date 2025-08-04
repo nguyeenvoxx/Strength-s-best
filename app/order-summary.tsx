@@ -38,7 +38,7 @@ export default function OrderSummaryScreen() {
     voucher: voucher,
     status: status,
     customerName: user?.name || '',
-    customerPhone: user?.phone || '',
+    customerPhone: user?.phoneNumber || '',
     customerAddress: user?.address || '',
   };
 
@@ -100,7 +100,7 @@ export default function OrderSummaryScreen() {
         <Text style={styles.customerTitle}>Thông tin người đặt</Text>
         <Text style={[styles.customerInfo, { fontWeight: 'bold' }]}>{customerName || user?.name || 'Không rõ'}</Text>
         <Text style={styles.customerInfo}>Địa chỉ: {customerAddress || user?.address || 'Không rõ'}</Text>
-        <Text style={styles.customerInfo}>SĐT: {(customerPhone && customerPhone !== 'null' && customerPhone !== 'undefined') ? customerPhone : (user?.phone || 'Không rõ')}</Text>
+        <Text style={styles.customerInfo}>SĐT: {(customerPhone && customerPhone !== 'null' && customerPhone !== 'undefined') ? customerPhone : (user?.phoneNumber || 'Không rõ')}</Text>
       </View>
       
       <Text style={styles.orderInfo}>Mã đơn hàng: {orderId}</Text>

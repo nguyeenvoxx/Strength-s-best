@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, Image, FlatList, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,15 +8,27 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useCategoryStore } from '../store/useCategoryStore';
 import { Product } from '../types/product.type';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getProductImages } from '../utils/productUtils';
+
+// Thêm interface cho Brand
+interface Brand {
+  _id: string;
+  name: string;
+  status?: string;
+}
 
 const ProductListScreen: React.FC = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { products, isLoading, error, fetchProducts } = useProductStore();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, token } = useAuthStore();
   const { categories, isLoading: categoriesLoading, fetchCategories } = useCategoryStore();
   const [activeTab, setActiveTab] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedBrand, setSelectedBrand] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [showBrands, setShowBrands] = useState(false);
 
   // Predefined icons for categories
   const categoryIcons: { [key: string]: keyof typeof Ionicons.glyphMap } = {
@@ -30,13 +42,80 @@ const ProductListScreen: React.FC = () => {
   // Single green color for all categories
   const categoryColor = '#4CAF50';
 
-  // Load products and categories when component mounts
+  // Load products, categories and brands when component mounts - không cần đăng nhập
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchProducts(50); // Load more products for listing
-      fetchCategories(); // Load categories
-    }
-  }, [isAuthenticated]);
+    const loadData = async () => {
+      try {
+        await fetchProducts({ limit: 100 }); // Load nhiều sản phẩm hơn cho listing
+        await fetchCategories(); // Load categories
+        
+        // Fetch brands from API - sử dụng fallback nếu API không có dữ liệu
+        try {
+          const response = await fetch('http://192.168.1.49:3000/api/v1/brands');
+          const data = await response.json();
+          if (data.status === 'thành công' && data.data.brands) {
+            setBrands(data.data.brands);
+          } else {
+            // Fallback brands nếu API không có dữ liệu
+            setBrands([
+              { _id: 'brand-1', name: 'Blackmores', status: 'active' },
+              { _id: 'brand-2', name: 'Swisse', status: 'active' },
+              { _id: 'brand-3', name: 'Nature Made', status: 'active' },
+              { _id: 'brand-4', name: 'Centrum', status: 'active' },
+              { _id: 'brand-5', name: 'GNC', status: 'active' },
+              { _id: 'brand-6', name: 'Optimum Nutrition', status: 'active' },
+              { _id: 'brand-7', name: 'MyProtein', status: 'active' },
+              { _id: 'brand-8', name: 'Dymatize', status: 'active' },
+              { _id: 'brand-9', name: 'BSN', status: 'active' },
+              { _id: 'brand-10', name: 'MuscleTech', status: 'active' },
+              { _id: 'brand-11', name: 'Universal Nutrition', status: 'active' },
+              { _id: 'brand-12', name: 'Cellucor', status: 'active' },
+              { _id: 'brand-13', name: 'Quest Nutrition', status: 'active' },
+              { _id: 'brand-14', name: 'Garden of Life', status: 'active' },
+              { _id: 'brand-15', name: 'NOW Foods', status: 'active' },
+              { _id: 'brand-16', name: 'Jarrow Formulas', status: 'active' },
+              { _id: 'brand-17', name: 'Solgar', status: 'active' },
+              { _id: 'brand-18', name: 'Nature\'s Bounty', status: 'active' },
+              { _id: 'brand-19', name: 'Puritan\'s Pride', status: 'active' },
+              { _id: 'brand-20', name: 'Kirkland Signature', status: 'active' },
+              { _id: 'brand-21', name: 'Doctor\'s Best', status: 'active' }
+            ]);
+          }
+        } catch (brandError) {
+          console.error('Error fetching brands:', brandError);
+          // Fallback brands khi có lỗi
+          setBrands([
+            { _id: 'brand-1', name: 'Blackmores', status: 'active' },
+            { _id: 'brand-2', name: 'Swisse', status: 'active' },
+            { _id: 'brand-3', name: 'Nature Made', status: 'active' },
+            { _id: 'brand-4', name: 'Centrum', status: 'active' },
+            { _id: 'brand-5', name: 'GNC', status: 'active' },
+            { _id: 'brand-6', name: 'Optimum Nutrition', status: 'active' },
+            { _id: 'brand-7', name: 'MyProtein', status: 'active' },
+            { _id: 'brand-8', name: 'Dymatize', status: 'active' },
+            { _id: 'brand-9', name: 'BSN', status: 'active' },
+            { _id: 'brand-10', name: 'MuscleTech', status: 'active' },
+            { _id: 'brand-11', name: 'Universal Nutrition', status: 'active' },
+            { _id: 'brand-12', name: 'Cellucor', status: 'active' },
+            { _id: 'brand-13', name: 'Quest Nutrition', status: 'active' },
+            { _id: 'brand-14', name: 'Garden of Life', status: 'active' },
+            { _id: 'brand-15', name: 'NOW Foods', status: 'active' },
+            { _id: 'brand-16', name: 'Jarrow Formulas', status: 'active' },
+            { _id: 'brand-17', name: 'Solgar', status: 'active' },
+            { _id: 'brand-18', name: 'Nature\'s Bounty', status: 'active' },
+            { _id: 'brand-19', name: 'Puritan\'s Pride', status: 'active' },
+            { _id: 'brand-20', name: 'Kirkland Signature', status: 'active' },
+            { _id: 'brand-21', name: 'Doctor\'s Best', status: 'active' }
+          ]);
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+      }
+    };
+    
+    // Luôn load data, không cần kiểm tra đăng nhập
+    loadData();
+  }, [fetchProducts, fetchCategories]);
 
   // Handle category filter from URL params
   useEffect(() => {
@@ -47,12 +126,14 @@ const ProductListScreen: React.FC = () => {
 
   // Add to cart function
   const addToCart = async (product: Product) => {
+    // Cho phép thêm vào giỏ hàng mà không cần đăng nhập
     try {
       const existingCart = await AsyncStorage.getItem('cart');
       const cart = existingCart ? JSON.parse(existingCart) : [];
       // Convert price string to number
-      const numericPrice = parseFloat(product.price.replace(/[^0-9.-]+/g, '')) || 0;
-      console.log('Thêm vào giỏ:', product);
+      const numericPrice = typeof product.priceProduct === 'string' 
+        ? parseFloat((product.priceProduct as string).replace(/[^0-9.-]+/g, '')) 
+        : product.priceProduct || 0;
       const existingItem = cart.find((item: any) => item.id === product.id);
       let updatedCart;
 
@@ -83,56 +164,134 @@ const ProductListScreen: React.FC = () => {
     }
   };
 
-  // Filter products based on active category
-  const filteredProducts = activeTab === 'all' ? products : 
-    products.filter(product => {
-      // Filter by category ID
-      if (typeof product.idCategory === 'object' && product.idCategory?._id) {
-        return product.idCategory._id === activeTab;
+  // Filter products based on selected category and brand
+  const filteredProducts = useMemo(() => {
+    if (selectedCategory === 'all') {
+      return products;
+    }
+
+    return products.filter(product => {
+      // Luôn filter theo category trước
+      if (!product.idCategory) return false;
+      
+      const categoryMatch = typeof product.idCategory === 'object' && product.idCategory?._id
+        ? product.idCategory._id === selectedCategory
+        : product.idCategory === selectedCategory;
+      
+      if (!categoryMatch) return false;
+      
+      // Nếu đang chọn brand cụ thể, filter thêm theo brand
+      if (selectedBrand && selectedBrand !== 'all') {
+        if (!product.idBrand) return false;
+        
+        const brandMatch = typeof product.idBrand === 'object' && product.idBrand?._id
+          ? product.idBrand._id === selectedBrand
+          : product.idBrand === selectedBrand;
+        
+        return brandMatch;
       }
-      return product.idCategory === activeTab;
+      
+      return true; // Chỉ filter theo category
+    });
+  }, [products, selectedCategory, selectedBrand]);
+
+  // Get brands for selected category
+  const getBrandsForCategory = (categoryId: string) => {
+    if (categoryId === 'all') {
+      return brands;
+    }
+    
+    const categoryProducts = products.filter(product => {
+      if (!product.idCategory) return false;
+      
+      if (typeof product.idCategory === 'object' && product.idCategory?._id) {
+        return product.idCategory._id === categoryId;
+      }
+      return product.idCategory === categoryId;
     });
 
+    const brandIds = new Set<string>();
+    categoryProducts.forEach(product => {
+      if (product.idBrand) {
+        if (typeof product.idBrand === 'object' && product.idBrand?._id) {
+          brandIds.add(product.idBrand._id);
+        } else if (typeof product.idBrand === 'string') {
+          brandIds.add(product.idBrand);
+        }
+      }
+    });
+
+    return brands.filter(brand => brandIds.has(brand._id));
+  };
+
+  // Get available brands for current category
+  const availableBrands = useMemo(() => {
+    if (selectedCategory === 'all') {
+      return brands;
+    }
+    // Only show brands that belong to the selected category
+    return getBrandsForCategory(selectedCategory);
+  }, [selectedCategory, brands, products]);
+
+  // Get categories for selected brand
+  const getCategoriesForBrand = (brandId: string) => {
+    if (brandId === 'all') {
+      return categories;
+    }
+    
+    const brandProducts = products.filter(product => {
+      if (!product.idBrand) return false;
+      
+      if (typeof product.idBrand === 'object' && product.idBrand?._id) {
+        return product.idBrand._id === brandId;
+      }
+      return product.idBrand === brandId;
+    });
+
+    const categoryIds = new Set<string>();
+    brandProducts.forEach(product => {
+      if (product.idCategory) {
+        if (typeof product.idCategory === 'object' && product.idCategory?._id) {
+          categoryIds.add(product.idCategory._id);
+        } else if (typeof product.idCategory === 'string') {
+          categoryIds.add(product.idCategory);
+        }
+      }
+    });
+
+    return categories.filter(category => categoryIds.has(category._id));
+  };
+
   // Convert Product to display format
-  const displayProducts = filteredProducts.map(product => ({
-    id: product.id || product._id,
-    name: product.title,
-    price: product.price,
-    image: product.images && product.images[0] ? 
-      (typeof product.images[0] === 'string' && product.images[0].startsWith('http') ? 
-        { uri: product.images[0] } : 
-        product.images[0]
-      ) : require('../assets/images_sp/dau_ca_omega.png'),
-    originalProduct: product // Keep reference to original product
-  }));
+  const displayProducts = filteredProducts.map(product => {
+    // Tính toán giá khuyến mãi
+    const numericPrice = typeof product.priceProduct === 'string' 
+      ? parseFloat((product.priceProduct as string).replace(/[^0-9.-]+/g, '')) 
+      : product.priceProduct || 0;
+    
+    // Giá gốc là giá từ API
+    const originalPrice = numericPrice;
+    const salePrice = originalPrice * 0.6;
+    
+    // Sử dụng utility function để xử lý hình ảnh
+    const productImages = getProductImages(product);
+    const imageSource = productImages.length > 0 ? productImages[0] : 'https://via.placeholder.com/150x150?text=No+Image';
+
+    return {
+      _id: product._id,
+      id: product._id, // Để tương thích với keyExtractor
+      title: product.title,
+      priceProduct: product.priceProduct,
+      image: imageSource,
+      originalProduct: product // Keep reference to original product
+    };
+  });
 
   const handleProductPress = (productId: string) => {
     router.push(`./product/${productId}`);
   };
 
-  if (!isAuthenticated) {
-    return (
-      <View style={[styles.container, getPlatformContainerStyle()]}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#333" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Sản phẩm</Text>
-          <TouchableOpacity onPress={() => router.push('./search')}>
-            <Ionicons name="search" size={24} color="#333" />
-          </TouchableOpacity>
-        </View>
-        <View style={styles.loginPromptContainer}>
-                     <Ionicons name="lock-closed-outline" size={48} color="#4CAF50" />
-          <Text style={styles.loginPromptTitle}>Đăng nhập để xem sản phẩm</Text>
-          <Text style={styles.loginPromptText}>Vui lòng đăng nhập để khám phá các sản phẩm tuyệt vời của chúng tôi</Text>
-          <TouchableOpacity style={styles.loginButton} onPress={() => router.push('/(auth)/sign-in')}>
-            <Text style={styles.loginButtonText}>Đăng nhập ngay</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
+  // Bỏ kiểm tra đăng nhập để xem sản phẩm - cho phép xem mà không cần đăng nhập
 
   if (isLoading || categoriesLoading) {
     return (
@@ -155,30 +314,57 @@ const ProductListScreen: React.FC = () => {
   }
 
   const renderProduct = ({ item }: { item: any }) => {
-    // Đảm bảo price là số
-    const numericPrice = typeof item.price === 'string'
-      ? parseFloat(item.price.replace(/[^0-9.-]+/g, ''))
-      : item.price;
+    const productImages = getProductImages(item);
+    const imageSource = productImages.length > 0 && productImages[0] !== 'https://via.placeholder.com/300x300?text=No+Image' 
+      ? productImages[0] 
+      : 'https://via.placeholder.com/150x150?text=No+Image';
+    
+    // Tính toán giá
+    const numericPrice = typeof item.priceProduct === 'number' 
+      ? item.priceProduct 
+      : typeof item.priceProduct === 'string'
+        ? parseFloat(String(item.priceProduct).replace(/[^0-9.-]+/g, ''))
+        : 0;
+    
+    // Tính giá dựa trên discount từ backend
+    const discountPercent = item.discount || 0;
+    const salePrice = numericPrice * (1 - discountPercent / 100);
+    
+    // Chỉ hiển thị giá khuyến mãi nếu có discount
+    const displayPrice = numericPrice > 0 
+      ? (discountPercent > 0 ? salePrice : numericPrice).toLocaleString('vi-VN') + ' ₫'
+      : 'Liên hệ';
+      
+    const displayOriginalPrice = (numericPrice > 0 && discountPercent > 0) 
+      ? numericPrice.toLocaleString('vi-VN') + ' ₫'
+      : '';
+
     return (
       <TouchableOpacity
         style={styles.productItem}
-        onPress={() => handleProductPress(item.id)}
+        onPress={() => handleProductPress(item._id)}
       >
         <View style={styles.productImageContainer}>
           <Image
-            source={item.image}
+            source={{ uri: imageSource }}
             style={styles.productImage}
-            resizeMode="contain"
+            resizeMode="cover"
+            defaultSource={require('../assets/images_sp/dau_ca_omega.png')}
+            onError={(error) => {
+              console.log('🔍 Products page Image load error:', error.nativeEvent.error);
+            }}
+            onLoad={() => {
+              console.log('🔍 Products page Image loaded successfully');
+            }}
           />
         </View>
         <View style={styles.productInfo}>
-          <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
-          <Text style={styles.productPrice}>
-            {isNaN(numericPrice) || !numericPrice
-              ? 'Liên hệ'
-              : (numericPrice * 1000).toLocaleString() + ' đ'}
-          </Text>
-          <TouchableOpacity style={styles.addToCartButton} onPress={() => addToCart(item.originalProduct)}>
+          <Text style={styles.productName} numberOfLines={2}>{item.title}</Text>
+          <View style={styles.priceContainer}>
+            <Text style={styles.productPrice}>{displayPrice}</Text>
+            <Text style={styles.originalPrice}>{displayOriginalPrice}</Text>
+          </View>
+          <TouchableOpacity style={styles.addToCartButton} onPress={() => addToCart(item)}>
             <Ionicons name="add" size={16} color="#fff" style={styles.addIcon} />
             <Text style={styles.addToCartText}>Thêm vào giỏ hàng</Text>
           </TouchableOpacity>
@@ -226,64 +412,133 @@ const ProductListScreen: React.FC = () => {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Tabs */}
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          style={styles.tabsScrollView}
-          contentContainerStyle={styles.tabsContainer}
-        >
-          {/* All Products Tab */}
-          <TouchableOpacity
-            style={[
-              styles.tabChip,
-              activeTab === 'all' && { backgroundColor: categoryColor }
-            ]}
-            onPress={() => setActiveTab('all')}
+        {/* Category Selection */}
+        <View style={styles.categorySection}>
+          <Text style={styles.sectionTitle}>Danh mục sản phẩm</Text>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            style={styles.categoryScrollView}
+            contentContainerStyle={styles.categoryContainer}
           >
-            <Ionicons 
-              name="grid" 
-              size={16} 
-              color={activeTab === 'all' ? '#fff' : categoryColor} 
-              style={styles.tabIcon}
-            />
-            <Text style={[
-              styles.tabText,
-              activeTab === 'all' && { color: '#fff' }
-            ]}>
-              Tất cả
-            </Text>
-          </TouchableOpacity>
+            {/* All Categories Tab */}
+            <TouchableOpacity
+              style={[
+                styles.categoryChip,
+                selectedCategory === 'all' && { backgroundColor: categoryColor }
+              ]}
+              onPress={() => {
+                setSelectedCategory('all');
+                setSelectedBrand('all');
+              }}
+            >
+              <Ionicons 
+                name="grid" 
+                size={16} 
+                color={selectedCategory === 'all' ? '#fff' : categoryColor} 
+                style={styles.tabIcon}
+              />
+              <Text style={[
+                styles.categoryText,
+                selectedCategory === 'all' && { color: '#fff' }
+              ]}>
+                Tất cả
+              </Text>
+            </TouchableOpacity>
 
-          {/* Category Tabs */}
-          {categories.map(category => {
-            const icon = categoryIcons[category.nameCategory] || 'nutrition';
-            
-            return (
+            {/* Category Tabs */}
+            {categories.map(category => {
+              const icon = categoryIcons[category.nameCategory] || 'nutrition';
+              
+              return (
+                <TouchableOpacity
+                  key={category._id}
+                  style={[
+                    styles.categoryChip,
+                    selectedCategory === category._id && { backgroundColor: categoryColor }
+                  ]}
+                  onPress={() => {
+                    setSelectedCategory(category._id);
+                    setSelectedBrand('all'); // Reset brand khi chọn category mới
+                  }}
+                >
+                  <Ionicons 
+                    name={icon} 
+                    size={16} 
+                    color={selectedCategory === category._id ? '#fff' : categoryColor} 
+                    style={styles.tabIcon}
+                  />
+                  <Text style={[
+                    styles.categoryText,
+                    selectedCategory === category._id && { color: '#fff' }
+                  ]}>
+                    {category.nameCategory}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Brand Selection - chỉ hiển thị khi đã chọn category */}
+        {selectedCategory !== 'all' && availableBrands.length > 0 && (
+          <View style={styles.brandSection}>
+            <Text style={styles.sectionTitle}>Thương hiệu</Text>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.brandScrollView}
+              contentContainerStyle={styles.brandContainer}
+            >
+              {/* All Brands Tab */}
               <TouchableOpacity
-                key={category._id}
                 style={[
-                  styles.tabChip,
-                  activeTab === category._id && { backgroundColor: categoryColor }
+                  styles.brandChip,
+                  selectedBrand === 'all' && { backgroundColor: categoryColor }
                 ]}
-                onPress={() => setActiveTab(category._id)}
+                onPress={() => setSelectedBrand('all')}
               >
                 <Ionicons 
-                  name={icon} 
+                  name="business" 
                   size={16} 
-                  color={activeTab === category._id ? '#fff' : categoryColor} 
+                  color={selectedBrand === 'all' ? '#fff' : categoryColor} 
                   style={styles.tabIcon}
                 />
                 <Text style={[
-                  styles.tabText,
-                  activeTab === category._id && { color: '#fff' }
+                  styles.brandText,
+                  selectedBrand === 'all' && { color: '#fff' }
                 ]}>
-                  {category.nameCategory}
+                  Tất cả
                 </Text>
               </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+
+              {/* Brand Tabs */}
+              {availableBrands.map(brand => (
+                <TouchableOpacity
+                  key={brand._id}
+                  style={[
+                    styles.brandChip,
+                    selectedBrand === brand._id && { backgroundColor: categoryColor }
+                  ]}
+                  onPress={() => setSelectedBrand(brand._id)}
+                >
+                  <Ionicons 
+                    name="business" 
+                    size={16} 
+                    color={selectedBrand === brand._id ? '#fff' : categoryColor} 
+                    style={styles.tabIcon}
+                  />
+                  <Text style={[
+                    styles.brandText,
+                    selectedBrand === brand._id && { color: '#fff' }
+                  ]}>
+                    {brand.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {/* Product Grid */}
         {displayProducts.length > 0 ? (
@@ -384,6 +639,71 @@ const styles = StyleSheet.create({
   },
   activeTabText: {
     fontWeight: '600',
+  },
+  categorySection: {
+    marginBottom: 15,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 10,
+    paddingHorizontal: 15,
+  },
+  categoryScrollView: {
+    paddingHorizontal: 15,
+  },
+  categoryContainer: {
+    paddingRight: 15,
+  },
+  categoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 10,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  categoryText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#666',
+    marginLeft: 6,
+  },
+  brandSection: {
+    marginBottom: 15,
+  },
+  brandScrollView: {
+    paddingHorizontal: 15,
+  },
+  brandContainer: {
+    paddingRight: 15,
+  },
+  brandChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 10,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  brandText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#666',
+    marginLeft: 6,
   },
   productGrid: {
     padding: 15,
@@ -572,6 +892,44 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     marginTop: 5,
+  },
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 5,
+  },
+  originalPrice: {
+    fontSize: 12,
+    color: '#999',
+    textDecorationLine: 'line-through',
+    marginLeft: 8,
+  },
+  filterToggle: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginBottom: 15,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    padding: 4,
+  },
+  toggleButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  activeToggleButton: {
+    backgroundColor: '#4CAF50',
+  },
+  toggleText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#666',
+  },
+  activeToggleText: {
+    color: '#fff',
+    fontWeight: '600',
   },
 });
 

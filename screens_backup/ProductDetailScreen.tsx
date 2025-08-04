@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View, ScrollView, Dimensions, Image, TouchableOpacity, ImageSourcePropType } from 'react-native'
 import React, { useState } from 'react'
 import { Ionicons } from '@expo/vector-icons'
-import { PRODUCT_ITEM_SAMPLE } from '../../../constants/app.constant'
+import { PRODUCT_ITEM_SAMPLE } from '../constants/app.constant'
 
 const { width } = Dimensions.get('window')
 

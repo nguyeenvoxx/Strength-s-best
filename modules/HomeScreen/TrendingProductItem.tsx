@@ -18,6 +18,11 @@ const TrendingProductItem: React.FC<TrendingProductItemProps> = ({
     discount,
     onPress,
 }) => {
+    // Xử lý image source
+    const imageSource = typeof image === 'string' 
+        ? { uri: image } 
+        : image;
+
     return (
         <TouchableOpacity 
             style={styles.container} 
@@ -33,7 +38,18 @@ const TrendingProductItem: React.FC<TrendingProductItemProps> = ({
             }}
             activeOpacity={0.7}
         >
-            <Image source={image} style={styles.productImage} />
+            <Image 
+                source={imageSource} 
+                style={styles.productImage}
+                resizeMode="cover"
+                defaultSource={require('../../assets/images_sp/dau_ca_omega.png')}
+                onError={(error) => {
+                  console.log('🔍 TrendingProductItem Image load error:', error.nativeEvent.error);
+                }}
+                onLoad={() => {
+                  console.log('🔍 TrendingProductItem Image loaded successfully');
+                }}
+            />
             <View style={styles.infoContainer}>
                 <Text style={styles.title} numberOfLines={2}>{title}</Text>
                 <Text style={styles.price}>{price}</Text>

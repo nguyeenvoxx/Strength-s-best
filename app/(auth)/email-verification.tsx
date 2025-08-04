@@ -1,13 +1,35 @@
-import React, { useRef, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useRef, useState, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getPlatformContainerStyle } from '../../utils/platformUtils';
+import { useAuthStore } from '../../store/useAuthStore';
 
 const EmailVerificationScreen: React.FC = () => {
   const router = useRouter();
+  const { email } = useLocalSearchParams();
   const [code, setCode] = useState(['', '', '', '']);
+  const [isLoading, setIsLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [countdown, setCountdown] = useState(60);
+  const [canResend, setCanResend] = useState(false);
   const inputRefs = useRef<Array<TextInput | null>>([]);
+  const { verifyEmail, resendVerificationCode } = useAuthStore();
+
+  useEffect(() => {
+    // Bắt đầu countdown khi component mount
+    const timer = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          setCanResend(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   const handleCodeChange = (text: string, index: number) => {
     const newCode = [...code];
@@ -21,11 +43,69 @@ const EmailVerificationScreen: React.FC = () => {
     }
   };
 
-  const handleConfirm = () => {
-    if (code.every((digit) => digit !== '')) {
-      router.push('./create-account-success');
-    } else {
-      alert('Vui lòng nhập mã đầy đủ');
+  const handleVerifyCode = async () => {
+    const verificationCode = code.join('');
+    
+    if (verificationCode.length !== 4) {
+      Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ 4 chữ số');
+      return;
+    }
+
+    if (!email) {
+      Alert.alert('Lỗi', 'Không tìm thấy thông tin email');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      console.log('🔍 Đang xác thực email:', { email, verificationCode });
+
+      await verifyEmail(email as string, verificationCode);
+      
+      console.log('✅ Xác thực email thành công');
+      Alert.alert(
+        'Thành công', 
+        'Xác thực email thành công! Tài khoản của bạn đã được kích hoạt.',
+        [
+          {
+            text: 'OK',
+            onPress: () => router.push('./create-account-success')
+          }
+        ]
+      );
+    } catch (error: any) {
+      console.error('❌ Lỗi xác thực email:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi xác thực';
+      Alert.alert('Xác thực thất bại', errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    if (!email) {
+      Alert.alert('Lỗi', 'Không tìm thấy thông tin email');
+      return;
+    }
+
+    try {
+      setResendLoading(true);
+      console.log('🔍 Đang gửi lại mã xác thực cho:', email);
+
+      await resendVerificationCode(email as string);
+      
+      console.log('✅ Gửi lại mã xác thực thành công');
+      Alert.alert('Thành công', 'Mã xác thực mới đã được gửi đến email của bạn');
+      
+      // Reset countdown
+      setCountdown(60);
+      setCanResend(false);
+    } catch (error: any) {
+      console.error('❌ Lỗi gửi lại mã:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi gửi lại mã';
+      Alert.alert('Gửi lại thất bại', errorMessage);
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -33,8 +113,9 @@ const EmailVerificationScreen: React.FC = () => {
     <View style={[styles.container, getPlatformContainerStyle()]}>
       <Text style={styles.title}>Xác thực email</Text>
       <Text style={styles.subtitle}>
-        Vui lòng nhập mã otp 4 đầu được gửi đến user@gmail.com
+        Vui lòng nhập mã OTP 4 chữ số được gửi đến {email || 'email của bạn'}
       </Text>
+      
       <View style={styles.codeContainer}>
         {code.map((digit, index) => (
           <TextInput
@@ -45,16 +126,41 @@ const EmailVerificationScreen: React.FC = () => {
             onChangeText={(text) => handleCodeChange(text, index)}
             keyboardType="numeric"
             maxLength={1}
+            autoFocus={index === 0}
           />
         ))}
       </View>
-      <TouchableOpacity style={styles.resendButton}>
-        <Text style={styles.resendText}>Gửi lại sau 60s Gửi lại</Text>
+
+      <TouchableOpacity 
+        style={[styles.resendButton, (!canResend || resendLoading) && styles.resendButtonDisabled]} 
+        onPress={handleResendCode}
+        disabled={!canResend || resendLoading}
+      >
+        {resendLoading ? (
+          <ActivityIndicator size="small" color="#666" />
+        ) : (
+          <Text style={styles.resendText}>
+            {canResend ? 'Gửi lại mã' : `Gửi lại sau ${countdown}s`}
+          </Text>
+        )}
       </TouchableOpacity>
-      <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
-        <Text style={styles.buttonText}>Xác nhận</Text>
+
+      <TouchableOpacity 
+        style={[styles.confirmButton, isLoading && styles.buttonDisabled]} 
+        onPress={handleVerifyCode}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Xác nhận</Text>
+        )}
       </TouchableOpacity>
-      <TouchableOpacity style={styles.confirmButton1} onPress={() => router.push('./sign-up')}>
+
+      <TouchableOpacity 
+        style={styles.backButton} 
+        onPress={() => router.push('./sign-up')}
+      >
         <Text style={styles.backText}>Quay lại đăng ký</Text>
       </TouchableOpacity>
     </View>
@@ -73,59 +179,76 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 10,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 30,
+    lineHeight: 22,
   },
   codeContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    width: '60%',
-    marginBottom: 20,
+    width: '70%',
+    marginBottom: 30,
   },
   codeInput: {
-    width: 50,
-    height: 50,
-    borderWidth: 1,
-    borderColor: 'black',
-    borderRadius: 5,
+    width: 60,
+    height: 60,
+    borderWidth: 2,
+    borderColor: '#000',
+    borderRadius: 8,
     textAlign: 'center',
-    fontSize: 20,
+    fontSize: 24,
+    fontWeight: 'bold',
   },
   resendButton: {
     marginBottom: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+  },
+  resendButtonDisabled: {
+    opacity: 0.5,
   },
   resendText: {
     color: '#666',
+    fontSize: 16,
   },
   confirmButton: {
     backgroundColor: '#000',
     paddingVertical: 15,
     paddingHorizontal: 40,
-    borderRadius: 5,
-    width: '50%',
+    borderRadius: 8,
+    width: '60%',
     marginBottom: 20,
+    alignItems: 'center',
   },
-  confirmButton1: {
-    backgroundColor: '#31313140',
-    paddingVertical: 15,
-    paddingHorizontal: 40,
-    borderRadius: 5,
-    width: '50%',
-    marginBottom: 20,
+  buttonDisabled: {
+    backgroundColor: '#666',
+    opacity: 0.7,
   },
   buttonText: {
     color: '#fff',
     fontSize: 18,
-    textAlign: 'center',
     fontWeight: 'bold',
   },
+  backButton: {
+    backgroundColor: 'transparent',
+    paddingVertical: 15,
+    paddingHorizontal: 40,
+    borderRadius: 8,
+    width: '60%',
+    marginBottom: 20,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#000',
+  },
   backText: {
-    color: '#000000',
-    textAlign: 'center'
+    color: '#000',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

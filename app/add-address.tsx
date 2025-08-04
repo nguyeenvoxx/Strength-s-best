@@ -1,115 +1,184 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, TextInput, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getPlatformContainerStyle } from '../utils/platformUtils';
 import { useAuthStore } from '../store/useAuthStore';
-
-interface Address {
-  id: string;
-  name: string;
-  phone: string;
-  address: string;
-  isDefault?: boolean;
-}
+import { addAddress, Address } from '../services/addressApi';
+import { useTheme } from '../store/ThemeContext';
+import { LightColors, DarkColors } from '../constants/Colors';
 
 const AddAddressScreen: React.FC = () => {
   const router = useRouter();
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState('');
-  const user = useAuthStore.getState().user;
+  const { user, token } = useAuthStore();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const colors = isDark ? DarkColors : LightColors;
 
-  const handleSave = async () => {
-    if (!name.trim() || !phone.trim() || !address.trim()) {
-      Alert.alert('Thông báo', 'Vui lòng điền đầy đủ thông tin');
+  const [formData, setFormData] = useState({
+    name: user?.name || '',
+    phone: user?.phoneNumber || (user as any)?.phoneNumber || '',
+    address: '',
+    province: '',
+    district: '',
+    ward: '',
+    isDefault: false
+  });
+
+  const [loading, setLoading] = useState(false);
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleSubmit = async () => {
+    if (!formData.name.trim()) {
+      Alert.alert('Lỗi', 'Vui lòng nhập tên người nhận');
+      return;
+    }
+    if (!formData.phone.trim()) {
+      Alert.alert('Lỗi', 'Vui lòng nhập số điện thoại');
+      return;
+    }
+    if (!formData.address.trim()) {
+      Alert.alert('Lỗi', 'Vui lòng nhập địa chỉ');
+      return;
+    }
+
+    // Kiểm tra định dạng số điện thoại
+    const phoneRegex = /^[0-9]{10,11}$/;
+    if (!phoneRegex.test(formData.phone.trim())) {
+      Alert.alert('Lỗi', 'Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại 10-11 chữ số');
+      return;
+    }
+
+    // Kiểm tra độ dài tên
+    if (formData.name.trim().length < 2) {
+      Alert.alert('Lỗi', 'Tên người nhận phải có ít nhất 2 ký tự');
       return;
     }
 
     try {
-      const newAddress: Address = {
-        id: Date.now().toString(),
-        name: name.trim(),
-        phone: phone.trim(),
-        address: address.trim(),
-        isDefault: false
-      };
-
-      const userId = user?._id || (user as any)?.id;
-      if (!userId) throw new Error('Không xác định được user');
-      // Lấy danh sách địa chỉ hiện tại của user
-      const savedAddresses = await AsyncStorage.getItem(`userAddresses_${userId}`);
-      const addresses = savedAddresses ? JSON.parse(savedAddresses) : [];
-      // Thêm địa chỉ mới
-      addresses.push(newAddress);
-      // Lưu lại
-      await AsyncStorage.setItem(`userAddresses_${userId}`, JSON.stringify(addresses));
+      setLoading(true);
+      await addAddress(token!, {
+        name: formData.name.trim(),
+        phone: formData.phone.trim(),
+        address: formData.address.trim(),
+        province: 'Hà Nội',
+        district: 'Cầu Giấy',
+        ward: 'Dịch Vọng',
+        isDefault: formData.isDefault
+      });
       
       Alert.alert('Thành công', 'Đã thêm địa chỉ mới', [
         { text: 'OK', onPress: () => router.back() }
       ]);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Lỗi khi thêm địa chỉ:', error);
-      Alert.alert('Lỗi', 'Không thể thêm địa chỉ mới');
+      Alert.alert('Lỗi', error?.response?.data?.message || 'Không thể thêm địa chỉ');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <View style={[styles.container, getPlatformContainerStyle()]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#000" />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Thêm địa chỉ mới</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Thêm địa chỉ mới</Text>
         <View style={styles.headerRight} />
       </View>
 
       {/* Form */}
-      <View style={styles.content}>
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Họ và tên</Text>
-          <TextInput
-            style={styles.input}
-            value={name}
-            onChangeText={setName}
-            placeholder="Nhập họ và tên"
-            placeholderTextColor="#999"
-          />
-        </View>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={[styles.formContainer, { backgroundColor: colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Thông tin địa chỉ</Text>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Số điện thoại</Text>
-          <TextInput
-            style={styles.input}
-            value={phone}
-            onChangeText={setPhone}
-            placeholder="Nhập số điện thoại"
-            placeholderTextColor="#999"
-            keyboardType="phone-pad"
-          />
-        </View>
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.text }]}>Tên người nhận *</Text>
+            <TextInput
+              style={[styles.input, { 
+                backgroundColor: colors.background, 
+                color: colors.text,
+                borderColor: colors.border 
+              }]}
+              value={formData.name}
+              onChangeText={(value) => handleInputChange('name', value)}
+              placeholder="Nhập tên người nhận"
+              placeholderTextColor={colors.textSecondary}
+            />
+          </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Địa chỉ</Text>
-          <TextInput
-            style={[styles.input, styles.addressInput]}
-            value={address}
-            onChangeText={setAddress}
-            placeholder="Nhập địa chỉ chi tiết"
-            placeholderTextColor="#999"
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-          />
-        </View>
-      </View>
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.text }]}>Số điện thoại *</Text>
+            <TextInput
+              style={[styles.input, { 
+                backgroundColor: colors.background, 
+                color: colors.text,
+                borderColor: colors.border 
+              }]}
+              value={formData.phone}
+              onChangeText={(value) => handleInputChange('phone', value)}
+              placeholder="Nhập số điện thoại"
+              placeholderTextColor={colors.textSecondary}
+              keyboardType="phone-pad"
+            />
+          </View>
 
-      {/* Save Button */}
-      <View style={styles.bottomContainer}>
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>Lưu địa chỉ</Text>
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.text }]}>Địa chỉ *</Text>
+            <TextInput
+              style={[styles.textArea, { 
+                backgroundColor: colors.background, 
+                color: colors.text,
+                borderColor: colors.border 
+              }]}
+              value={formData.address}
+              onChangeText={(value) => handleInputChange('address', value)}
+              placeholder="Nhập địa chỉ chi tiết"
+              placeholderTextColor={colors.textSecondary}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+            />
+          </View>
+
+          <TouchableOpacity
+            style={styles.checkboxContainer}
+            onPress={() => setFormData(prev => ({ ...prev, isDefault: !prev.isDefault }))}
+          >
+            <View style={[
+              styles.checkbox,
+              formData.isDefault && { backgroundColor: colors.accent, borderColor: colors.accent }
+            ]}>
+              {formData.isDefault && (
+                <Ionicons name="checkmark" size={16} color="#fff" />
+              )}
+            </View>
+            <Text style={[styles.checkboxLabel, { color: colors.text }]}>
+              Đặt làm địa chỉ mặc định
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+
+      {/* Submit Button */}
+      <View style={[styles.bottomContainer, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
+        <TouchableOpacity
+          style={[styles.submitButton, { backgroundColor: colors.accent }]}
+          onPress={handleSubmit}
+          disabled={loading}
+        >
+          {loading ? (
+            <Text style={[styles.submitButtonText, { color: '#fff' }]}>Đang thêm...</Text>
+          ) : (
+            <Text style={[styles.submitButtonText, { color: '#fff' }]}>Thêm địa chỉ</Text>
+          )}
         </TouchableOpacity>
       </View>
     </View>
@@ -146,6 +215,22 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
+  formContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 20,
+  },
   inputGroup: {
     marginBottom: 20,
   },
@@ -156,18 +241,42 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#333',
+    backgroundColor: '#fff',
   },
-  addressInput: {
-    height: 100,
-    paddingTop: 12,
+  textArea: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    backgroundColor: '#fff',
+    minHeight: 100,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#ddd',
+    marginRight: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxLabel: {
+    fontSize: 16,
+    color: '#333',
   },
   bottomContainer: {
     padding: 16,
@@ -175,13 +284,13 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
   },
-  saveButton: {
+  submitButton: {
     backgroundColor: '#469B43',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
   },
-  saveButtonText: {
+  submitButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',

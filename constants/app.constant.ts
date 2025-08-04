@@ -1,207 +1,202 @@
-import { Product } from '../types/product.type'
+import { Product } from '../types/product.type';
 
-export const PRODUCT_ITEM_SAMPLE: Product = {
-    id: "kjdfnv0034n3wme",
-    title: "Thực phẩm chức năng bổ sung Magie Blackmores Super+ 100 Viên",
-    images: [
-        require('../assets/images_sp/dau_ca_omega.png'),
-        require('../assets/images_sp/magie_blackmores.png'),
-        require('../assets/images_sp/dau_ca_omega.png'),
-    ],
-    rating: 4.5,
-    price: "899.000 ₫",
-    sections: [
+// Các constant cho app
+export const APP_CONSTANTS = {
+  // API endpoints
+  API_BASE_URL: 'http://192.168.1.49:3000/api/v1',
+  
+  // App settings
+  APP_NAME: 'Strength Best',
+  APP_VERSION: '1.0.0',
+  
+  // Pagination
+  DEFAULT_PAGE_SIZE: 20,
+  MAX_PAGE_SIZE: 100,
+  
+  // Timeouts
+  API_TIMEOUT: 30000,
+  REQUEST_TIMEOUT: 10000,
+  
+  // Cache settings
+  CACHE_DURATION: 5 * 60 * 1000, // 5 minutes
+  
+  // Error messages
+  ERROR_MESSAGES: {
+    NETWORK_ERROR: 'Không thể kết nối đến server',
+    TIMEOUT_ERROR: 'Kết nối bị timeout',
+    SERVER_ERROR: 'Lỗi server',
+    UNKNOWN_ERROR: 'Có lỗi xảy ra',
+    NO_DATA: 'Không có dữ liệu',
+  },
+  
+  // Success messages
+  SUCCESS_MESSAGES: {
+    LOGIN_SUCCESS: 'Đăng nhập thành công',
+    LOGOUT_SUCCESS: 'Đăng xuất thành công',
+    REGISTER_SUCCESS: 'Đăng ký thành công',
+    UPDATE_SUCCESS: 'Cập nhật thành công',
+    DELETE_SUCCESS: 'Xóa thành công',
+  },
+};
+
+// Kiểm tra xem có nên sử dụng sample data không
+export const shouldUseSampleData = (): boolean => {
+  // Có thể thêm logic kiểm tra network, API status, etc.
+  return false; // Mặc định không sử dụng sample data
+};
+
+// Fallback products khi API không có dữ liệu
+export const getFallbackProducts = (): Product[] => {
+  return [
+    {
+      _id: 'fallback-1',
+      id: 'fallback-1',
+      title: 'Dầu cá Omega 3',
+      image: 'https://via.placeholder.com/300x300?text=Omega+3',
+      images: ['https://via.placeholder.com/300x300?text=Omega+3'],
+      rating: 5,
+      price: 250000,
+      priceProduct: 250000,
+      sections: [
         {
-            title: "Công dụng",
-            items: [
-                "Thực phẩm chức năng bổ sung Magie Blackmores Super+ chứa các dạng magiê (amino acid chelate và citrate) giúp giảm bớt chứng chuột rút và co thắt cơ do nồng độ magiê thấp. Thuốc bổ sung Magie Blackmores còn chứa Crom, hỗ trợ sự trao đổi chất trong quá trình tập thể dục. Vitamin B6 giúp duy trì sản xuất năng lượng; và vitamin C để hỗ trợ chức năng miễn dịch khỏe mạnh."
-            ]
+          title: 'Tổng quan',
+          items: ['Dầu cá Omega 3 chất lượng cao, hỗ trợ tim mạch và não bộ']
         },
         {
-            title: "Tổng quan",
-            items: [
-                "Thực phẩm chức năng bổ sung Magie Blackmores Super+ chứa các dạng magiê (amino acid chelate và citrate) giúp giảm bớt chứng chuột rút và co thắt cơ do nồng độ magiê thấp. Thuốc bổ sung Magie Blackmores còn chứa Crom, hỗ trợ sự trao đổi chất trong quá trình tập thể dục; Vitamin B6 giúp duy trì sản xuất năng lượng; và vitamin C để hỗ trợ chức năng miễn dịch khỏe mạnh. Tất cả có trong viên nang Bổ sung Magie Blackmores Super+. Blackmores đã pha chế Super Magnesium + với các dạng magiê dễ hấp thu. Không chỉ Magie mà nó còn chứa thêm các chất dinh dưỡng bổ sung khác để giúp hỗ trợ sức khỏe cơ và sản xuất năng lượng. Viên uống bổ sung Magie này thật thuận tiện vì nó hỗ trợ dinh dưỡng cho cơ bắp của bạn chỉ với một viên một ngày."
-            ]
-        },
-        {
-            title: "Thành phần",
-            items: [
-                "Thực phẩm chức năng bổ sung Magie có chứa",
-                "Magnesium amino acid chelate: 75mg",
-                "Magnesium citrate: 291mg",
-                "Magnesium oxide-heavy: 423mg",
-                "Total magnesium: 305mg",
-                "Magnesium là một chất dinh dưỡng thiết yếu có vai trò trong hơn 300 phản ứng enzym trong cơ thể và đóng một vai trò trong một số lượng lớn các quá trình sinh học. Magnesium chứa trong thực phẩm bao gồm rau lá xanh, hạt, ca cao và ngũ cốc nguyên hạt.",
-                "Chromium picolinate (chromium 50 µg): 402µg",
-                "Chromium là một khoáng chất cần thiết cho sự chuyển hóa carbohydrate, lipid và protein. Chromium được tìm thấy trong men bia, bánh mì nhân tạo và ngũ cốc, phó mát, trứng, chuối, rau bina và nấm.",
-                "Manganese amino acid chelate (manganese 4mg): 40mg",
-                "Mangan là một khoáng chất thiết yếu cần thiết cho cơ thể, bao gồm superoxide dismutase. Mangan có thể được tìm thấy trong quả hạch, quả việt quất, dứa, đậu lăng, đậu và ngũ cốc nguyên hạt.",
-                "Pyridoxine hydrochloride (pyridoxine, vitamin B6 50mg): 61mg",
-                "Pyridoxine hydrochloride (vitamin B6) là một chất dinh dưỡng hòa tan trong nước liên quan đến việc sản xuất protein, chất dẫn truyền thần kinh và hemoblobin. Các loại ngũ cốc nguyên hạt, đậu, chuối, hạt, các loại hạt và khoai tây là những nguồn cung cấp vitamin B6 tốt.",
-                "Cholecalciferol (vitamin D 100 IU): 2.5µg",
-                "Calcium ascorbate dihydrate (ascorbic acid, vitamin C 41.31mg): 50mg"
-            ]
-        },
-        {
-            title: "Lưu ý",
-            items: [
-                "Người lớn:",
-                "Uống 1 viên / ngày với bữa ăn, hoặc theo quy định chuyên môn",
-                "Trẻ em dưới 18 tuổi:",
-                "Chỉ được quy định chuyên nghiệp",
-                "Không nên dùng trong thời kỳ mang thai và cho con bú, trừ khi được kê toa từ bác sĩ"
-            ]
-        },
-        {
-            title: "Chống chỉ định và cảnh cáo",
-            items: [
-                "Sản phẩm này có chứa Pyridoxine hydrochloride có thể nguy hiểm khi sử dụng với số lượng lớn hoặc trong một thời gian dài",
-                "Bệnh thần kinh ngoại vi gây ra do pyridoxin được báo cáo thường xuyên với liều từ 1g trở lên mỗi ngày, được thực hiện trong 2 tháng đến 3 năm",
-                "Nếu triệu chứng không giảm hãy đến bác sĩ",
-                "Vitamin và khoáng chất chỉ có thể được hỗ trợ nếu chế độ ăn uống không đầy đủ",
-                "Nếu triệu chứng không giảm đến bác sĩ",
-                "Bảo quản dưới 30 độ C ở nơi khô ráo, tránh ánh sáng mặt trời trực tiếp"
-            ]
-        },
-        {
-            title: "Tác dụng phụ",
-            items: [
-                "Sản phẩm này có thể gây tác dụng phụ cho một số loại thuốc khác mà bạn có thể dùng"
-            ]
-        },
-        {
-            title: "Mô tả vật lý",
-            items: [
-                "Viên nhỏ, trắng, hình bầu dục",
-                "Luôn luôn đọc nhãn. Chỉ sử dụng theo chỉ dẫn"
-            ]
+          title: 'Công dụng',
+          items: [
+            'Hỗ trợ tim mạch',
+            'Tăng cường trí nhớ',
+            'Giảm viêm khớp'
+          ]
         }
-    ],
-    _id: ''
-}
-
-export const LIST_PRODUCT_SAMPLE: Product[] = [
-    {
-        id: "omega3-fish-oil", title: "Thực phẩm chức năng Dầu Cá Omega-3 Blackmores 1000mg 200 Viên",
-        images: [
-            require('../assets/images_sp/dau_ca_omega.png'),
-            require('../assets/images_sp/magie_blackmores.png'),
-            require('../assets/images_sp/dau_ca_omega.png'),
-        ],
-        rating: 4.8,
-        price: "750.000 ₫",
-        sections: [
-            {
-                title: "Công dụng",
-                items: [
-                    "Dầu cá Omega-3 Blackmores Fish Oil 1000mg có tác dụng bổ sung dầu cá giàu omega-3, hỗ trợ sức khỏe tim mạch, giảm nguy cơ các bệnh tim mạch và giúp duy trì xương khớp khỏe mạnh. Sản phẩm còn giúp hỗ trợ giảm viêm khớp, hỗ trợ phát triển não bộ và thị lực."
-                ]
-            },
-            {
-                title: "Thành phần",
-                items: [
-                    "Dầu cá tự nhiên 1g",
-                    "Omega-3 Marine Triglycerides 300mg",
-                    "EPA (Eicosapentaenoic Acid) 180mg",
-                    "DHA (Docosahexaenoic Acid) 120mg",
-                    "Vitamin E (d-alpha-Tocopherol) 10 IU"
-                ]
-            },
-            {
-                title: "Lưu ý",
-                items: [
-                    "Người lớn:",
-                    "Uống 1-3 viên mỗi ngày trong bữa ăn",
-                    "Trẻ em dưới 12 tuổi:",
-                    "Chỉ sử dụng theo chỉ định của chuyên gia y tế"
-                ]
-            }
-        ],
-        _id: ''
+      ],
+      idCategory: 'supplements'
     },
     {
-        id: "calcium-vitamin-d3", title: "Viên uống bổ sung Canxi và Vitamin D3 Ostelin 300 Viên",
-        images: [
-            require('../assets/images_sp/magie_blackmores.png'),
-            require('../assets/images_sp/dau_ca_omega.png'),
-            require('../assets/images_sp/magie_blackmores.png'),
-        ],
-        rating: 4.6,
-        price: "450.000 ₫",
-        sections: [
-            {
-                title: "Công dụng",
-                items: [
-                    "Viên uống Ostelin Calcium & Vitamin D3 bổ sung Canxi và Vitamin D3 giúp xương chắc khỏe, ngăn ngừa loãng xương, còi xương. Sản phẩm còn hỗ trợ sức khỏe răng và nướu, phòng ngừa thiếu hụt canxi ở người cao tuổi, phụ nữ mang thai và sau sinh."
-                ]
-            },
-            {
-                title: "Thành phần",
-                items: [
-                    "Calcium Carbonate tương đương với 500mg Canxi nguyên tố",
-                    "Vitamin D3 (Cholecalciferol) 500 IU",
-                    "Magnesium Oxide 100mg",
-                    "Zinc Oxide 25mg",
-                    "Manganese Sulfate 5mg"
-                ]
-            },
-            {
-                title: "Lưu ý",
-                items: [
-                    "Người lớn:",
-                    "Uống 1 viên mỗi ngày sau bữa ăn",
-                    "Trẻ em trên 12 tuổi:",
-                    "Uống 1 viên mỗi ngày sau bữa ăn",
-                    "Phụ nữ có thai và cho con bú:",
-                    "Nên tham khảo ý kiến bác sĩ trước khi sử dụng"
-                ]
-            }
-        ],
-        _id: ''
+      _id: 'fallback-2',
+      id: 'fallback-2',
+      title: 'Vitamin D3',
+      image: 'https://via.placeholder.com/300x300?text=Vitamin+D3',
+      images: ['https://via.placeholder.com/300x300?text=Vitamin+D3'],
+      rating: 5,
+      price: 180000,
+      priceProduct: 180000,
+      sections: [
+        {
+          title: 'Tổng quan',
+          items: ['Vitamin D3 giúp tăng cường hệ miễn dịch và xương khớp']
+        },
+        {
+          title: 'Công dụng',
+          items: [
+            'Tăng cường miễn dịch',
+            'Hỗ trợ xương khớp',
+            'Cải thiện tâm trạng'
+          ]
+        }
+      ],
+      idCategory: 'vitamins'
     },
     {
-        id: "glucosamine-joint-care", title: "Thực phẩm chức năng Glucosamine Chondroitin MSM 120 Viên",
-        images: [
-            require('../assets/images_sp/dau_ca_omega.png'),
-            require('../assets/images_sp/magie_blackmores.png'),
-            require('../assets/images_sp/dau_ca_omega.png'),
-        ],
-        rating: 4.7,
-        price: "650.000 ₫",
-        sections: [
-            {
-                title: "Công dụng",
-                items: [
-                    "Thực phẩm chức năng Glucosamine Chondroitin MSM hỗ trợ sức khỏe khớp, giảm đau nhức xương khớp, hỗ trợ điều trị thoái hóa khớp. Sản phẩm còn giúp chống viêm khớp, tái tạo và phục hồi sụn khớp bị thoái hóa, tăng tiết dịch khớp và cải thiện khả năng vận động."
-                ]
-            },
-            {
-                title: "Thành phần",
-                items: [
-                    "Glucosamine Sulfate 1500mg",
-                    "Chondroitin Sulfate 400mg",
-                    "MSM (Methylsulfonylmethane) 250mg",
-                    "Hyaluronic Acid 25mg",
-                    "Vitamin C (Ascorbic Acid) 50mg",
-                    "Manganese 5mg",
-                    "Gừng (Zingiber officinale) chiết xuất 50mg"
-                ]
-            },
-            {
-                title: "Lưu ý",
-                items: [
-                    "Người lớn:",
-                    "Uống 2 viên mỗi ngày trong bữa ăn chính",
-                    "Không dùng cho người dị ứng với các thành phần của sản phẩm",
-                    "Người bị bệnh tiểu đường:",
-                    "Cần theo dõi đường huyết khi sử dụng",
-                    "Người đang sử dụng thuốc chống đông máu:",
-                    "Cần tham khảo ý kiến bác sĩ trước khi sử dụng"
-                ]
-            }
-        ],
-        _id: ''
+      _id: 'fallback-3',
+      id: 'fallback-3',
+      title: 'Whey Protein',
+      image: 'https://via.placeholder.com/300x300?text=Whey+Protein',
+      images: ['https://via.placeholder.com/300x300?text=Whey+Protein'],
+      rating: 5,
+      price: 1200000,
+      priceProduct: 1200000,
+      sections: [
+        {
+          title: 'Tổng quan',
+          items: ['Whey Protein chất lượng cao cho người tập gym']
+        },
+        {
+          title: 'Công dụng',
+          items: [
+            'Tăng cơ bắp',
+            'Phục hồi sau tập',
+            'Tăng sức mạnh'
+          ]
+        }
+      ],
+      idCategory: 'protein'
+    },
+    {
+      _id: 'fallback-4',
+      id: 'fallback-4',
+      title: 'Magie Blackmores',
+      image: 'https://via.placeholder.com/300x300?text=Magnesium',
+      images: ['https://via.placeholder.com/300x300?text=Magnesium'],
+      rating: 5,
+      price: 320000,
+      priceProduct: 320000,
+      sections: [
+        {
+          title: 'Tổng quan',
+          items: ['Magie từ Blackmores hỗ trợ thần kinh và cơ bắp']
+        },
+        {
+          title: 'Công dụng',
+          items: [
+            'Thư giãn cơ bắp',
+            'Hỗ trợ giấc ngủ',
+            'Chức năng thần kinh'
+          ]
+        }
+      ],
+      idCategory: 'minerals'
+    },
+    {
+      _id: 'fallback-5',
+      id: 'fallback-5',
+      title: 'Creatine Monohydrate',
+      image: 'https://via.placeholder.com/300x300?text=Creatine',
+      images: ['https://via.placeholder.com/300x300?text=Creatine'],
+      rating: 5,
+      price: 550000,
+      priceProduct: 550000,
+      sections: [
+        {
+          title: 'Tổng quan',
+          items: ['Creatine tăng sức mạnh và hiệu suất tập luyện']
+        },
+        {
+          title: 'Công dụng',
+          items: [
+            'Tăng sức mạnh',
+            'Tăng hiệu suất',
+            'Tăng khối lượng cơ'
+          ]
+        }
+      ],
+      idCategory: 'performance'
+    },
+    {
+      _id: 'fallback-6',
+      id: 'fallback-6',
+      title: 'BCAA Amino Acids',
+      image: 'https://via.placeholder.com/300x300?text=BCAA',
+      images: ['https://via.placeholder.com/300x300?text=BCAA'],
+      rating: 5,
+      price: 450000,
+      priceProduct: 450000,
+      sections: [
+        {
+          title: 'Tổng quan',
+          items: ['BCAA hỗ trợ phục hồi cơ bắp và giảm mệt mỏi']
+        },
+        {
+          title: 'Công dụng',
+          items: [
+            'Phục hồi cơ bắp',
+            'Giảm mệt mỏi',
+            'Tăng hiệu suất'
+          ]
+        }
+      ],
+      idCategory: 'amino-acids'
     }
-]
-
-export default {};
+  ];
+};

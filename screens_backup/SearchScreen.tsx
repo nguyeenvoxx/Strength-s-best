@@ -13,7 +13,7 @@ import {
   StatusBar
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LIST_PRODUCT_SAMPLE } from '../../../constants/app.constant';
+import { LIST_PRODUCT_SAMPLE } from '../constants/app.constant';
 import { Product } from '../types/product.type';
 import SearchBar from '../components/text-input/SearchBar';
 import TrendingProductItem from '../modules/HomeScreen/TrendingProductItem';

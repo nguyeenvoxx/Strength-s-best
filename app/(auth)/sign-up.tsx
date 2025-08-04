@@ -24,6 +24,27 @@ const SignUpScreen: React.FC = () => {
     return emailRegex.test(email);
   };
 
+  const validatePhone = (phone: string) => {
+    // Chấp nhận format: +84 9xxxxxxxx hoặc 09xxxxxxxx
+    const phoneRegex = /^(\+84\s?9\d{8}|09\d{8})$/;
+    return phoneRegex.test(phone);
+  };
+
+  const formatPhone = (phone: string) => {
+    // Chuẩn hóa số điện thoại về format +84 9xxxxxxxx
+    let formatted = phone.replace(/\s/g, '');
+    if (formatted.startsWith('0')) {
+      formatted = '+84' + formatted.slice(1);
+    } else if (!formatted.startsWith('+84')) {
+      formatted = '+84' + formatted;
+    }
+    // Thêm khoảng trắng sau +84
+    if (formatted.startsWith('+84') && !formatted.startsWith('+84 ')) {
+      formatted = '+84 ' + formatted.slice(3);
+    }
+    return formatted;
+  };
+
   const handleSignUp = async (data: any) => {
     // Clear previous errors
     clearError();
@@ -65,17 +86,31 @@ const SignUpScreen: React.FC = () => {
       Alert.alert('Lỗi', 'Vui lòng nhập số điện thoại');
       return;
     }
-    if (!/^\+84\s\d{9}$/.test(phone)) {
-      Alert.alert('Lỗi', 'Số điện thoại phải đúng định dạng +84 9xxxxxxxx');
+
+    const formattedPhone = formatPhone(phone);
+    if (!validatePhone(formattedPhone)) {
+      Alert.alert('Lỗi', 'Số điện thoại không hợp lệ. Vui lòng nhập đúng định dạng');
       return;
     }
 
     try {
+      console.log('🔍 Đang đăng ký với dữ liệu:', { 
+        name: data.name, 
+        email: data.email, 
+        phone: data.phone 
+      });
+
       await signup(data);
+      
+      console.log('✅ Đăng ký thành công, chuyển đến email verification');
+      
       // Sau khi đăng ký thành công, chuyển đến trang xác thực email
-      router.push('./email-verification');
+      router.push({ 
+        pathname: './email-verification', 
+        params: { email: data.email } 
+      });
     } catch (error: any) {
-      console.error('Signup error:', error);
+      console.error('❌ Lỗi đăng ký:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi đăng ký';
       Alert.alert('Đăng ký thất bại', errorMessage);
     }
@@ -87,7 +122,7 @@ const SignUpScreen: React.FC = () => {
       name: fullName.trim(), 
       email: email.trim().toLowerCase(), 
       password,
-      phone: phoneToSave
+      phoneNumber: phoneToSave
     });
   };
 
@@ -100,6 +135,7 @@ const SignUpScreen: React.FC = () => {
           placeholder="Họ và tên"
           value={fullName}
           onChangeText={setFullName}
+          autoCapitalize="words"
         />
       </View>
       <View style={styles.inputWrapper}>
@@ -109,6 +145,8 @@ const SignUpScreen: React.FC = () => {
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
         />
       </View>
       <View style={styles.inputWrapper}>
@@ -118,6 +156,8 @@ const SignUpScreen: React.FC = () => {
           value={password}
           onChangeText={setPassword}
           secureTextEntry={!showPassword}
+          autoCapitalize="none"
+          autoCorrect={false}
         />
         <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
           <Ionicons
@@ -133,11 +173,13 @@ const SignUpScreen: React.FC = () => {
           placeholder="Xác nhận mật khẩu"
           value={confirmPassword}
           onChangeText={setConfirmPassword}
-          secureTextEntry={!showPassword}
+          secureTextEntry={!showConfirmPassword}
+          autoCapitalize="none"
+          autoCorrect={false}
         />
-        <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+        <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
           <Ionicons
-            name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+            name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'}
             size={20}
             color="#555"
           />
@@ -146,17 +188,26 @@ const SignUpScreen: React.FC = () => {
       <View style={styles.inputWrapper}>
         <TextInput
           style={styles.textInput}
-          placeholder="Số điện thoại (+84 9xxxxxxxx)"
+          placeholder="Số điện thoại (09xxxxxxxx hoặc +84 9xxxxxxxx)"
           value={phone}
           onChangeText={text => {
-            // Đảm bảo luôn có '+84 ' ở đầu, chỉ cho nhập số phía sau
-            let formatted = text;
-            if (!formatted.startsWith('+84 ')) {
-              formatted = '+84 ' + formatted.replace(/[^0-9]/g, '');
-            } else {
-              formatted = '+84 ' + formatted.slice(4).replace(/[^0-9]/g, '');
+            // Cho phép nhập số và dấu +
+            let formatted = text.replace(/[^0-9+]/g, '');
+            
+            // Nếu bắt đầu bằng 0, giữ nguyên
+            if (formatted.startsWith('0')) {
+              if (formatted.length > 10) formatted = formatted.slice(0, 10);
+            } 
+            // Nếu bắt đầu bằng +84, giữ nguyên
+            else if (formatted.startsWith('+84')) {
+              if (formatted.length > 13) formatted = formatted.slice(0, 13);
             }
-            if (formatted.length > 13) formatted = formatted.slice(0, 13); // +84 + space + 9 số = 13 ký tự
+            // Nếu không có prefix, thêm 0
+            else if (formatted.length > 0 && !formatted.startsWith('0') && !formatted.startsWith('+')) {
+              formatted = '0' + formatted;
+              if (formatted.length > 10) formatted = formatted.slice(0, 10);
+            }
+            
             setPhone(formatted);
             setPhoneError('');
           }}
@@ -177,12 +228,16 @@ const SignUpScreen: React.FC = () => {
       <TouchableOpacity 
         style={[styles.signUpButton, isLoading && styles.buttonDisabled]} 
         onPress={() => {
-          // Tự động thêm +84 nếu cần khi đăng ký
+          // Chuẩn hóa số điện thoại trước khi đăng ký
           let phoneToSave = phone.trim();
           if (phoneToSave.startsWith('0') && phoneToSave.length === 10) {
             phoneToSave = '+84' + phoneToSave.slice(1);
           } else if (!phoneToSave.startsWith('+84')) {
-            // Nếu không có +84 và không bắt đầu bằng 0, giữ nguyên
+            phoneToSave = '+84' + phoneToSave;
+          }
+          // Thêm khoảng trắng sau +84
+          if (phoneToSave.startsWith('+84') && !phoneToSave.startsWith('+84 ')) {
+            phoneToSave = '+84 ' + phoneToSave.slice(3);
           }
           handleSignUpWithPhone(phoneToSave);
         }}

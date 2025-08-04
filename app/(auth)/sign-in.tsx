@@ -36,7 +36,7 @@ const SignInScreen: React.FC = () => {
     }
 
     try {
-      await login({ email, password });
+      await login({ email: email.trim().toLowerCase(), password });
       router.replace('../(tabs)/home');
     } catch (error: any) {
       Alert.alert('Đăng nhập thất bại', error.response?.data?.message || 'Email hoặc mật khẩu không đúng');

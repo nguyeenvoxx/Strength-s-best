@@ -24,6 +24,7 @@ import { useProductStore } from '../../store/useProductStore';
 import { getPlatformContainerStyle } from '../../utils/platformUtils';
 import { useTheme } from '../../store/ThemeContext';
 import { LightColors, DarkColors } from '../../constants/Colors';
+import { getProductImages } from '../../utils/productUtils';
 
 const { width } = Dimensions.get('window');
 const numColumns = 2;
@@ -79,22 +80,24 @@ const SearchScreen: React.FC = () => {
   }, [searchText]);
 
   useEffect(() => {
-    fetchProducts(50);
+    fetchProducts({ limit: 100 });
   }, [fetchProducts]);
 
-  const isPriceInRange = (priceStr: string, range: string): boolean => {
-    const price = parseFloat(priceStr.replace(/[^0-9.-]+/g, '')) * 1000 || 0;
+  const isPriceInRange = (priceValue: string | number, range: string): boolean => {
+    const numericPrice = typeof priceValue === 'string'
+      ? parseFloat(priceValue.replace(/[^0-9.-]+/g, ''))
+      : priceValue || 0;
     switch (range) {
       case 'under_100':
-        return price < 100000;
+        return numericPrice < 100000;
       case '100_300':
-        return price >= 100000 && price < 300000;
+        return numericPrice >= 100000 && numericPrice < 300000;
       case '300_500':
-        return price >= 300000 && price < 500000;
+        return numericPrice >= 300000 && numericPrice < 500000;
       case '500_1000':
-        return price >= 500000 && price < 1000000;
+        return numericPrice >= 500000 && numericPrice < 1000000;
       case 'over_1000':
-        return price >= 1000000;
+        return numericPrice >= 1000000;
       default:
         return true;
     }
@@ -114,7 +117,7 @@ const SearchScreen: React.FC = () => {
           return false;
         }
         if (selectedPriceRange !== 'all') {
-          if (!isPriceInRange(product.price, selectedPriceRange)) {
+          if (!isPriceInRange(product.priceProduct, selectedPriceRange)) {
             return false;
           }
         }
@@ -127,13 +130,21 @@ const SearchScreen: React.FC = () => {
           case 'name_desc':
             return b.title.localeCompare(a.title, 'vi', { sensitivity: 'base' });
           case 'price_asc': {
-            const priceA = parseFloat(a.price.replace(/[^0-9.-]+/g, '')) * 1000 || 0;
-            const priceB = parseFloat(b.price.replace(/[^0-9.-]+/g, '')) * 1000 || 0;
+            const priceA = typeof a.priceProduct === 'string' 
+              ? parseFloat((a.priceProduct as string).replace(/[^0-9.-]+/g, ''))
+              : a.priceProduct || 0;
+            const priceB = typeof b.priceProduct === 'string'
+              ? parseFloat((b.priceProduct as string).replace(/[^0-9.-]+/g, ''))
+              : b.priceProduct || 0;
             return priceA - priceB;
           }
           case 'price_desc': {
-            const priceA = parseFloat(a.price.replace(/[^0-9.-]+/g, '')) * 1000 || 0;
-            const priceB = parseFloat(b.price.replace(/[^0-9.-]+/g, '')) * 1000 || 0;
+            const priceA = typeof a.priceProduct === 'string'
+              ? parseFloat((a.priceProduct as string).replace(/[^0-9.-]+/g, ''))
+              : a.priceProduct || 0;
+            const priceB = typeof b.priceProduct === 'string'
+              ? parseFloat((b.priceProduct as string).replace(/[^0-9.-]+/g, ''))
+              : b.priceProduct || 0;
             return priceB - priceA;
           }
           default:
@@ -188,7 +199,8 @@ const SearchScreen: React.FC = () => {
   };
 
   const getOriginalPrice = (price: number) => {
-    return formatPrice(price * 1.2);
+    // Giá gốc là giá từ API (không cần tăng)
+    return formatPrice(price);
   };
 
   const parsePrice = (rawPrice: string | number | undefined): number => {
@@ -199,6 +211,25 @@ const SearchScreen: React.FC = () => {
     }
     if (typeof rawPrice === 'number') return rawPrice;
     return 0;
+  };
+
+  // Search products from backend
+  const searchProducts = async (searchTerm: string) => {
+    if (!searchTerm.trim()) {
+      return;
+    }
+
+    try {
+      setIsSearching(true);
+      await fetchProducts({ 
+        search: searchTerm.trim(),
+        limit: 50 
+      });
+      setIsSearching(false);
+    } catch (error) {
+      console.error('Error searching products:', error);
+      setIsSearching(false);
+    }
   };
 
   return (
@@ -345,7 +376,7 @@ const SearchScreen: React.FC = () => {
             <Text style={[styles.emptyStateSubtitle, { color: colors.textSecondary }]}>{error}</Text>
             <TouchableOpacity
               style={[styles.retryButton, { backgroundColor: colors.accent }]} 
-              onPress={() => fetchProducts(50)}
+              onPress={() => fetchProducts({ limit: 50 })}
             >
               <Text style={[styles.retryButtonText, { color: '#fff' }]}>Thử lại</Text>
             </TouchableOpacity>
@@ -369,16 +400,47 @@ const SearchScreen: React.FC = () => {
             keyExtractor={(item, index) => `${item._id}-${index}`}
             numColumns={numColumns}
             renderItem={({ item }) => (
-              <View style={[styles.productCard, { backgroundColor: colors.card }]}> 
-                <TrendingProductItem
-                  image={item.images[0] || item.image || ''}
-                  title={item.title}
-                  price={formatPrice(parsePrice(item.priceProduct) * 1000)}
-                  originalPrice={getOriginalPrice(parsePrice(item.priceProduct) * 1000)}
-                  discount="20%"
-                  onPress={() => onProductPress(item._id)}
+              <TouchableOpacity
+                style={[styles.productCard, { backgroundColor: colors.card }]}
+                onPress={() => onProductPress(item._id)}
+              >
+                <Image 
+                  source={{ uri: getProductImages(item)[0] !== 'https://via.placeholder.com/300x300?text=No+Image' 
+                    ? getProductImages(item)[0] 
+                    : 'https://via.placeholder.com/150x150?text=No+Image' }}
+                  style={styles.productImage}
+                  resizeMode="cover"
+                  defaultSource={require('../../assets/images_sp/dau_ca_omega.png')}
+                  onError={(error) => {
+                    console.log('🔍 Search page Image load error:', error.nativeEvent.error);
+                  }}
+                  onLoad={() => {
+                    console.log('🔍 Search page Image loaded successfully');
+                  }}
                 />
-              </View>
+                <View style={styles.productInfo}>
+                  <Text style={[styles.productTitle, { color: colors.text }]} numberOfLines={2}>
+                    {item.title}
+                  </Text>
+                  {item.discount && item.discount > 0 ? (
+                    <>
+                      <Text style={[styles.productPrice, { color: colors.accent }]}>
+                        {formatPrice(parsePrice(item.priceProduct) * (1 - item.discount / 100))}
+                      </Text>
+                      <Text style={[styles.productOriginalPrice, { color: colors.textSecondary }]}>
+                        {getOriginalPrice(parsePrice(item.priceProduct))}
+                      </Text>
+                      <View style={styles.discountBadge}>
+                        <Text style={styles.discountText}>-{item.discount}%</Text>
+                      </View>
+                    </>
+                  ) : (
+                    <Text style={[styles.productPrice, { color: colors.accent }]}>
+                      {formatPrice(parsePrice(item.priceProduct))}
+                    </Text>
+                  )}
+                </View>
+              </TouchableOpacity>
             )}
             columnWrapperStyle={filteredProducts.length > 1 ? styles.productRow : undefined}
             showsVerticalScrollIndicator={false}
@@ -587,6 +649,42 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  productImage: {
+    width: '100%',
+    height: 120,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  productInfo: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  productTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  productPrice: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  productOriginalPrice: {
+    fontSize: 12,
+    textDecorationLine: 'line-through',
+    marginBottom: 4,
+  },
+  discountBadge: {
+    backgroundColor: '#FF6B6B',
+    borderRadius: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  discountText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });
 

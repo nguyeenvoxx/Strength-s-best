@@ -5,3 +5,5 @@ export const bankCodeMap: Record<string, string> = {
   '970423': 'Ngân hàng TMCP Kỹ Thương Việt Nam (Techcombank)',
   '970430': 'Ngân hàng TMCP Đông Á (DongABank)',
 };
+
+export default bankCodeMap;

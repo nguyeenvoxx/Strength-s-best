@@ -1,37 +1,28 @@
-import { useEffect, useState } from 'react';
-import { View, ActivityIndicator } from 'react-native';
-import { Redirect } from 'expo-router';
-import { useAuthStore } from '../store/useAuthStore';
-import { useSettingStore } from '../store/useSettingStore';
-import { getPlatformContainerStyle } from '../utils/platformUtils';
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useRouter } from 'expo-router';
+import { View, ActivityIndicator, Text } from 'react-native';
 
-export default function IndexPage() {
-  const [isReady, setIsReady] = useState(false);
-  const { isAuthenticated, hasHydrated: authHydrated } = useAuthStore();
-  const { isFirstTime, hasHydrated: settingHydrated } = useSettingStore();
-
+export default function Index() {
+  const router = useRouter();
+  
   useEffect(() => {
-    if (authHydrated && settingHydrated) {
-      setIsReady(true);
-    }
-  }, [authHydrated, settingHydrated]);
-
-  if (!isReady) {
-    return (
-      <View style={[{ flex: 1, justifyContent: 'center', alignItems: 'center' }, getPlatformContainerStyle()]}>
-        <ActivityIndicator size="large" color="#0000ff" />
-      </View>
-    );
-  }
-
-  if (isFirstTime) {
-    return <Redirect href="/(auth)/splash" />;
-  }
-
-  if (isAuthenticated) {
-    return <Redirect href="/(tabs)/home" />;
-  }
-
-  return <Redirect href="/(auth)/sign-in" />;
+    // Delay navigation to ensure app is fully loaded
+    const timer = setTimeout(() => {
+      try {
+        // Điều hướng đến trang home thay vì products
+        router.replace('/(tabs)/home');
+      } catch (error) {
+        console.error('Navigation error:', error);
+      }
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, [router]);
+  
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+      <ActivityIndicator size="large" color="#FF6B35" />
+      <Text style={{ marginTop: 10, color: '#666' }}>Đang tải...</Text>
+    </View>
+  );
 }

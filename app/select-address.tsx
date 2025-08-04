@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
@@ -7,20 +7,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getPlatformContainerStyle } from '../utils/platformUtils';
 import { useTheme } from '../store/ThemeContext';
 import { LightColors, DarkColors } from '../constants/Colors';
-
-interface Address {
-  id: string;
-  name: string;
-  phone: string;
-  address: string;
-  isDefault?: boolean;
-}
+import { getUserAddresses, setDefaultAddress, deleteAddress, Address } from '../services/addressApi';
 
 const SelectAddressScreen: React.FC = () => {
   const router = useRouter();
   const { user } = useAuthStore();
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const colors = isDark ? DarkColors : LightColors;
@@ -31,32 +25,34 @@ const SelectAddressScreen: React.FC = () => {
 
   const loadAddresses = async () => {
     try {
-      const userId = user?._id || (user as any)?.id;
-      if (!userId) return;
-      const savedAddresses = await AsyncStorage.getItem(`userAddresses_${userId}`);
-      if (savedAddresses) {
-        const parsedAddresses = JSON.parse(savedAddresses);
-        setAddresses(parsedAddresses);
-        // Tìm địa chỉ mặc định hoặc địa chỉ đầu tiên
-        const defaultAddress = parsedAddresses.find((addr: Address) => addr.isDefault) || parsedAddresses[0];
-        if (defaultAddress) {
-          setSelectedAddressId(defaultAddress.id);
-        }
-      } else {
+      setLoading(true);
+      const response = await getUserAddresses();
+      const userAddresses = response.data?.addresses || [];
+      
+      if (userAddresses.length === 0) {
         // Tạo địa chỉ mặc định từ thông tin user
         const defaultAddress: Address = {
-          id: userId,
+          userId: user?._id || (user as any)?.id || '',
           name: user?.name || 'Khách hàng',
           phone: user?.phone || (user as any)?.phoneNumber || '',
           address: user?.address || 'Chưa có địa chỉ',
           isDefault: true
         };
         setAddresses([defaultAddress]);
-        setSelectedAddressId(defaultAddress.id);
-        await AsyncStorage.setItem(`userAddresses_${userId}`, JSON.stringify([defaultAddress]));
+        setSelectedAddressId(defaultAddress._id || '');
+      } else {
+        setAddresses(userAddresses);
+        // Tìm địa chỉ mặc định hoặc địa chỉ đầu tiên
+        const defaultAddress = userAddresses.find((addr: Address) => addr.isDefault) || userAddresses[0];
+        if (defaultAddress) {
+          setSelectedAddressId(defaultAddress._id || '');
+        }
       }
     } catch (error) {
       console.error('Lỗi khi tải địa chỉ:', error);
+      Alert.alert('Lỗi', 'Không thể tải danh sách địa chỉ');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -80,33 +76,72 @@ const SelectAddressScreen: React.FC = () => {
       Alert.alert('Thông báo', 'Vui lòng chọn một địa chỉ nhận hàng');
       return;
     }
-    const selectedAddress = addresses.find(addr => addr.id === selectedAddressId);
+    const selectedAddress = addresses.find(addr => addr._id === selectedAddressId);
     if (selectedAddress) {
-      const userId = user?._id || (user as any)?.id;
       await AsyncStorage.setItem('selectedDeliveryAddress', JSON.stringify(selectedAddress));
-      // Đảm bảo chỉ lưu địa chỉ cho user hiện tại
-      await AsyncStorage.setItem(`userAddresses_${userId}`, JSON.stringify(addresses));
-      // Quay lại màn hình checkout với địa chỉ mới
       router.back();
     }
   };
 
   const handleSetDefault = async (addressId: string) => {
-    const updatedAddresses = addresses.map(addr => ({
-      ...addr,
-      isDefault: addr.id === addressId
-    }));
-    setAddresses(updatedAddresses);
-    const userId = user?._id || (user as any)?.id;
-    await AsyncStorage.setItem(`userAddresses_${userId}`, JSON.stringify(updatedAddresses));
+    try {
+      await setDefaultAddress(addressId);
+      await loadAddresses(); // Reload addresses after update
+      Alert.alert('Thành công', 'Đã đặt làm địa chỉ mặc định');
+    } catch (error) {
+      console.error('Lỗi khi đặt địa chỉ mặc định:', error);
+      Alert.alert('Lỗi', 'Không thể đặt địa chỉ mặc định');
+    }
   };
+
+  const handleDeleteAddress = async (addressId: string) => {
+    Alert.alert(
+      'Xác nhận xóa',
+      'Bạn có chắc muốn xóa địa chỉ này?',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteAddress(addressId);
+              await loadAddresses(); // Reload addresses after deletion
+              Alert.alert('Thành công', 'Đã xóa địa chỉ');
+            } catch (error) {
+              console.error('Lỗi khi xóa địa chỉ:', error);
+              Alert.alert('Lỗi', 'Không thể xóa địa chỉ');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Chọn địa chỉ nhận hàng</Text>
+          <View style={styles.headerRight} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.accent} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Đang tải địa chỉ...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, getPlatformContainerStyle(), { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#000" />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Chọn địa chỉ nhận hàng</Text>
         <View style={styles.headerRight} />
@@ -117,18 +152,18 @@ const SelectAddressScreen: React.FC = () => {
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Địa chỉ</Text>
         
         {addresses.map((address) => (
-          <View key={address.id} style={[styles.addressCard, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
+          <View key={address._id} style={[styles.addressCard, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
             <TouchableOpacity 
               style={styles.addressContent}
-              onPress={() => handleSelectAddress(address.id)}
+              onPress={() => handleSelectAddress(address._id || '')}
             >
               <View style={styles.radioContainer}>
                 <View style={[
                   styles.radioButton,
-                  selectedAddressId === address.id && styles.radioButtonSelected,
+                  selectedAddressId === address._id && styles.radioButtonSelected,
                   { borderColor: colors.border }
                 ]}>
-                  {selectedAddressId === address.id && (
+                  {selectedAddressId === address._id && (
                     <View style={styles.radioButtonInner} />
                   )}
                 </View>
@@ -145,18 +180,27 @@ const SelectAddressScreen: React.FC = () => {
                 )}
               </View>
               
-              <TouchableOpacity 
-                style={styles.editButton}
-                onPress={() => handleEditAddress(address)}
-              >
-                <Text style={[styles.editButtonText, { color: colors.accent }]}>Sửa</Text>
-              </TouchableOpacity>
+              <View style={styles.actionButtons}>
+                <TouchableOpacity 
+                  style={styles.editButton}
+                  onPress={() => handleEditAddress(address)}
+                >
+                  <Text style={[styles.editButtonText, { color: colors.accent }]}>Sửa</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.deleteButton}
+                  onPress={() => handleDeleteAddress(address._id || '')}
+                >
+                  <Text style={[styles.deleteButtonText, { color: colors.danger }]}>Xóa</Text>
+                </TouchableOpacity>
+              </View>
             </TouchableOpacity>
             
             {!address.isDefault && (
               <TouchableOpacity 
                 style={styles.setDefaultButton}
-                onPress={() => handleSetDefault(address.id)}
+                onPress={() => handleSetDefault(address._id || '')}
               >
                 <Text style={[styles.setDefaultText, { color: colors.accent }]}>Đặt làm mặc định</Text>
               </TouchableOpacity>
@@ -209,6 +253,15 @@ const styles = StyleSheet.create({
   },
   headerRight: {
     width: 40,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
   },
   content: {
     flex: 1,
@@ -289,12 +342,25 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '500',
   },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   editButton: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     paddingVertical: 4,
   },
   editButtonText: {
     color: '#469B43',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  deleteButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  deleteButtonText: {
+    color: '#ff4444',
     fontSize: 14,
     fontWeight: '500',
   },

@@ -2,7 +2,7 @@ import axios from 'axios';
 import { API_CONFIG } from '../constants/config';
 
 const authApi = axios.create({
-  baseURL: API_CONFIG.AUTH_URL,
+  baseURL: API_CONFIG.BASE_URL,
   timeout: API_CONFIG.TIMEOUT,
   headers: {
     'Content-Type': 'application/json',
@@ -18,8 +18,17 @@ export interface SignupRequest {
   name: string;
   email: string;
   password: string;
-  phone?: string;
+  phoneNumber?: string;
   address?: string;
+}
+
+export interface VerifyEmailRequest {
+  email: string;
+  verifyCode: string;
+}
+
+export interface ResendVerificationRequest {
+  email: string;
 }
 
 export interface AuthResponse {
@@ -30,7 +39,7 @@ export interface AuthResponse {
       _id: string;
       name: string;
       email: string;
-      phone?: string;
+      phoneNumber?: string;
       address?: string;
       role: string;
       status: string;
@@ -44,35 +53,55 @@ export interface AuthResponse {
 
 export const authService = {
   login: async (credentials: LoginRequest): Promise<AuthResponse> => {
-    const response = await authApi.post('/login', credentials);
-    return response.data;
+    try {
+      const response = await authApi.post('/auth/login', credentials);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Lỗi đăng nhập:', error.response?.data || error.message);
+      throw error;
+    }
   },
 
   signup: async (userData: SignupRequest): Promise<AuthResponse> => {
-    const response = await authApi.post('/signup', userData);
-    return response.data;
+    try {
+      const response = await authApi.post('/auth/signup', userData);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Lỗi đăng ký:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  verifyEmail: async (data: VerifyEmailRequest): Promise<AuthResponse> => {
+    try {
+      const response = await authApi.post('/auth/verify-email', data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Lỗi xác thực email:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  resendVerificationCode: async (data: ResendVerificationRequest): Promise<any> => {
+    try {
+      const response = await authApi.post('/auth/resend-verification', data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Lỗi gửi lại mã xác thực:', error.response?.data || error.message);
+      throw error;
+    }
   },
 
   // Validate token by making a simple authenticated request
   validateToken: async (token: string): Promise<boolean> => {
     try {
-      console.log('🌐 Making request to /me endpoint for token validation...');
-      const response = await authApi.get('/me', {
+      const response = await authApi.get('/auth/me', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-      console.log('✅ /me endpoint response:', {
-        status: response.status,
-        data: response.data ? 'EXISTS' : 'NULL'
-      });
       return response.status === 200;
     } catch (error: any) {
-      console.log('❌ /me endpoint failed:', {
-        status: error.response?.status,
-        message: error.response?.data?.message || error.message,
-        url: error.config?.url
-      });
       return false;
     }
   },

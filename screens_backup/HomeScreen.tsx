@@ -27,7 +27,7 @@ import {
 }
 from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LIST_PRODUCT_SAMPLE } from '../../../constants/app.constant';
+import { LIST_PRODUCT_SAMPLE } from '../constants/app.constant';
 import { Product } from '../types/product.type';
 import DailyDealItem from '../modules/HomeScreen/DailyDealItem';
 import TrendingProductItem from '../modules/HomeScreen/TrendingProductItem';

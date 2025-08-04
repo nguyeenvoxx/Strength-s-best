@@ -7,11 +7,20 @@ interface Product {
   description: string;
   image: string;
   priceProduct: number;
+  discount?: number;
+  idBrand?: {
+    _id: string;
+    name: string;
+  };
+  idCategory?: {
+    _id: string;
+    name: string;
+  };
 }
 
 interface CartItem {
   _id: string;
-  idProduct: Product;
+  productId: Product;
   quantity: number;
   price: number;
 }
@@ -35,6 +44,7 @@ interface CartStore {
   fetchCart: (token: string) => Promise<void>;
   addToCart: (token: string, productId: string, quantity: number) => Promise<void>;
   removeFromCart: (token: string, productId: string) => Promise<void>;
+  deleteFromCart: (token: string, productId: string) => Promise<void>;
   clearCart: (token: string) => Promise<void>;
   clearError: () => void;
 }
@@ -109,7 +119,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          idProduct: productId,
+          productId: productId,
           quantity: quantity
         })
       });
@@ -131,6 +141,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
           error: errorData.message || 'Không thể thêm vào giỏ hàng',
           loading: false 
         });
+        throw new Error(errorData.message || 'Không thể thêm vào giỏ hàng');
       }
     } catch (error) {
       console.error('=== CART STORE: ADD TO CART ERROR ===');
@@ -139,6 +150,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
         error: 'Không thể kết nối đến server',
         loading: false 
       });
+      throw error;
     }
   },
 
@@ -156,7 +168,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          idProduct: productId
+          productId: productId
         })
       });
 
@@ -174,12 +186,58 @@ export const useCartStore = create<CartStore>((set, get) => ({
         const errorData = await response.json();
         console.log('Remove from Cart Error Data:', errorData);
         set({ 
-          error: errorData.message || 'Không thể xóa sản phẩm',
+          error: errorData.message || 'Không thể giảm số lượng sản phẩm',
           loading: false 
         });
       }
     } catch (error) {
       console.error('=== CART STORE: REMOVE FROM CART ERROR ===');
+      console.error('Error:', error);
+      set({ 
+        error: 'Không thể kết nối đến server',
+        loading: false 
+      });
+    }
+  },
+
+  deleteFromCart: async (token: string, productId: string) => {
+    try {
+      set({ loading: true, error: null });
+      console.log('=== CART STORE: DELETE FROM CART REQUEST ===');
+      console.log('Product ID:', productId);
+      console.log('Token:', token ? 'Present' : 'Missing');
+
+      const response = await fetch(`${API_CONFIG.BASE_URL}/carts/delete`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          productId: productId
+        })
+      });
+
+      console.log('=== CART STORE: DELETE FROM CART RESPONSE ===');
+      console.log('Status:', response.status);
+      console.log('Status Text:', response.statusText);
+
+      if (response.ok) {
+        const responseData = await response.json();
+        console.log('Delete from Cart Response Data:', responseData);
+        
+        // Refresh cart after deleting
+        await get().fetchCart(token);
+      } else {
+        const errorData = await response.json();
+        console.log('Delete from Cart Error Data:', errorData);
+        set({ 
+          error: errorData.message || 'Không thể xóa sản phẩm',
+          loading: false 
+        });
+      }
+    } catch (error) {
+      console.error('=== CART STORE: DELETE FROM CART ERROR ===');
       console.error('Error:', error);
       set({ 
         error: 'Không thể kết nối đến server',

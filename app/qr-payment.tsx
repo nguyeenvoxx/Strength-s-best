@@ -1,125 +1,420 @@
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet, Alert } from 'react-native';
-import { createVnpayPayment } from '../services/paymentApi';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
-import { useAuthStore } from '../store/useAuthStore';
-import { useCartStore } from '../store/useCartStore';
-import { useLocalSearchParams } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const VnpayPaymentScreen: React.FC = () => {
+const QRPaymentScreen: React.FC = () => {
   const router = useRouter();
-  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const { token } = useAuthStore();
-  const { removeFromCart } = useCartStore();
-  const { selected } = useLocalSearchParams();
-  const selectedItems = selected ? JSON.parse(selected as string) : [];
-
-  // Tạo orderId duy nhất
-  const [orderId] = useState<string>(() => 'ODR-' + Date.now());
-  const amount = selectedItems.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0);
+  const { method, orderId, paymentId, paymentUrl } = useLocalSearchParams();
+  const [isLoading, setIsLoading] = useState(true);
+  const [paymentStatus, setPaymentStatus] = useState<'pending' | 'success' | 'failed'>('pending');
 
   useEffect(() => {
-    const fetchPaymentUrl = async () => {
-      try {
-        setLoading(true);
-        const { paymentUrl } = await createVnpayPayment(amount, orderId);
-        setPaymentUrl(paymentUrl);
-      } catch (error: any) {
-        Alert.alert(
-          'Lỗi',
-          error?.response?.data?.message || error?.message || 'Không thể tạo thanh toán VNPAY'
-        );
-        setPaymentUrl(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchPaymentUrl();
-  }, [amount, orderId]);
+    // Simulate payment processing
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+      // In a real app, you would check payment status from backend
+      setPaymentStatus('success');
+    }, 3000);
 
-  // Hàm xóa sản phẩm khỏi giỏ hàng sau khi thanh toán thành công
-  const removeItemsFromCart = async () => {
-    if (token && selectedItems.length > 0) {
-      try {
-        // Xóa từng sản phẩm đã thanh toán khỏi giỏ hàng
-        for (const item of selectedItems) {
-          if (item._id || item.id) {
-            await removeFromCart(token, item._id || item.id);
-            console.log(`Đã xóa sản phẩm ${item._id || item.id} khỏi giỏ hàng`);
-          }
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handlePaymentSuccess = () => {
+    Alert.alert(
+      'Thanh toán thành công',
+      'Cảm ơn bạn đã mua hàng!',
+      [
+        {
+          text: 'Xem đơn hàng',
+          onPress: () => router.push('/purchased-orders')
+        },
+        {
+          text: 'Tiếp tục mua sắm',
+          onPress: () => router.push('/(tabs)/home')
         }
-        
-        // Cũng xóa từ AsyncStorage để đảm bảo
-        const cart = await AsyncStorage.getItem('cart');
-        if (cart) {
-          const cartItems = JSON.parse(cart);
-          const selectedItemIds = selectedItems.map((item: any) => item._id || item.id);
-          const newCart = cartItems.filter(
-            (item: any) => !selectedItemIds.includes(item.idProduct?._id || item._id || item.id)
-          );
-          await AsyncStorage.setItem('cart', JSON.stringify(newCart));
-          console.log('Đã cập nhật AsyncStorage cart');
+      ]
+    );
+  };
+
+  const handlePaymentFailure = () => {
+    Alert.alert(
+      'Thanh toán thất bại',
+      'Vui lòng thử lại hoặc chọn phương thức thanh toán khác.',
+      [
+        {
+          text: 'Thử lại',
+          onPress: () => router.back()
+        },
+        {
+          text: 'Về trang chủ',
+          onPress: () => router.push('/(tabs)/home')
         }
+      ]
+    );
+  };
 
-
-      } catch (error) {
-        console.error('Lỗi khi xóa sản phẩm khỏi giỏ hàng:', error);
-      }
+  const getPaymentMethodInfo = () => {
+    switch (method) {
+      case 'vnpay':
+        return {
+          name: 'VNPay',
+          icon: 'card-outline' as const,
+          color: '#0055A4'
+        };
+      case 'momo':
+        return {
+          name: 'MoMo',
+          icon: 'phone-portrait-outline' as const,
+          color: '#A50064'
+        };
+      default:
+        return {
+          name: 'Thanh toán',
+          icon: 'qr-code-outline' as const,
+          color: '#007AFF'
+        };
     }
   };
 
-  // Hàm xử lý khi WebView chuyển hướng về returnUrl
-  const handleNavigationStateChange = (navState: any) => {
-    const { url } = navState;
-    if (url && url.startsWith('http://192.168.100.28:3000/vnpay_return')) {
-      // Xóa sản phẩm khỏi giỏ hàng trước khi chuyển hướng
-      removeItemsFromCart();
-      router.push('/payment-success'); // hoặc route khác tuỳ bạn
-    }
-  };
+  const paymentInfo = getPaymentMethodInfo();
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#469B43" />
-        <Text>Đang tạo thanh toán VNPAY...</Text>
-      </View>
-    );
-  }
-
-  if (!paymentUrl) {
-    return (
-      <View style={styles.center}>
-        <Text style={{ color: 'red' }}>Không thể tạo thanh toán. Vui lòng thử lại sau.</Text>
-      </View>
-    );
-  }
-
-  return (
-    <WebView
-      source={{ uri: paymentUrl }}
-      onNavigationStateChange={handleNavigationStateChange}
-      startInLoadingState
-      renderLoading={() => (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color="#469B43" />
-          <Text>Đang tải trang thanh toán...</Text>
+      <View style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={paymentInfo.color} />
+          <Text style={styles.loadingText}>Đang xử lý thanh toán...</Text>
+          <Text style={styles.loadingSubtext}>
+            Vui lòng hoàn tất thanh toán trên ứng dụng {paymentInfo.name}
+          </Text>
         </View>
-      )}
-    />
+      </View>
+    );
+  }
+
+  if (paymentStatus === 'success') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.successContainer}>
+          <Ionicons name="checkmark-circle" size={80} color="#469B43" />
+          <Text style={styles.successTitle}>Thanh toán thành công!</Text>
+          <Text style={styles.successSubtitle}>
+            Đơn hàng của bạn đã được xác nhận và đang được xử lý.
+          </Text>
+          
+          <View style={styles.orderInfo}>
+            <Text style={styles.orderLabel}>Mã đơn hàng:</Text>
+            <Text style={styles.orderValue}>{orderId || 'N/A'}</Text>
+            
+            <Text style={styles.orderLabel}>Mã thanh toán:</Text>
+            <Text style={styles.orderValue}>{paymentId || 'N/A'}</Text>
+          </View>
+
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity 
+              style={[styles.button, styles.primaryButton]} 
+              onPress={handlePaymentSuccess}
+            >
+              <Text style={styles.primaryButtonText}>Xem đơn hàng</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.button, styles.secondaryButton]} 
+              onPress={() => router.push('/(tabs)/home')}
+            >
+              <Text style={styles.secondaryButtonText}>Tiếp tục mua sắm</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  if (paymentStatus === 'failed') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.failureContainer}>
+          <Ionicons name="close-circle" size={80} color="#FF3B30" />
+          <Text style={styles.failureTitle}>Thanh toán thất bại</Text>
+          <Text style={styles.failureSubtitle}>
+            Có lỗi xảy ra trong quá trình thanh toán. Vui lòng thử lại.
+          </Text>
+          
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity 
+              style={[styles.button, styles.primaryButton]} 
+              onPress={handlePaymentFailure}
+            >
+              <Text style={styles.primaryButtonText}>Thử lại</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.button, styles.secondaryButton]} 
+              onPress={() => router.push('/(tabs)/home')}
+            >
+              <Text style={styles.secondaryButtonText}>Về trang chủ</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  // QR Code Payment Interface
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Thanh toán {paymentInfo.name}</Text>
+        <View style={styles.placeholder} />
+      </View>
+
+      <View style={styles.content}>
+        <View style={styles.qrContainer}>
+          <View style={styles.qrHeader}>
+            <Ionicons name={paymentInfo.icon} size={32} color={paymentInfo.color} />
+            <Text style={styles.qrTitle}>Quét mã QR để thanh toán</Text>
+          </View>
+          
+          <View style={styles.qrCodeContainer}>
+            <Image 
+              source={{ uri: (paymentUrl as string) || 'https://via.placeholder.com/200x200?text=QR+Code' }}
+              style={styles.qrCode}
+              resizeMode="contain"
+            />
+          </View>
+          
+          <Text style={styles.qrInstructions}>
+            Mở ứng dụng {paymentInfo.name} và quét mã QR bên trên để hoàn tất thanh toán
+          </Text>
+        </View>
+
+        <View style={styles.orderDetails}>
+          <Text style={styles.orderDetailsTitle}>Thông tin đơn hàng</Text>
+          <View style={styles.orderDetailRow}>
+            <Text style={styles.orderDetailLabel}>Mã đơn hàng:</Text>
+            <Text style={styles.orderDetailValue}>{orderId || 'N/A'}</Text>
+          </View>
+          <View style={styles.orderDetailRow}>
+            <Text style={styles.orderDetailLabel}>Phương thức:</Text>
+            <Text style={styles.orderDetailValue}>{paymentInfo.name}</Text>
+          </View>
+        </View>
+
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity 
+            style={[styles.button, styles.primaryButton]} 
+            onPress={() => setPaymentStatus('success')}
+          >
+            <Text style={styles.primaryButtonText}>Đã thanh toán xong</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.button, styles.secondaryButton]} 
+            onPress={() => router.back()}
+          >
+            <Text style={styles.secondaryButtonText}>Hủy thanh toán</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  center: {
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 50,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  placeholder: {
+    width: 40,
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+  },
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  loadingSubtext: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  successContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  successTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#469B43',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  successSubtitle: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 8,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  orderInfo: {
+    marginTop: 24,
+    width: '100%',
+  },
+  orderLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 8,
+  },
+  orderValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  failureContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  failureTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FF3B30',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  failureSubtitle: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 8,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  qrContainer: {
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  qrHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  qrTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 8,
+  },
+  qrCodeContainer: {
+    padding: 20,
     backgroundColor: '#fff',
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  qrCode: {
+    width: 200,
+    height: 200,
+  },
+  qrInstructions: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  orderDetails: {
+    backgroundColor: '#F8F9FA',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 20,
+  },
+  orderDetailsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+  },
+  orderDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  orderDetailLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  orderDetailValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  buttonContainer: {
+    gap: 12,
+  },
+  button: {
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  primaryButton: {
+    backgroundColor: '#007AFF',
+  },
+  primaryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  secondaryButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#007AFF',
+  },
+  secondaryButtonText: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 
-export default VnpayPaymentScreen;
+export default QRPaymentScreen; 

@@ -23,7 +23,7 @@ const EditProfileScreen: React.FC = () => {
     if (/^\+84\d{9}$/.test(raw)) return '+84 ' + raw.slice(3); // +849xxxxxxxx => +84 9xxxxxxxx
     return raw;
   }
-  const [phone, setPhone] = useState(user?.phone || (user as any)?.phoneNumber || '');
+  const [phone, setPhone] = useState(user?.phoneNumber || '');
   const [phoneError, setPhoneError] = useState('');
   // Thêm dòng này để fix lỗi avatarUrl chưa khai báo
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || '');

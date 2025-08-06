@@ -5,12 +5,17 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCartStore } from '../store/useCartStore';
 import { useAuthStore } from '../store/useAuthStore';
+import { useTheme } from '../store/ThemeContext';
+import { LightColors, DarkColors } from '../constants/Colors';
 
 const PaymentSuccessScreen: React.FC = () => {
   const router = useRouter();
   const { orderId, paymentId, method } = useLocalSearchParams();
   const { clearCart } = useCartStore();
   const { token } = useAuthStore();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const colors = isDark ? DarkColors : LightColors;
 
   useEffect(() => {
     // Xóa giỏ hàng sau khi thanh toán thành công
@@ -36,7 +41,7 @@ const PaymentSuccessScreen: React.FC = () => {
   }, [token]);
 
   const handleContinueShopping = () => {
-    router.push('/(tabs)/home');
+    router.push('/(tabs)/home' as any);
   };
 
   const handleViewOrders = () => {
@@ -102,7 +107,7 @@ const PaymentSuccessScreen: React.FC = () => {
         </View>
 
         <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.primaryButton} onPress={handleContinueShopping}>
+          <TouchableOpacity style={[styles.primaryButton, { backgroundColor: colors.primary || colors.accent }]} onPress={handleContinueShopping}>
             <Ionicons name="home-outline" size={20} color="#fff" />
             <Text style={styles.primaryButtonText}>Tiếp tục mua sắm</Text>
           </TouchableOpacity>
@@ -183,7 +188,6 @@ const styles = StyleSheet.create({
     gap: 15,
   },
   primaryButton: {
-    backgroundColor: '#469B43',
     paddingVertical: 15,
     paddingHorizontal: 20,
     borderRadius: 8,

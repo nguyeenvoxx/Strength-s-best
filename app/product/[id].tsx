@@ -41,14 +41,14 @@ const ProductScreen = () => {
     card: '#2d2d2d',
     text: '#ffffff',
     textSecondary: '#cccccc',
-    accent: '#FF6B35',
+    accent: '#5CB85C',
     border: '#404040'
   } : {
     background: '#f5f5f5',
     card: '#ffffff',
     text: '#333333',
     textSecondary: '#666666',
-    accent: '#FF6B35',
+    accent: '#469B43',
     border: '#e0e0e0'
   };
 
@@ -70,6 +70,7 @@ const ProductScreen = () => {
       try {
         await fetchProductById(id as string);
         await fetchRelatedProducts(id as string);
+
       } catch (error) {
         console.error('Error loading product:', error);
         Alert.alert('Lỗi', 'Không thể tải thông tin sản phẩm');
@@ -253,11 +254,15 @@ const ProductScreen = () => {
     );
   }
 
-  const images = getProductImages(currentProduct);
+  const images = getProductImages(currentProduct) || [];
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView ref={scrollViewRef} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        ref={scrollViewRef} 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 120 }}
+      >
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
@@ -275,20 +280,20 @@ const ProductScreen = () => {
         {/* Product Images */}
         <View style={styles.imageContainer}>
           <Image
-            source={{ uri: images[selectedImageIndex] !== 'https://via.placeholder.com/300x300?text=No+Image' 
+            source={{ uri: images.length > 0 && images[selectedImageIndex] !== 'https://via.placeholder.com/300x300?text=No+Image' 
               ? images[selectedImageIndex] 
               : 'https://via.placeholder.com/400x400?text=Product+Image' }}
             style={styles.mainImage}
             resizeMode="cover"
             defaultSource={require('../../assets/images_sp/dau_ca_omega.png')}
             onError={(error) => {
-              console.log('🔍 Product detail main Image load error:', error.nativeEvent.error);
+              // Image load error handled silently
             }}
             onLoad={() => {
-              console.log('🔍 Product detail main Image loaded successfully');
+              // Image loaded successfully
             }}
           />
-          {images.length > 1 && (
+          {images && images.length > 1 && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageList}>
               {images.map((image, index) => (
                 <TouchableOpacity
@@ -305,12 +310,12 @@ const ProductScreen = () => {
                       : 'https://via.placeholder.com/80x80?text=Image' }} 
                     style={styles.thumbnailImage}
                     defaultSource={require('../../assets/images_sp/dau_ca_omega.png')}
-                    onError={(error) => {
-                      console.log('🔍 Product detail thumbnail Image load error:', error.nativeEvent.error);
-                    }}
-                    onLoad={() => {
-                      console.log('🔍 Product detail thumbnail Image loaded successfully');
-                    }}
+                                onError={(error) => {
+              // Image load error handled silently
+            }}
+            onLoad={() => {
+              // Image loaded successfully
+            }}
                   />
                 </TouchableOpacity>
               ))}
@@ -393,7 +398,7 @@ const ProductScreen = () => {
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>
                   {section.title}
                 </Text>
-                {section.items.map((item, itemIndex) => renderSectionItem(item, itemIndex))}
+                {section.items && section.items.map((item, itemIndex) => renderSectionItem(item, itemIndex))}
               </View>
             ))}
           </View>
@@ -412,11 +417,11 @@ const ProductScreen = () => {
         </View>
 
         {/* Related Products */}
-        {relatedProducts.length > 0 && (
-          <View style={[styles.relatedContainer, { backgroundColor: colors.card }]}>
-            <Text style={[styles.relatedTitle, { color: colors.text }]}>
-              Sản phẩm liên quan
-            </Text>
+        <View style={[styles.relatedContainer, { backgroundColor: colors.card }]}>
+          <Text style={[styles.relatedTitle, { color: colors.text }]}>
+            Sản phẩm liên quan
+          </Text>
+          {relatedProducts.length > 0 ? (
             <FlatList
               data={relatedProducts}
               renderItem={renderRelatedProduct}
@@ -425,8 +430,12 @@ const ProductScreen = () => {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.relatedList}
             />
-          </View>
-        )}
+          ) : (
+            <Text style={[{ color: colors.textSecondary, textAlign: 'center', padding: 20 }]}>
+              Đang tải sản phẩm liên quan...
+            </Text>
+          )}
+        </View>
       </ScrollView>
 
       {/* Bottom Actions */}
@@ -652,8 +661,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     paddingVertical: 15,
+    paddingBottom: 90, // Tránh bị che bởi bottom tabs
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
   },
   quantityContainer: {
     flexDirection: 'row',
@@ -718,7 +733,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   retryButton: {
-    backgroundColor: '#FF6B35',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { API_CONFIG } from '../constants/config';
+import { API_CONFIG } from '../services/config';
 
 interface Product {
   _id: string;
@@ -182,6 +182,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
         
         // Refresh cart after removing
         await get().fetchCart(token);
+        set({ loading: false });
       } else {
         const errorData = await response.json();
         console.log('Remove from Cart Error Data:', errorData);
@@ -189,6 +190,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
           error: errorData.message || 'Không thể giảm số lượng sản phẩm',
           loading: false 
         });
+        throw new Error(errorData.message || 'Không thể giảm số lượng sản phẩm');
       }
     } catch (error) {
       console.error('=== CART STORE: REMOVE FROM CART ERROR ===');
@@ -197,6 +199,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
         error: 'Không thể kết nối đến server',
         loading: false 
       });
+      throw error;
     }
   },
 
@@ -228,6 +231,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
         
         // Refresh cart after deleting
         await get().fetchCart(token);
+        set({ loading: false });
       } else {
         const errorData = await response.json();
         console.log('Delete from Cart Error Data:', errorData);
@@ -235,6 +239,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
           error: errorData.message || 'Không thể xóa sản phẩm',
           loading: false 
         });
+        throw new Error(errorData.message || 'Không thể xóa sản phẩm');
       }
     } catch (error) {
       console.error('=== CART STORE: DELETE FROM CART ERROR ===');
@@ -243,6 +248,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
         error: 'Không thể kết nối đến server',
         loading: false 
       });
+      throw error;
     }
   },
 

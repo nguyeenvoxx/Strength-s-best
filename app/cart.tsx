@@ -12,10 +12,11 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useCartStore } from '../../store/useCartStore';
-import { useAuthStore } from '../../store/useAuthStore';
-import { formatPrice } from '../../utils/productUtils';
-import { useTheme } from '../../store/ThemeContext';
+import { useCartStore } from '../store/useCartStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { formatPrice, getProductImageUrl } from '../utils/productUtils';
+import { useTheme } from '../store/ThemeContext';
+import { LightColors, DarkColors } from '../constants/Colors';
 
 interface CartItem {
   _id: string;
@@ -28,21 +29,8 @@ interface CartItem {
 const CartScreen: React.FC = () => {
   const router = useRouter();
   const { theme } = useTheme();
-  const colors = theme === 'dark' ? {
-    background: '#1a1a1a',
-    card: '#2d2d2d',
-    text: '#ffffff',
-    textSecondary: '#cccccc',
-    accent: '#FF6B35',
-    border: '#404040'
-  } : {
-    background: '#f5f5f5',
-    card: '#ffffff',
-    text: '#333333',
-    textSecondary: '#666666',
-    accent: '#FF6B35',
-    border: '#e0e0e0'
-  };
+  const isDark = theme === 'dark';
+  const colors = isDark ? DarkColors : LightColors;
 
   const { cart, items, loading, error, fetchCart, addToCart, removeFromCart, deleteFromCart, clearCart } = useCartStore();
   const { isAuthenticated, token } = useAuthStore();
@@ -88,22 +76,19 @@ const CartScreen: React.FC = () => {
       return;
     }
 
-    console.log('=== CART SCREEN: DECREASE QUANTITY ===');
-    console.log('Product ID:', productId);
-    console.log('Token:', token ? 'Present' : 'Missing');
+
 
     try {
       await removeFromCart(token!, productId);
+      
     } catch (error) {
-      console.error('Error decreasing quantity:', error);
+      console.error('❌ Error decreasing quantity:', error);
       Alert.alert('Lỗi', 'Không thể giảm số lượng sản phẩm');
     }
   };
 
   const handleDelete = async (productId: string) => {
-    console.log('=== CART SCREEN: DELETE ITEM ===');
-    console.log('Product ID:', productId);
-    console.log('Token:', token ? 'Present' : 'Missing');
+
 
     Alert.alert(
       'Xác nhận xóa',
@@ -116,8 +101,9 @@ const CartScreen: React.FC = () => {
           onPress: async () => {
             try {
               await deleteFromCart(token!, productId);
+      
             } catch (error) {
-              console.error('Error removing item:', error);
+              console.error('❌ Error removing item:', error);
               Alert.alert('Lỗi', 'Không thể xóa sản phẩm');
             }
           }
@@ -161,7 +147,7 @@ const CartScreen: React.FC = () => {
     }
 
     // Navigate to checkout
-    router.push('/checkout');
+    router.push('./checkout');
   };
 
   const calculateSubtotal = () => {
@@ -183,18 +169,16 @@ const CartScreen: React.FC = () => {
     return (
       <View style={[styles.cartItem, { backgroundColor: colors.card }]}>
         <Image
-          source={{ uri: product?.image !== 'https://via.placeholder.com/300x300?text=No+Image' 
-            ? product?.image 
-            : 'https://via.placeholder.com/80x80?text=Product' }}
+          source={{ uri: getProductImageUrl(product?.image) }}
           style={styles.productImage}
           resizeMode="cover"
-          defaultSource={require('../../assets/images_sp/dau_ca_omega.png')}
-          onError={(error) => {
-            console.log('🔍 Cart Image load error:', error.nativeEvent.error);
-          }}
-          onLoad={() => {
-            console.log('🔍 Cart Image loaded successfully');
-          }}
+          defaultSource={require('../assets/images_sp/dau_ca_omega.png')}
+                      onError={(error) => {
+              // Image load error handled silently
+            }}
+            onLoad={() => {
+              // Image loaded successfully
+            }}
         />
         
         <View style={styles.itemDetails}>
@@ -311,7 +295,7 @@ const CartScreen: React.FC = () => {
            </Text>
           <TouchableOpacity
             style={[styles.shopButton, { backgroundColor: colors.accent }]}
-            onPress={() => router.push('/(tabs)/home')}
+            onPress={() => router.push('./home')}
           >
             <Text style={styles.shopButtonText}>Mua sắm ngay</Text>
           </TouchableOpacity>
@@ -323,7 +307,7 @@ const CartScreen: React.FC = () => {
             renderItem={renderCartItem}
             keyExtractor={(item) => item._id}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.cartList}
+            contentContainerStyle={[styles.cartList, { paddingBottom: 160 }]}
           />
 
 
@@ -353,7 +337,12 @@ const CartScreen: React.FC = () => {
             </View>
           </View>
 
-          {/* Checkout Button */}
+        </>
+      )}
+
+      {/* Fixed Checkout Button */}
+      {items && items.length > 0 && (
+        <View style={[styles.checkoutContainer, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
           <TouchableOpacity
             style={[styles.checkoutButton, { backgroundColor: colors.accent }]}
             onPress={handleCheckout}
@@ -367,10 +356,8 @@ const CartScreen: React.FC = () => {
               </Text>
             )}
           </TouchableOpacity>
-        </>
+        </View>
       )}
-
-
     </View>
   );
 };
@@ -501,10 +488,19 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   checkoutContainer: {
-    padding: 15,
+    position: 'absolute',
+    bottom: 70, // Trên bottom tabs
+    left: 0,
+    right: 0,
+    padding: 20,
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#e9ecef',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: -2 },
+    shadowRadius: 4,
   },
   checkoutButton: {
     paddingVertical: 15,
@@ -730,4 +726,4 @@ const styles = StyleSheet.create({
 
 });
 
-export default CartScreen;
+export default CartScreen; 

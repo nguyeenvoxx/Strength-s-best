@@ -219,3 +219,93 @@ export const clearCartItems = async () => {
     throw new Error(error?.response?.data?.message || 'Lỗi xóa giỏ hàng');
   }
 };
+
+// Hàm tạo mã xác minh thanh toán
+export const createPaymentVerification = async (orderId: string, cardId: string) => {
+  const token = useAuthStore.getState().token;
+  
+  if (!token) {
+    throw new Error('Token không tồn tại');
+  }
+
+  try {
+    console.log('🔍 Creating payment verification:', { orderId, cardId });
+
+    const res = await axios.post(
+      `${API_CONFIG.BASE_URL}/api/v1/payments/create-verification`,
+      { orderId, cardId },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+      }
+    );
+
+    console.log('✅ Payment verification created successfully:', res.data);
+    return res.data;
+  } catch (error: any) {
+    console.error('❌ Error creating payment verification:', error);
+    throw new Error(error?.response?.data?.message || 'Lỗi tạo mã xác minh thanh toán');
+  }
+};
+
+// Hàm gửi lại mã xác minh thanh toán
+export const resendPaymentVerification = async (orderId: string, cardId: string) => {
+  const token = useAuthStore.getState().token;
+  
+  if (!token) {
+    throw new Error('Token không tồn tại');
+  }
+
+  try {
+    console.log('🔍 Resending payment verification:', { orderId, cardId });
+
+    const res = await axios.post(
+      `${API_CONFIG.BASE_URL}/api/v1/payments/resend-code`,
+      { orderId, cardId },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+      }
+    );
+
+    console.log('✅ Payment verification resent successfully:', res.data);
+    return res.data;
+  } catch (error: any) {
+    console.error('❌ Error resending payment verification:', error);
+    throw new Error(error?.response?.data?.message || 'Lỗi gửi lại mã xác minh thanh toán');
+  }
+};
+
+// Hàm xác minh thanh toán bằng thẻ
+export const verifyCardPayment = async (orderId: string, cardId: string, verificationCode: string, amount: number) => {
+  const token = useAuthStore.getState().token;
+  
+  if (!token) {
+    throw new Error('Token không tồn tại');
+  }
+
+  try {
+    console.log('🔍 Verifying card payment:', { orderId, cardId, amount });
+
+    const res = await axios.post(
+      `${API_CONFIG.BASE_URL}/api/v1/payments/verify`,
+      { orderId, cardId, verificationCode, amount },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+      }
+    );
+
+    console.log('✅ Card payment verified successfully:', res.data);
+    return res.data;
+  } catch (error: any) {
+    console.error('❌ Error verifying card payment:', error);
+    throw new Error(error?.response?.data?.message || 'Lỗi xác minh thanh toán');
+  }
+};

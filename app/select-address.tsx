@@ -11,7 +11,7 @@ import { getUserAddresses, setDefaultAddress, deleteAddress, Address } from '../
 
 const SelectAddressScreen: React.FC = () => {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, token, isAuthenticated } = useAuthStore();
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -20,18 +20,28 @@ const SelectAddressScreen: React.FC = () => {
   const colors = isDark ? DarkColors : LightColors;
 
   useEffect(() => {
-    loadAddresses();
-  }, []);
+    console.log('🔍 SelectAddress - useEffect triggered, token:', token ? 'Present' : 'Missing');
+    console.log('🔍 SelectAddress - isAuthenticated:', isAuthenticated);
+    if (token && isAuthenticated) {
+      loadAddresses();
+    }
+  }, [token, isAuthenticated]);
 
   const loadAddresses = async () => {
+    if (!token) {
+      console.warn('🔍 SelectAddress - No token available for loading addresses');
+      return;
+    }
+    
     try {
+      console.log('🔍 SelectAddress - Loading addresses with token length:', token.length);
       setLoading(true);
-      const response = await getUserAddresses();
-      const userAddresses = response.data?.addresses || [];
+      const userAddresses = await getUserAddresses(token);
       
       if (userAddresses.length === 0) {
         // Tạo địa chỉ mặc định từ thông tin user
         const defaultAddress: Address = {
+          _id: `default-${Date.now()}`, // Tạo unique ID
           userId: user?._id || (user as any)?.id || '',
           name: user?.name || 'Khách hàng',
           phone: user?.phone || (user as any)?.phoneNumber || '',
@@ -48,9 +58,14 @@ const SelectAddressScreen: React.FC = () => {
           setSelectedAddressId(defaultAddress._id || '');
         }
       }
-    } catch (error) {
-      console.error('Lỗi khi tải địa chỉ:', error);
-      Alert.alert('Lỗi', 'Không thể tải danh sách địa chỉ');
+    } catch (error: any) {
+      console.error('🔍 SelectAddress - Error loading addresses:', error);
+      console.error('🔍 SelectAddress - Error message:', error?.message);
+      
+      // Không hiển thị alert nếu là lỗi token để tránh spam user
+      if (!error?.message?.includes('Token')) {
+        Alert.alert('Lỗi', 'Không thể tải danh sách địa chỉ');
+      }
     } finally {
       setLoading(false);
     }
@@ -79,7 +94,7 @@ const SelectAddressScreen: React.FC = () => {
     const selectedAddress = addresses.find(addr => addr._id === selectedAddressId);
     if (selectedAddress) {
       await AsyncStorage.setItem('selectedDeliveryAddress', JSON.stringify(selectedAddress));
-      router.back();
+              router.replace('/checkout');
     }
   };
 
@@ -151,8 +166,8 @@ const SelectAddressScreen: React.FC = () => {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Địa chỉ</Text>
         
-        {addresses.map((address) => (
-          <View key={address._id} style={[styles.addressCard, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
+        {addresses.map((address, index) => (
+          <View key={address._id || `address-${index}`} style={[styles.addressCard, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
             <TouchableOpacity 
               style={styles.addressContent}
               onPress={() => handleSelectAddress(address._id || '')}
@@ -308,7 +323,6 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#469B43',
   },
   addressInfo: {
     flex: 1,
@@ -330,7 +344,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   defaultTag: {
-    backgroundColor: '#469B43',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
@@ -384,7 +397,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#469B43',
     paddingVertical: 16,
     borderRadius: 12,
     marginBottom: 12,
@@ -396,7 +408,6 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   confirmButton: {
-    backgroundColor: '#469B43',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',

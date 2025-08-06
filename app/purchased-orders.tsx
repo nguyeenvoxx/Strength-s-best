@@ -8,12 +8,16 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Modal,
+  TextInput,
+  SafeAreaView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
 import { getUserOrders, Order } from '../services/orderApi';
-import { API_CONFIG } from '../constants/config';
+import { API_CONFIG } from '../services/config';
 
 // Helper function to get price in VND
 const getPriceVND = (price: any) => {
@@ -21,9 +25,33 @@ const getPriceVND = (price: any) => {
   return n < 1000 ? n * 1000 : n;
 };
 // định dạng giá tiền an toàn
-const formatPrice = (value: number | null | undefined) => {
-  if (typeof value !== 'number' || isNaN(value)) return '0 đ';
-  return value.toLocaleString('vi-VN') + ' đ';
+const formatPrice = (price: number) => {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND'
+  }).format(price);
+};
+
+const getStatusText = (status: string) => {
+  switch (status) {
+    case 'pending': return 'Chờ xử lý';
+    case 'processing': return 'Đang xử lý';
+    case 'shipping': return 'Đang giao';
+    case 'delivered': return 'Đã giao';
+    case 'cancelled': return 'Đã hủy';
+    default: return 'Chờ xử lý';
+  }
+};
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'pending': return '#ffa500';
+    case 'processing': return '#007bff';
+    case 'shipping': return '#28a745';
+    case 'delivered': return '#28a745';
+    case 'cancelled': return '#dc3545';
+    default: return '#ffa500';
+  }
 };
 // Helper to safely stringify
 const safeString = (val: any) => (val === null || val === undefined ? 'Không rõ' : val.toString());
@@ -41,6 +69,14 @@ const PurchasedOrdersScreen: React.FC = () => {
   const { user, token } = useAuthStore();
   const userId = user?._id || (user as any)?.id;
   const [addresses, setAddresses] = useState([]);
+  
+  // Review modal states
+  const [reviewModalVisible, setReviewModalVisible] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [selectedOrderId, setSelectedOrderId] = useState<string>('');
+  const [rating, setRating] = useState(5);
+  const [reviewText, setReviewText] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -71,6 +107,73 @@ const PurchasedOrdersScreen: React.FC = () => {
     };
     loadAddresses();
   }, [userId]);
+
+  // Handle review product
+  const handleReviewProduct = (product: any, orderId: string) => {
+    setSelectedProduct(product);
+    setSelectedOrderId(orderId);
+    setRating(5);
+    setReviewText('');
+    setReviewModalVisible(true);
+  };
+
+  const submitReview = async () => {
+    if (!selectedProduct || !token) return;
+
+    try {
+      setSubmittingReview(true);
+      
+      const response = await fetch(`${API_CONFIG.BASE_URL}/reviews`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          idProduct: selectedProduct._id,
+          idOrderDetail: selectedOrderId,
+          rating: rating,
+          review: reviewText.trim() || undefined
+        })
+      });
+
+      if (response.ok) {
+        Alert.alert('Thành công', 'Đánh giá của bạn đã được gửi!');
+        setReviewModalVisible(false);
+        // Refresh orders to update review status
+        const userOrders = await getUserOrders(token);
+        setOrders(userOrders);
+      } else {
+        const errorData = await response.json();
+        Alert.alert('Lỗi', errorData.message || 'Không thể gửi đánh giá');
+      }
+    } catch (error) {
+      console.error('Error submitting review:', error);
+      Alert.alert('Lỗi', 'Không thể gửi đánh giá. Vui lòng thử lại.');
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
+  const renderStarRating = () => {
+    return (
+      <View style={styles.starContainer}>
+        {[1, 2, 3, 4, 5].map((star) => (
+          <TouchableOpacity
+            key={star}
+            onPress={() => setRating(star)}
+            style={styles.starButton}
+          >
+            <Ionicons
+              name={star <= rating ? 'star' : 'star-outline'}
+              size={32}
+              color={star <= rating ? '#FFD700' : '#DDD'}
+            />
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
+  };
 
   // xử lý hủy đơn hàng
   // hiển thị cảnh báo xác nhận trước khi hủy đơn
@@ -109,199 +212,277 @@ const PurchasedOrdersScreen: React.FC = () => {
     ]);
   };
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FF6B35" />
-        <Text style={styles.loadingText}>Đang tải đơn hàng...</Text>
-      </View>
-    );
-  }
-
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Đơn hàng đã mua</Text>
-
-      {orders.map((order) => (
-        <View key={order._id} style={styles.card}>
-          <View style={styles.orderHeader}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.orderDate}>Ngày: {safeDate(order.createdAt)}</Text>
-              <Text style={styles.orderId}>Mã đơn: <Text style={{ fontWeight: 'bold' }}>{order._id}</Text></Text>
-              
-              {/* Hiển thị tên sản phẩm đầu tiên và số lượng */}
-              {order.items && order.items.length > 0 && (
-                <Text style={{ fontSize: 14, marginTop: 4 }}>
-                  <Text style={{ fontWeight: 'bold' }}>
-                    {(order.items[0].productId as any)?.nameProduct || 'Sản phẩm'}
-                  </Text>
-                  {order.items.length > 1 && (
-                    <Text style={{ color: '#666' }}> và {order.items.length - 1} sản phẩm khác</Text>
-                  )}
-                </Text>
-              )}
-              
-              <Text style={{ fontSize: 14, marginTop: 4 }}>
-                Số lượng: <Text style={{ fontWeight: 'bold' }}>
-                  {order.items?.reduce((total, item) => total + item.quantity, 0) ?? 0}
-                </Text>
-              </Text>
-              
-              {(order.voucherDiscount || 0) > 0 && (
-                <Text style={styles.voucherText}>Giảm giá: {formatPrice(order.voucherDiscount || 0)}</Text>
-              )}
-              
-              <Text style={styles.total}>Tổng thanh toán: {formatPrice(order.totalAmount)}</Text>
-              <Text style={styles.paymentMethod}>
-                Phương thức: {order.paymentMethod === 'cod' ? 'Thanh toán khi nhận hàng' : 'Thanh toán online'}
-              </Text>
-            </View>
-            <Text style={{
-              color: order.status === 'cancelled' ? 'red' : 
-                     order.status === 'delivered' ? '#28a745' : 
-                     order.status === 'shipped' ? '#007bff' : '#ffa500',
-              fontWeight: 'bold',
-              marginBottom: 4,
-            }}>
-              {order.status === 'cancelled' ? 'Đã hủy' : 
-               order.status === 'delivered' ? 'Đã giao' :
-               order.status === 'shipped' ? 'Đang giao' :
-               order.status === 'processing' ? 'Đang xử lý' : 'Chờ xử lý'}
-            </Text>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Đơn hàng đã mua</Text>
+      </View>
+      
+      <ScrollView style={styles.content}>
+        {loading ? (
+          <View style={styles.emptyContainer}>
+            <ActivityIndicator size="large" color="#007bff" />
+            <Text style={styles.emptyText}>Đang tải...</Text>
           </View>
-          {order.status !== 'cancelled' && order.status !== 'delivered' && (
-            <TouchableOpacity style={styles.cancelButton} onPress={() => handleCancel(order._id)}>
-              <Text style={styles.cancelText}>Hủy đơn</Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            style={{ marginTop: 10, padding: 10, backgroundColor: '#007bff', borderRadius: 6 }}
-            onPress={() =>
-              router.push({
-                pathname: '/order-summary',
-                params: {
-                  selected: JSON.stringify(order.items),
-                  id: order._id,
-                  total: order.totalAmount.toString(),
-                  date: order.createdAt,
-                  voucher: (order.voucherDiscount || 0) > 0 ? `Giảm ${formatPrice(order.voucherDiscount || 0)}` : '',
-                  status: order.status,
-                  customerName: order.shippingAddress?.fullName ?? '',
-                  customerPhone: order.shippingAddress?.phone ?? '',
-                  customerAddress: order.shippingAddress?.address ?? '',
-                },
-              })
-            }
-          >
-            <Text style={{ color: '#fff', textAlign: 'center', fontWeight: 'bold' }}>
-              Xem đơn hàng
-            </Text>
-          </TouchableOpacity>
-        </View>
-      ))}
-
-      {orders.length === 0 && (
-        <Text style={{ textAlign: 'center', marginTop: 20, color: '#888' }}>
-          Bạn chưa có đơn hàng nào.
-        </Text>
-      )}
-
-      <TouchableOpacity
-        style={styles.buyButton}
-        onPress={() => router.push('/(tabs)/home')}
-      >
-        <Text style={styles.buyButtonText}>Tiếp tục mua sắm</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        ) : orders.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>Bạn chưa có đơn hàng nào</Text>
+          </View>
+        ) : (
+          orders.map((order) => (
+            <View key={order?._id || 'unknown'} style={styles.card}>
+              <View style={styles.orderHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.orderDate}>Ngày: {safeDate(order.createdAt || order.created_at || '')}</Text>
+                  <Text style={styles.orderId}>Mã đơn: <Text style={{ fontWeight: 'bold' }}>{order?._id}</Text></Text>
+                  
+                  {/* Hiển thị tên sản phẩm đầu tiên và số lượng */}
+                  {order?.items && order.items.length > 0 && (
+                    <Text style={{ fontSize: 14, marginTop: 4 }}>
+                      <Text style={{ fontWeight: 'bold' }}>
+                        {(order.items[0]?.productId || order.items[0]?.idProduct)?.nameProduct || 'Sản phẩm'}
+                      </Text>
+                      {order.items.length > 1 && ` +${order.items.length - 1} sản phẩm khác`}
+                    </Text>
+                  )}
+                  
+                  {/* Hiển thị tổng số lượng */}
+                  <Text style={{ fontSize: 12, marginTop: 2, color: '#666' }}>
+                    Tổng số lượng: {order.totalQuantity || order.items?.length || 0} sản phẩm
+                  </Text>
+                </View>
+                <View style={styles.orderStatus}>
+                  <Text style={[styles.statusText, { color: getStatusColor(order?.status || 'pending') }]}>
+                    {getStatusText(order?.status || 'pending')}
+                  </Text>
+                  <Text style={styles.orderTotal}>
+                    {formatPrice(order?.totalAmount || order?.totalPrice || 0)}
+                  </Text>
+                </View>
+              </View>
+              
+              <View style={styles.orderActions}>
+                <TouchableOpacity
+                  style={styles.viewButton}
+                  onPress={() => router.push({
+          pathname: '/order-detail/[id]',
+          params: { id: order?._id }
+        })}
+                >
+                  <Text style={styles.viewButtonText}>Xem đơn hàng</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 30,
-    paddingHorizontal: 16,
-    backgroundColor: '#fff',
+    flex: 1,
+    backgroundColor: '#f5f5f5',
   },
-  title: {
-    fontSize: 22,
+  header: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  headerTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
+    color: '#333',
+  },
+  content: {
+    flex: 1,
+    padding: 16,
   },
   card: {
-    backgroundColor: '#f2f2f2',
-    borderRadius: 12,
+    backgroundColor: '#fff',
+    borderRadius: 8,
     padding: 16,
-    marginBottom: 20,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   orderHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
-  },
-  orderId: {
-    fontSize: 14,
-    marginBottom: 4,
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
   },
   orderDate: {
     fontSize: 14,
-    color: '#555',
-    marginBottom: 6,
-  },
-  voucherText: {
-    color: 'green',
+    color: '#666',
     marginBottom: 4,
-    fontSize: 14,
   },
-  total: {
+  orderId: {
+    fontSize: 12,
+    color: '#999',
+    marginBottom: 4,
+  },
+  orderStatus: {
+    alignItems: 'flex-end',
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  orderTotal: {
     fontSize: 16,
     fontWeight: 'bold',
-    marginTop: 4,
+    color: '#007bff',
   },
-  paymentMethod: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 2,
-  },
-  imageRight: {
-    width: 89,
-    height: 89,
-    borderRadius: 8,
-    backgroundColor: '#eee',
-    marginLeft: 10,
-  },
-  cancelButton: {
-    backgroundColor: '#ff4d4d',
-    paddingVertical: 8,
-    borderRadius: 6,
+  orderActions: {
     marginTop: 12,
   },
-  cancelText: {
+  viewButton: {
+    backgroundColor: '#007bff',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  viewButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 16,
+  },
+  // Review styles
+  reviewSection: {
+    marginTop: 15,
+    padding: 10,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+  },
+  reviewTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  reviewButton: {
+    backgroundColor: '#28a745',
+    padding: 10,
+    borderRadius: 6,
+    marginBottom: 8,
+  },
+  reviewButtonText: {
     color: 'white',
     textAlign: 'center',
     fontWeight: '600',
   },
-  buyButton: {
-    backgroundColor: 'green',
-    padding: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  buyButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  loadingContainer: {
+  // Modal styles
+  modalOverlay: {
     flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
   },
-  loadingText: {
-    marginTop: 16,
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 15,
+    padding: 20,
+    width: '90%',
+    maxWidth: 400,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  closeButton: {
+    padding: 5,
+  },
+  productInfo: {
+    marginBottom: 20,
+    padding: 15,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+  },
+  productName: {
     fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  ratingLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 10,
+    color: '#333',
+  },
+  starContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  starButton: {
+    padding: 5,
+  },
+  reviewLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 10,
+    color: '#333',
+  },
+  reviewInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    minHeight: 100,
+    marginBottom: 20,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  actionButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    marginHorizontal: 5,
+  },
+  submitButton: {
+    backgroundColor: '#28a745',
+  },
+  submitButtonText: {
+    color: 'white',
+    textAlign: 'center',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  cancelButtonText: {
     color: '#666',
+    textAlign: 'center',
+    fontWeight: '600',
+    fontSize: 16,
   },
 });
 

@@ -16,15 +16,15 @@ import {
   
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Product } from '../../types/product.type';
-import SearchBar from '../../components/text-input/SearchBar';
-import TrendingProductItem from '../../modules/HomeScreen/TrendingProductItem';
+import { Product } from '../types/product.type';
+import SearchBar from '../components/text-input/SearchBar';
+import TrendingProductItem from '../modules/HomeScreen/TrendingProductItem';
 import { useRouter } from 'expo-router';
-import { useProductStore } from '../../store/useProductStore';
-import { getPlatformContainerStyle } from '../../utils/platformUtils';
-import { useTheme } from '../../store/ThemeContext';
-import { LightColors, DarkColors } from '../../constants/Colors';
-import { getProductImages } from '../../utils/productUtils';
+import { useProductStore } from '../store/useProductStore';
+import { getPlatformContainerStyle } from '../utils/platformUtils';
+import { useTheme } from '../store/ThemeContext';
+import { LightColors, DarkColors } from '../constants/Colors';
+import { getProductImages } from '../utils/productUtils';
 
 const { width } = Dimensions.get('window');
 const numColumns = 2;
@@ -188,7 +188,7 @@ const SearchScreen: React.FC = () => {
   };
 
   const onProductPress = (productId: string) => {
-    router.push(`../../product/${productId}`);
+    router.push(`./product/${productId}`);
   };
 
   const formatPrice = (price: number) => {
@@ -410,7 +410,7 @@ const SearchScreen: React.FC = () => {
                     : 'https://via.placeholder.com/150x150?text=No+Image' }}
                   style={styles.productImage}
                   resizeMode="cover"
-                  defaultSource={require('../../assets/images_sp/dau_ca_omega.png')}
+                  defaultSource={require('../assets/images_sp/dau_ca_omega.png')}
                   onError={(error) => {
                     console.log('🔍 Search page Image load error:', error.nativeEvent.error);
                   }}
@@ -688,4 +688,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SearchScreen;
+export default SearchScreen; 

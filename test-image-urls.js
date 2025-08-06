@@ -2,28 +2,22 @@
 const baseUrl = 'http://192.168.1.49:3000';
 
 function getProductImageUrl(imagePath) {
-  console.log('🔍 getProductImageUrl input:', imagePath);
-  
   if (!imagePath) {
-    console.log('🔍 No imagePath, returning placeholder');
     return 'https://via.placeholder.com/300x300?text=No+Image';
   }
   
   // Nếu là URL đầy đủ
   if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-    console.log('🔍 Full URL detected:', imagePath);
     return imagePath;
   }
   
   // Nếu là tên file, sử dụng static file serving
   if (imagePath.includes('.jpg') || imagePath.includes('.png') || imagePath.includes('.jpeg')) {
     const fullUrl = `${baseUrl}/uploads/products/${imagePath}`;
-    console.log('🔍 Generated image URL:', fullUrl);
     return fullUrl;
   }
   
   // Fallback
-  console.log('🔍 No valid image format, returning placeholder');
   return 'https://via.placeholder.com/300x300?text=Product+Image';
 }
 

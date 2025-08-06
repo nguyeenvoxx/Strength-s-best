@@ -16,11 +16,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCartStore } from '../store/useCartStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useVoucherStore } from '../store/useVoucherStore';
-import { formatPrice } from '../utils/productUtils';
+import { formatPrice, getProductImageUrl } from '../utils/productUtils';
 import { useTheme } from '../store/ThemeContext';
 import { createOrder, CreateOrderRequest } from '../services/orderApi';
 import AddressSelector from '../components/AddressSelector';
 import { Address } from '../services/addressApi';
+import { Card, getUserCards, deleteCard, setDefaultCard } from '../services/cardApi';
+import { API_CONFIG } from '../constants/config';
 
 const CheckoutScreen: React.FC = () => {
   const router = useRouter();
@@ -30,14 +32,14 @@ const CheckoutScreen: React.FC = () => {
     card: '#2d2d2d',
     text: '#ffffff',
     textSecondary: '#cccccc',
-    accent: '#FF6B35',
+    accent: '#5CB85C',
     border: '#404040'
   } : {
     background: '#f5f5f5',
     card: '#ffffff',
     text: '#333333',
     textSecondary: '#666666',
-    accent: '#FF6B35',
+    accent: '#469B43',
     border: '#e0e0e0'
   };
 
@@ -46,14 +48,20 @@ const CheckoutScreen: React.FC = () => {
   const { vouchers, selectedVoucher, fetchVouchers, selectVoucher } = useVoucherStore();
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('cod');
+  const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [showVoucherModal, setShowVoucherModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showCardModal, setShowCardModal] = useState(false);
+  const [showCardManagementModal, setShowCardManagementModal] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
+  const [userCards, setUserCards] = useState<Card[]>([]);
+  const [loadingCards, setLoadingCards] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && token) {
       loadCartData();
       fetchVouchers(token);
+      loadUserCards();
     }
   }, [isAuthenticated, token]);
 
@@ -65,8 +73,28 @@ const CheckoutScreen: React.FC = () => {
     }
   };
 
+  const loadUserCards = async () => {
+    if (!token) return;
+    
+    try {
+      setLoadingCards(true);
+      const cards = await getUserCards(token);
+      setUserCards(cards);
+      
+      // Tự động chọn thẻ default nếu có
+      const defaultCard = cards.find(card => card.isDefault);
+      if (defaultCard) {
+        setSelectedCard(defaultCard);
+      }
+    } catch (error) {
+      console.error('Error loading user cards:', error);
+    } finally {
+      setLoadingCards(false);
+    }
+  };
+
   const calculateSubtotal = () => {
-    return items.reduce((total, item) => {
+    return (items || []).reduce((total, item) => {
       const product = item.productId as any;
       const originalPrice = product?.priceProduct || 0;
       const discountPercent = product?.discount || 0;
@@ -96,6 +124,50 @@ const CheckoutScreen: React.FC = () => {
   const handlePaymentMethodSelect = (method: string) => {
     setSelectedPaymentMethod(method);
     setShowPaymentModal(false);
+    
+    // Nếu chọn thẻ tín dụng, hiển thị modal chọn thẻ
+    if (method === 'card') {
+      setShowCardModal(true);
+    }
+  };
+
+  const handleCardSelect = (card: any) => {
+    setSelectedCard(card);
+    setShowCardModal(false);
+  };
+
+  const handleDeleteCard = async (cardId: string) => {
+    if (!token) return;
+    
+    Alert.alert(
+      'Xác nhận xóa thẻ',
+      'Bạn có chắc chắn muốn xóa thẻ này không?',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteCard(token, cardId);
+              
+              // Reload danh sách thẻ
+              await loadUserCards();
+              
+              // Nếu thẻ bị xóa là thẻ đang chọn, reset selection
+              if (selectedCard?._id === cardId) {
+                setSelectedCard(null);
+              }
+              
+              Alert.alert('Thành công', 'Đã xóa thẻ thành công');
+            } catch (error) {
+              console.error('Error deleting card:', error);
+              Alert.alert('Lỗi', 'Không thể xóa thẻ. Vui lòng thử lại.');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handlePayment = async () => {
@@ -107,7 +179,7 @@ const CheckoutScreen: React.FC = () => {
     setIsProcessing(true);
     try {
       // Tạo đơn hàng
-      const orderItems = items.map(item => ({
+      const orderItems = (items || []).map(item => ({
         productId: item.productId._id,
         quantity: item.quantity,
         price: (item.productId.priceProduct * (1 - (item.productId.discount || 0) / 100))
@@ -134,6 +206,31 @@ const CheckoutScreen: React.FC = () => {
         return;
       }
 
+      // Kiểm tra nếu thanh toán bằng thẻ thì phải có thẻ được chọn
+      if (selectedPaymentMethod === 'card') {
+        if (userCards.length === 0) {
+          Alert.alert(
+            'Chưa có thẻ thanh toán', 
+            'Bạn cần thêm ít nhất một thẻ để thanh toán online. Vui lòng thêm thẻ mới.',
+            [
+              { text: 'Hủy', style: 'cancel' },
+              { 
+                text: 'Thêm thẻ', 
+                onPress: () => router.push('/add-card' as any) 
+              }
+            ]
+          );
+          setIsProcessing(false);
+          return;
+        }
+        
+        if (!selectedCard) {
+          Alert.alert('Lỗi', 'Vui lòng chọn thẻ thanh toán');
+          setIsProcessing(false);
+          return;
+        }
+      }
+
       const orderData: CreateOrderRequest = {
         items: orderItems,
         totalAmount: calculateTotal(),
@@ -144,27 +241,74 @@ const CheckoutScreen: React.FC = () => {
           name: selectedAddress.name,
           phone: selectedAddress.phone,
           address: selectedAddress.address,
-          province: selectedAddress.province,
-          district: selectedAddress.district,
-          ward: selectedAddress.ward
+          province: selectedAddress.province || '',
+          district: selectedAddress.district || '',
+          ward: selectedAddress.ward || ''
         }
       };
 
-      console.log('Creating order with data:', orderData);
-      const createdOrder = await createOrder(token, orderData);
-      console.log('Order created successfully:', createdOrder);
 
-      // Xóa giỏ hàng sau khi tạo đơn hàng thành công
+      const createdOrder = await createOrder(token, orderData);
+      
+
+      // Nếu thanh toán bằng thẻ, gửi mã OTP và chuyển đến trang xác minh
+      if (selectedPaymentMethod === 'card') {
+        try {
+          // Gửi mã xác minh thanh toán
+          const verifyResponse = await fetch(`${API_CONFIG.BASE_URL}/payments/create-verification`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              orderId: createdOrder._id,
+              cardId: selectedCard!._id
+            })
+          });
+
+          if (verifyResponse.ok) {
+            setIsProcessing(false);
+            router.push({
+              pathname: '/verify-payment' as any,
+              params: {
+                orderId: createdOrder._id,
+                cardId: selectedCard!._id,
+                amount: calculateTotal(),
+                maskedCardNumber: selectedCard!.cardNumber
+              }
+            });
+            return;
+          }
+        } catch (error) {
+          console.error('Error sending payment verification:', error);
+        }
+        
+        // Fallback: vẫn chuyển đến trang xác minh ngay cả khi gửi OTP thất bại
+        setIsProcessing(false);
+        router.push({
+          pathname: '/verify-payment' as any,
+          params: {
+            orderId: createdOrder._id,
+            cardId: selectedCard!._id,
+            amount: calculateTotal(),
+            maskedCardNumber: selectedCard!.cardNumber
+          }
+        });
+        return;
+      }
+
+      // Xóa giỏ hàng sau khi tạo đơn hàng thành công (COD)
       await clearCart(token);
 
       setIsProcessing(false);
       Alert.alert(
-        'Thanh toán thành công',
-        'Đơn hàng của bạn đã được xử lý thành công!',
+        'Đặt hàng thành công',
+        'Đơn hàng của bạn đã được tạo thành công!',
         [
           {
             text: 'OK',
-            onPress: () => router.push('/(tabs)/profile')
+            onPress: () => router.push('/purchased-orders')
           }
         ]
       );
@@ -187,18 +331,16 @@ const CheckoutScreen: React.FC = () => {
     return (
       <View style={[styles.orderItem, { backgroundColor: colors.card }]}>
         <Image
-          source={{ uri: product?.image !== 'https://via.placeholder.com/300x300?text=No+Image' 
-            ? product?.image 
-            : 'https://via.placeholder.com/60x60?text=Product' }}
+          source={{ uri: getProductImageUrl(product?.image) }}
           style={styles.productImage}
           resizeMode="cover"
           defaultSource={require('../assets/images_sp/dau_ca_omega.png')}
-          onError={(error) => {
-            console.log('🔍 Checkout Image load error:', error.nativeEvent.error);
-          }}
-          onLoad={() => {
-            console.log('🔍 Checkout Image loaded successfully');
-          }}
+                      onError={(error) => {
+              // Image load error handled silently
+            }}
+            onLoad={() => {
+              // Image loaded successfully
+            }}
         />
         
         <View style={styles.itemDetails}>
@@ -290,7 +432,7 @@ const CheckoutScreen: React.FC = () => {
           </Text>
           <TouchableOpacity
             style={[styles.shopButton, { backgroundColor: colors.accent }]}
-            onPress={() => router.push('/(tabs)/home')}
+            onPress={() => router.push('/(tabs)/home' as any)}
           >
             <Text style={styles.shopButtonText}>Mua sắm ngay</Text>
           </TouchableOpacity>
@@ -309,7 +451,7 @@ const CheckoutScreen: React.FC = () => {
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 160 }}>
         {/* Order Items */}
         <View style={[styles.section, { backgroundColor: colors.card }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -379,10 +521,58 @@ const CheckoutScreen: React.FC = () => {
               color={colors.text} 
             />
             <Text style={[styles.paymentMethodText, { color: colors.text }]}>
-              {selectedPaymentMethod === 'cod' ? 'Thanh toán khi nhận hàng' : 'Thanh toán online'}
+              {selectedPaymentMethod === 'cod' ? 'Thanh toán khi nhận hàng' : 'Thanh toán bằng thẻ'}
             </Text>
           </View>
         </View>
+
+        {/* Card Information - Only show when card payment is selected */}
+        {selectedPaymentMethod === 'card' && (
+          <View style={[styles.section, { backgroundColor: colors.card }]}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Thông tin thẻ
+              </Text>
+              <TouchableOpacity onPress={() => setShowCardManagementModal(true)}>
+                <Text style={[styles.selectText, { color: colors.accent }]}>
+                  Quản lý thẻ
+                </Text>
+              </TouchableOpacity>
+            </View>
+            
+            {selectedCard ? (
+              <View style={styles.selectedCard}>
+                <View style={styles.cardInfo}>
+                  <Ionicons name="card" size={24} color={colors.accent} />
+                  <View style={styles.cardDetails}>
+                    <Text style={[styles.cardNumber, { color: colors.text }]}>
+                      {selectedCard.maskedCardNumber}
+                    </Text>
+                    <Text style={[styles.cardHolder, { color: colors.textSecondary }]}>
+                      {selectedCard.cardHolder}
+                    </Text>
+                  </View>
+                  <Text style={[styles.cardType, { color: colors.accent }]}>
+                    {selectedCard.cardType.toUpperCase()}
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.noCardSelected}>
+                <Ionicons name="card-outline" size={48} color={colors.textSecondary} />
+                <Text style={[styles.noCardText, { color: colors.textSecondary }]}>
+                  Chưa chọn thẻ thanh toán
+                </Text>
+                <TouchableOpacity 
+                  style={[styles.addCardButton, { backgroundColor: colors.accent }]}
+                  onPress={() => router.push('/add-card' as any)}
+                >
+                  <Text style={styles.addCardButtonText}>Thêm thẻ mới</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Order Summary */}
         <View style={[styles.section, { backgroundColor: colors.card }]}>
@@ -525,16 +715,121 @@ const CheckoutScreen: React.FC = () => {
             
             <TouchableOpacity
               style={styles.paymentMethodItem}
-              onPress={() => handlePaymentMethodSelect('vnpay')}
+              onPress={() => handlePaymentMethodSelect('card')}
             >
               <Ionicons name="card-outline" size={24} color={colors.text} />
               <Text style={[styles.paymentMethodText, { color: colors.text }]}>
-                Thanh toán qua VNPay
+                Thanh toán bằng thẻ
               </Text>
-              {selectedPaymentMethod === 'vnpay' && (
+              {selectedPaymentMethod === 'card' && (
                 <Ionicons name="checkmark-circle" size={24} color={colors.accent} />
               )}
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Card Management Modal */}
+      <Modal
+        visible={showCardManagementModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowCardManagementModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
+                Quản lý thẻ thanh toán
+              </Text>
+              <TouchableOpacity onPress={() => setShowCardManagementModal(false)}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+            
+            {loadingCards ? (
+              <View style={styles.cardLoadingContainer}>
+                <ActivityIndicator size="large" color={colors.accent} />
+                <Text style={[styles.cardLoadingText, { color: colors.textSecondary }]}>
+                  Đang tải danh sách thẻ...
+                </Text>
+              </View>
+            ) : (
+              <>
+                {userCards.length > 0 ? (
+                  <>
+                    <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
+                      Chọn thẻ để thanh toán
+                    </Text>
+                    
+                    {userCards.map((card) => (
+                      <TouchableOpacity
+                        key={card._id}
+                        style={[
+                          styles.cardItem,
+                          selectedCard?._id === card._id && { backgroundColor: colors.accent + '20' }
+                        ]}
+                        onPress={() => {
+                          setSelectedCard(card);
+                          setShowCardManagementModal(false);
+                        }}
+                      >
+                        <View style={styles.cardItemInfo}>
+                          <Ionicons name="card" size={24} color={colors.accent} />
+                          <View style={styles.cardItemDetails}>
+                            <Text style={[styles.cardItemNumber, { color: colors.text }]}>
+                              {card.maskedCardNumber}
+                            </Text>
+                            <Text style={[styles.cardItemHolder, { color: colors.textSecondary }]}>
+                              {card.cardHolder}
+                            </Text>
+                          </View>
+                          <Text style={[styles.cardItemType, { color: colors.accent }]}>
+                            {card.cardType.toUpperCase()}
+                          </Text>
+                        </View>
+                        
+                        <View style={styles.cardItemActions}>
+                          {card.isDefault && (
+                            <View style={[styles.defaultBadge, { backgroundColor: colors.accent }]}>
+                              <Text style={styles.defaultBadgeText}>Mặc định</Text>
+                            </View>
+                          )}
+                          {selectedCard?._id === card._id && (
+                            <Ionicons name="checkmark-circle" size={20} color={colors.accent} />
+                          )}
+                          
+                          <TouchableOpacity
+                            style={styles.cardActionButton}
+                            onPress={() => handleDeleteCard(card._id)}
+                          >
+                            <Ionicons name="trash-outline" size={18} color="#ff4444" />
+                          </TouchableOpacity>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </>
+                ) : (
+                  <View style={styles.emptyCards}>
+                    <Ionicons name="card-outline" size={64} color={colors.textSecondary} />
+                    <Text style={[styles.emptyCardsText, { color: colors.textSecondary }]}>
+                      Chưa có thẻ thanh toán nào
+                    </Text>
+                  </View>
+                )}
+                
+                <TouchableOpacity
+                  style={[styles.addNewCardButton, { backgroundColor: colors.accent }]}
+                  onPress={() => {
+                    setShowCardManagementModal(false);
+                    router.push('/add-card' as any);
+                  }}
+                >
+                  <Ionicons name="add" size={20} color="#fff" />
+                  <Text style={styles.addNewCardButtonText}>Thêm thẻ mới</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </View>
       </Modal>
@@ -667,9 +962,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   paymentContainer: {
-    padding: 15,
+    position: 'absolute',
+    bottom: 70, // Trên bottom tabs
+    left: 0,
+    right: 0,
+    padding: 20,
     borderTopWidth: 1,
     borderTopColor: '#e9ecef',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: -2 },
+    shadowRadius: 4,
   },
   paymentButton: {
     paddingVertical: 15,
@@ -870,6 +1174,136 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Card Information Styles
+  selectedCard: {
+    marginTop: 12,
+  },
+  cardInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  cardDetails: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  cardNumber: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  cardHolder: {
+    fontSize: 14,
+  },
+  cardType: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  noCardSelected: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  noCardText: {
+    fontSize: 16,
+    marginTop: 12,
+    marginBottom: 16,
+  },
+  addCardButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  addCardButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  // Card Management Modal Styles
+  cardLoadingContainer: {
+    alignItems: 'center',
+    padding: 40,
+  },
+  cardLoadingText: {
+    marginTop: 12,
+    fontSize: 14,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    marginBottom: 16,
+  },
+  cardItem: {
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  cardItemInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  cardItemDetails: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  cardItemNumber: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  cardItemHolder: {
+    fontSize: 14,
+  },
+  cardItemType: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  cardItemActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  defaultBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  defaultBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  cardActionButton: {
+    padding: 8,
+  },
+  emptyCards: {
+    alignItems: 'center',
+    padding: 40,
+  },
+  emptyCardsText: {
+    fontSize: 16,
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  addNewCardButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  addNewCardButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
   },
 });
 

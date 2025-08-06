@@ -165,16 +165,12 @@ export const calculateOriginalPrice = (currentPrice: string, discountPercent: nu
 
 // Function để xử lý URL hình ảnh sản phẩm
 export const getProductImageUrl = (imagePath: string | null | undefined): string => {
-  console.log('🔍 getProductImageUrl input:', imagePath);
-  
   if (!imagePath) {
-    console.log('🔍 No imagePath, returning placeholder');
     return 'https://via.placeholder.com/300x300?text=No+Image';
   }
   
   // Nếu là URL đầy đủ
   if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-    console.log('🔍 Full URL detected:', imagePath);
     return imagePath;
   }
   
@@ -182,28 +178,22 @@ export const getProductImageUrl = (imagePath: string | null | undefined): string
   if (imagePath.includes('.jpg') || imagePath.includes('.png') || imagePath.includes('.jpeg')) {
     const baseUrl = 'http://192.168.1.49:3000'; // Thay bằng URL backend thực tế
     const fullUrl = `${baseUrl}/uploads/products/${imagePath}`;
-    console.log('🔍 Generated image URL:', fullUrl);
     return fullUrl;
   }
   
   // Fallback
-  console.log('🔍 No valid image format, returning placeholder');
   return 'https://via.placeholder.com/300x300?text=Product+Image';
 };
 
 // Function để lấy danh sách hình ảnh sản phẩm
 export const getProductImages = (product: any): string[] => {
-  console.log('🔍 getProductImages input:', product);
-  
   if (!product) return [];
   
   const images: string[] = [];
   
   // Thêm image chính
   if (product.image) {
-    console.log('🔍 Product image:', product.image);
     const imageUrl = getProductImageUrl(product.image);
-    console.log('🔍 Generated image URL:', imageUrl);
     images.push(imageUrl);
   }
   
@@ -212,7 +202,6 @@ export const getProductImages = (product: any): string[] => {
     product.images.forEach((img: string) => {
       if (img && !images.includes(img)) {
         const imageUrl = getProductImageUrl(img);
-        console.log('🔍 Generated image URL from array:', imageUrl);
         images.push(imageUrl);
       }
     });
@@ -220,11 +209,9 @@ export const getProductImages = (product: any): string[] => {
   
   // Nếu không có hình ảnh nào, thêm placeholder
   if (images.length === 0) {
-    console.log('🔍 No images found, adding placeholder');
     images.push('https://via.placeholder.com/300x300?text=Product+Image');
   }
   
-  console.log('🔍 Final images array:', images);
   return images;
 };
 

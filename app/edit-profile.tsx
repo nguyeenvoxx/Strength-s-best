@@ -273,11 +273,10 @@ const styles = StyleSheet.create({
   buttons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 30,
+    marginBottom: 100, // Tránh bị che bởi bottom tabs
     gap: 12,
   },
   cancelButton: {
-    backgroundColor: '#469B43',
     padding: 16,
     flex: 1,
     alignItems: 'center',

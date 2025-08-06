@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import axios from 'axios';
 import { Product } from '../types/product.type';
-import { API_CONFIG } from '../constants/config';
+import { API_CONFIG } from '../services/config';
 
 interface FavoriteState {
     favorites: Product[];

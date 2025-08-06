@@ -9,18 +9,39 @@ const SplashScreen: React.FC = () => {
   const handleGetStarted = () => {
     // Đánh dấu không còn là lần đầu tiên
     setIsFirstTime(false);
+    router.push('../products');
+  };
+
+  const handleSignIn = () => {
+    // Đánh dấu không còn là lần đầu tiên
+    setIsFirstTime(false);
     router.push('./sign-in');
   };
+
   return (
     <View style={styles.container}>
       <Image source={require('../../assets/images/logo.png')} style={styles.logo} />
       <Text style={styles.title}>Strength's Best</Text>
       <Text style={styles.subtitle}>Sức khỏe là hạnh phúc. Hãy trân trọng và chăm sóc bản thân!</Text>
-      <TouchableOpacity
-        style={styles.button}
-       onPress={handleGetStarted}
-      >
-        <Text style={styles.buttonText}>Bắt đầu</Text>
+      
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={styles.getStartedButton}
+          onPress={handleGetStarted}
+        >
+          <Text style={styles.getStartedButtonText}>Bắt đầu</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={styles.signInButton}
+          onPress={handleSignIn}
+        >
+          <Text style={styles.signInButtonText}>Đăng nhập</Text>
+        </TouchableOpacity>
+      </View>
+      
+      <TouchableOpacity onPress={handleSignIn}>
+        <Text style={styles.guestText}>Bạn sẽ tiếp tục là khách</Text>
       </TouchableOpacity>
     </View>
   );
@@ -51,16 +72,47 @@ const styles = StyleSheet.create({
     marginHorizontal: 30,
     marginBottom: 40,
   },
-  button: {
-    backgroundColor: '#000000',
-    paddingVertical: 15,
-    paddingHorizontal: 80,
-    borderRadius: 25,
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '80%',
+    marginBottom: 20,
   },
-  buttonText: {
+  getStartedButton: {
+    backgroundColor: '#469B43',
+    paddingVertical: 15,
+    paddingHorizontal: 40,
+    borderRadius: 25,
+    flex: 1,
+    marginRight: 10,
+    alignItems: 'center',
+  },
+  getStartedButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  signInButton: {
+    backgroundColor: 'transparent',
+    paddingVertical: 15,
+    paddingHorizontal: 40,
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: '#469B43',
+    flex: 1,
+    marginLeft: 10,
+    alignItems: 'center',
+  },
+  signInButtonText: {
+    color: '#469B43',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  guestText: {
+    color: '#469B43',
+    fontSize: 14,
+    textDecorationLine: 'underline',
+    marginTop: 10,
   },
 });
 

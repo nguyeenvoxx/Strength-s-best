@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { API_CONFIG } from '../constants/config';
+import { API_CONFIG } from '../services/config';
 import { useAuthStore } from './useAuthStore';
 
 interface Voucher {

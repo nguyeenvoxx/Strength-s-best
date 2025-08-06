@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Image, SafeAreaView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuthStore } from '../../store/useAuthStore';
-import { getPlatformContainerStyle } from '../../utils/platformUtils';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useTheme } from '../../store/ThemeContext';
-import { LightColors, DarkColors } from '../../constants/Colors';
+import { useAuthStore } from '../store/useAuthStore';
+import { getPlatformContainerStyle } from '../utils/platformUtils';
+import { useTheme } from '../store/ThemeContext';
+import { LightColors, DarkColors } from '../constants/Colors';
+import { getUserAddresses } from '../services/addressApi';
 
 interface Address {
   id: string;
@@ -18,27 +18,24 @@ interface Address {
 
 const ProfileScreen: React.FC = () => {
   const router = useRouter();
-  const { user, logout } = useAuthStore();
-  const [addresses, setAddresses] = useState<Address[]>([]);
+  const { user, logout, token } = useAuthStore();
+  const [addresses, setAddresses] = useState<any[]>([]);
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === 'dark';
   const colors = isDark ? DarkColors : LightColors;
 
   React.useEffect(() => {
-    const loadAddresses = async () => { // hàm này để tải địa chỉ từ AsyncStorage
+    const loadAddresses = async () => {
       try {
-        const userId = user?._id || (user as any)?.id;
-        if (!userId) return;
-        const savedAddresses = await AsyncStorage.getItem(`userAddresses_${userId}`);
-        if (savedAddresses) {
-          setAddresses(JSON.parse(savedAddresses));
-        }
+        if (!token) return;
+        const userAddresses = await getUserAddresses(token);
+        setAddresses(userAddresses);
       } catch (error) {
         console.error('Lỗi khi tải địa chỉ:', error);
       }
     };
     loadAddresses();
-  }, [user?._id]);
+  }, [token]);
 
   const handleLogout = () => {
     Alert.alert(
@@ -59,23 +56,23 @@ const ProfileScreen: React.FC = () => {
   };
 
   const handleManageAddresses = () => {
-    router.push('/select-address');
+    router.push('./select-address');
   };
 
   const handleEditProfile = () => {
-    router.push('/edit-profile');
+    router.push('./edit-profile');
   };
 
   const handleChangePassword = () => {
-    router.push('/change-password');
+    router.push('./change-password');
   };
 
   const handleViewOrders = () => {
-    router.push('/purchased-orders');
+    router.push('./purchased-orders');
   };
 
   return (
-    <View style={[styles.container, getPlatformContainerStyle(), { backgroundColor: colors.card }]}>
+    <SafeAreaView style={[styles.container, getPlatformContainerStyle(), { backgroundColor: colors.card }]}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Tài khoản</Text>
@@ -91,7 +88,7 @@ const ProfileScreen: React.FC = () => {
             />
           ) : (
             <Image
-              source={require('../../assets/images/avatar.png')}
+              source={require('../assets/images/avatar.png')}
               style={{ width: 80, height: 80, borderRadius: 40 }}
             />
           )}
@@ -121,11 +118,11 @@ const ProfileScreen: React.FC = () => {
       )}
 
       {/* Menu Items */}
-      <ScrollView style={[styles.menuContainer, { backgroundColor: colors.card }]} showsVerticalScrollIndicator={false}>
+      <ScrollView style={[styles.menuContainer, { backgroundColor: colors.card }]} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         <View style={[styles.menuSection, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Thông tin cá nhân</Text>
 
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/edit-profile')}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('./edit-profile')}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="person-outline" size={24} color={colors.accent} />
               <Text style={[styles.menuItemText, { color: colors.text }]}>Chỉnh sửa thông tin</Text>
@@ -143,7 +140,7 @@ const ProfileScreen: React.FC = () => {
         </View>
 
         <View style={[styles.menuSection, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Địa chỉ giao hàng</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Địa chỉ & Thanh toán</Text>
 
           <TouchableOpacity style={styles.menuItem} onPress={handleManageAddresses}>
             <View style={styles.menuItemLeft}>
@@ -154,6 +151,14 @@ const ProfileScreen: React.FC = () => {
               <Text style={[styles.addressCount, { color: colors.accent }]}>{addresses.length} địa chỉ</Text>
               <Ionicons name="chevron-forward" size={20} color={isDark ? '#fff' : '#ccc'} />
             </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/my-cards')}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="card-outline" size={24} color={colors.accent} />
+              <Text style={[styles.menuItemText, { color: colors.text }]}>Thẻ của tôi</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={isDark ? '#fff' : '#ccc'} />
           </TouchableOpacity>
         </View>
 
@@ -196,25 +201,18 @@ const ProfileScreen: React.FC = () => {
             <Ionicons name="chevron-forward" size={20} color={isDark ? '#fff' : '#ccc'} />
           </TouchableOpacity>
         </View>
-      </ScrollView>
 
-      {/* Logout Button */}
-      {/* <View style={[styles.logoutContainer, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
-        <TouchableOpacity style={[styles.logoutButton, { backgroundColor: colors.danger }]} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={24} color="#fff" />
-          <Text style={styles.logoutText}>Đăng xuất</Text>
-        </TouchableOpacity>
-     </View> */}
-     
-      {user && user._id && (
-        <View style={[styles.logoutContainer, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={24} color="#fff" />
-            <Text style={styles.logoutText}>Đăng xuất</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
+        {/* Logout Button - đưa vào trong ScrollView */}
+        {user && user._id && (
+          <View style={[styles.logoutContainer, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
+            <TouchableOpacity style={[styles.logoutButton, { backgroundColor: colors.accent }]} onPress={handleLogout}>
+              <Ionicons name="log-out-outline" size={24} color="#fff" />
+              <Text style={styles.logoutText}>Đăng xuất</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -317,7 +315,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
   },
   logoutButton: {
-    backgroundColor: '#7ED957',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -332,4 +329,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ProfileScreen;
+export default ProfileScreen; 

@@ -125,16 +125,19 @@ export const useProductStore = create<ProductState>((set, get) => ({
 
   fetchRelatedProducts: async (productId: string) => {
     try {
+      console.log('🔍 Fetching related products for:', productId);
       const response = await getRelatedProducts(productId, 6);
+      console.log('🔍 Related products response:', response);
       
       if (response.status === 'success' || response.status === 'thành công') {
         const transformedProducts = response.data.products.map(transformApiProductToProduct);
+        console.log('🔍 Transformed related products:', transformedProducts.length);
         set({
           relatedProducts: transformedProducts,
         });
       }
     } catch (error: any) {
-      console.error('Error fetching related products:', error.message);
+      console.error('❌ Error fetching related products:', error.message);
       // Không set error vì related products không quan trọng
     }
   },

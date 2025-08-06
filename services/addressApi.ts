@@ -9,9 +9,9 @@ export interface Address {
   name: string;
   phone: string;
   address: string;
-  province: string;
-  district: string;
-  ward: string;
+  province?: string; // Có thể rỗng
+  district?: string; // Có thể rỗng
+  ward?: string; // Có thể rỗng
   isDefault?: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -21,24 +21,39 @@ export interface CreateAddressRequest {
   name: string;
   phone: string;
   address: string;
-  province: string;
-  district: string;
-  ward: string;
+  province?: string; // Có thể rỗng
+  district?: string; // Có thể rỗng
+  ward?: string; // Có thể rỗng
   isDefault?: boolean;
 }
 
-export interface UpdateAddressRequest extends CreateAddressRequest {
-  _id: string;
+export interface UpdateAddressRequest {
+  name: string;
+  phone: string;
+  address: string;
+  province?: string; // Có thể rỗng
+  district?: string; // Có thể rỗng
+  ward?: string; // Có thể rỗng
+  isDefault?: boolean;
 }
 
 // Lấy danh sách địa chỉ của user
 export const getUserAddresses = async (token: string): Promise<Address[]> => {
   try {
+    // Debug: Log token trước khi gửi
+    console.log('🔍 AddressAPI - Token length:', token?.length);
+    console.log('🔍 AddressAPI - Token valid format:', token && typeof token === 'string' && token.length > 10);
+    console.log('🔍 AddressAPI - URL:', `${API_CONFIG.BASE_URL}/addresses`);
+    
+    if (!token || typeof token !== 'string' || token.trim() === '') {
+      throw new Error('Token không hợp lệ');
+    }
+    
     const response = await fetch(`${API_CONFIG.BASE_URL}/addresses`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token.trim()}`
       }
     });
 

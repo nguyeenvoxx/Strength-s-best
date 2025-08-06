@@ -6,9 +6,12 @@ import { getPlatformContainerStyle } from '../utils/platformUtils';
 import { useProductStore } from '../store/useProductStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useCategoryStore } from '../store/useCategoryStore';
+import { useCartStore } from '../store/useCartStore';
 import { Product } from '../types/product.type';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getProductImages } from '../utils/productUtils';
+import { useTheme } from '../store/ThemeContext';
+import { LightColors, DarkColors } from '../constants/Colors';
 
 // Thêm interface cho Brand
 interface Brand {
@@ -23,6 +26,10 @@ const ProductListScreen: React.FC = () => {
   const { products, isLoading, error, fetchProducts } = useProductStore();
   const { isAuthenticated, token } = useAuthStore();
   const { categories, isLoading: categoriesLoading, fetchCategories } = useCategoryStore();
+  const cartStore = useCartStore();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const colors = isDark ? DarkColors : LightColors;
   const [activeTab, setActiveTab] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedBrand, setSelectedBrand] = useState('all');
@@ -40,7 +47,7 @@ const ProductListScreen: React.FC = () => {
   };
 
   // Single green color for all categories
-  const categoryColor = '#4CAF50';
+  const categoryColor = colors.accent;
 
   // Load products, categories and brands when component mounts - không cần đăng nhập
   useEffect(() => {
@@ -126,51 +133,33 @@ const ProductListScreen: React.FC = () => {
 
   // Add to cart function
   const addToCart = async (product: Product) => {
-    // Cho phép thêm vào giỏ hàng mà không cần đăng nhập
+    if (!isAuthenticated) {
+      Alert.alert('Đăng nhập cần thiết', 'Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng', [
+        { text: 'Hủy', style: 'cancel' },
+        { text: 'Đăng nhập', onPress: () => router.push('/(auth)/sign-in') }
+      ]);
+      return;
+    }
+
     try {
-      const existingCart = await AsyncStorage.getItem('cart');
-      const cart = existingCart ? JSON.parse(existingCart) : [];
-      // Convert price string to number
-      const numericPrice = typeof product.priceProduct === 'string' 
-        ? parseFloat((product.priceProduct as string).replace(/[^0-9.-]+/g, '')) 
-        : product.priceProduct || 0;
-      const existingItem = cart.find((item: any) => item.id === product.id);
-      let updatedCart;
 
-      if (existingItem) {
-        updatedCart = cart.map((item: any) =>
-          item.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
-      } else {
-        updatedCart = [...cart, { 
-          ...product, 
-          name: product.title, // Map title to name for cart compatibility
-          price: numericPrice, 
-          quantity: 1,
-          image: product.images && product.images[0] ? 
-            (typeof product.images[0] === 'string' && product.images[0].startsWith('http') ? 
-              { uri: product.images[0] } : 
-              product.images[0]
-            ) : require('../assets/images_sp/dau_ca_omega.png')
-        }];
-      }
 
-      await AsyncStorage.setItem('cart', JSON.stringify(updatedCart));
-      Alert.alert('Đã thêm vào giỏ hàng!');
+      await cartStore.addToCart(token!, product._id, 1);
+      Alert.alert('Thành công', 'Đã thêm sản phẩm vào giỏ hàng!');
     } catch (error) {
       console.error('Lỗi khi thêm vào giỏ hàng:', error);
+      Alert.alert('Lỗi', 'Không thể thêm sản phẩm vào giỏ hàng. Vui lòng thử lại.');
     }
   };
 
   // Filter products based on selected category and brand
   const filteredProducts = useMemo(() => {
+    const safeProducts = products || [];
     if (selectedCategory === 'all') {
-      return products;
+      return safeProducts;
     }
 
-    return products.filter(product => {
+    return safeProducts.filter(product => {
       // Luôn filter theo category trước
       if (!product.idCategory) return false;
       
@@ -306,7 +295,7 @@ const ProductListScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
                  <View style={styles.loadingContainer}>
-           <ActivityIndicator size="large" color="#4CAF50" />
+                           <ActivityIndicator size="large" color={colors.accent} />
            <Text style={styles.loadingText}>Đang tải...</Text>
          </View>
       </View>
@@ -351,11 +340,11 @@ const ProductListScreen: React.FC = () => {
             resizeMode="cover"
             defaultSource={require('../assets/images_sp/dau_ca_omega.png')}
             onError={(error) => {
-              console.log('🔍 Products page Image load error:', error.nativeEvent.error);
-            }}
-            onLoad={() => {
-              console.log('🔍 Products page Image loaded successfully');
-            }}
+                      // Image load error handled silently
+      }}
+      onLoad={() => {
+        // Image loaded successfully
+      }}
           />
         </View>
         <View style={styles.productInfo}>
@@ -746,14 +735,14 @@ const styles = StyleSheet.create({
   productPrice: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#4CAF50',
+              color: '#FF6B35',
     marginBottom: 10,
   },
   addToCartButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#4CAF50',
+            backgroundColor: '#FF6B35',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
@@ -785,7 +774,7 @@ const styles = StyleSheet.create({
     borderColor: '#e9ecef',
   },
   activePageButton: {
-    backgroundColor: '#4CAF50',
+            backgroundColor: '#FF6B35',
     borderColor: '#4CAF50',
   },
   pageText: {
@@ -826,7 +815,7 @@ const styles = StyleSheet.create({
   },
   footerLinkText: {
     fontSize: 14,
-    color: '#4CAF50',
+              color: '#FF6B35',
     fontWeight: '500',
   },
   footerCopyright: {
@@ -856,7 +845,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   loginButton: {
-    backgroundColor: '#4CAF50',
+            backgroundColor: '#FF6B35',
     paddingHorizontal: 30,
     paddingVertical: 12,
     borderRadius: 25,
@@ -920,7 +909,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   activeToggleButton: {
-    backgroundColor: '#4CAF50',
+            backgroundColor: '#FF6B35',
   },
   toggleText: {
     fontSize: 14,

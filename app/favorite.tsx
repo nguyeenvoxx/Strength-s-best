@@ -4,12 +4,12 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { getPlatformContainerStyle } from '../../utils/platformUtils';
-import { useFavoriteStore } from '../../store/useFavoriteStore';
-import { useAuthStore } from '../../store/useAuthStore';
-import { useTheme } from '../../store/ThemeContext';
-import { LightColors, DarkColors } from '../../constants/Colors';
-import { getProductImages, formatPrice } from '../../utils/productUtils';
+import { getPlatformContainerStyle } from '../utils/platformUtils';
+import { useFavoriteStore } from '../store/useFavoriteStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { useTheme } from '../store/ThemeContext';
+import { LightColors, DarkColors } from '../constants/Colors';
+import { getProductImages, formatPrice } from '../utils/productUtils';
 
 const FavoriteScreen: React.FC = () => {
   const { favorites, fetchFavorites, removeFromFavorites, isLoading, error, clearError } = useFavoriteStore();
@@ -29,7 +29,7 @@ const FavoriteScreen: React.FC = () => {
 
   const handleProductPress = (productId: string) => {
     router.push({
-      pathname: '/product/[id]',
+      pathname: './product/[id]',
       params: { id: productId },
     });
   };
@@ -79,7 +79,7 @@ const FavoriteScreen: React.FC = () => {
 
       {!isAuthenticated ? (
         <View style={styles.loginPromptContainer}>
-          <Ionicons name="heart-outline" size={80} color="#FF6B35" />
+          <Ionicons name="heart-outline" size={80} color={colors.accent} />
           <Text style={[styles.loginPromptTitle, { color: colors.text }]}>Đăng nhập để xem sản phẩm yêu thích</Text>
           <Text style={[styles.loginPromptText, { color: colors.textSecondary }]}>Vui lòng đăng nhập để xem danh sách sản phẩm yêu thích của bạn</Text>
           <TouchableOpacity 
@@ -96,7 +96,7 @@ const FavoriteScreen: React.FC = () => {
         </View>
       ) : error ? (
         <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={60} color="#FF6B35" />
+          <Ionicons name="alert-circle-outline" size={60} color={colors.accent} />
           <Text style={[styles.errorTitle, { color: colors.text }]}>Có lỗi xảy ra</Text>
           <Text style={[styles.errorText, { color: colors.textSecondary }]}>{error}</Text>
           <TouchableOpacity 
@@ -113,7 +113,7 @@ const FavoriteScreen: React.FC = () => {
           <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>Thêm sản phẩm vào danh sách yêu thích để xem lại sau</Text>
           <TouchableOpacity
             style={[styles.shopButton, { backgroundColor: colors.accent }]}
-            onPress={() => router.push('/(tabs)/home')}
+            onPress={() => router.push('./home')}
           >
             <Text style={[styles.shopButtonText, { color: '#fff' }]}>Khám phá ngay</Text>
           </TouchableOpacity>
@@ -247,7 +247,6 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   shopButton: {
-    backgroundColor: '#469B43',
     paddingHorizontal: 30,
     paddingVertical: 12,
     borderRadius: 25,
@@ -341,4 +340,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default FavoriteScreen;
+export default FavoriteScreen; 

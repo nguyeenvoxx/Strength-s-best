@@ -153,7 +153,16 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       setToken: (token: string) => {
-        set({ token, isAuthenticated: true });
+        // Validate token trước khi set
+        if (!token || typeof token !== 'string' || token.trim() === '') {
+          console.warn('🔍 AuthStore - Invalid token provided:', token);
+          set({ token: null, isAuthenticated: false });
+          return;
+        }
+        
+        const cleanToken = token.trim();
+        console.log('🔍 AuthStore - Setting token, length:', cleanToken.length);
+        set({ token: cleanToken, isAuthenticated: true });
       },
     }),
     {
@@ -164,6 +173,18 @@ export const useAuthStore = create<AuthStore>()(
         token: state.token,
         isAuthenticated: state.isAuthenticated,
       }),
+      onRehydrateStorage: () => (state) => {
+        // Validate token sau khi load từ storage
+        if (state && state.token) {
+          if (typeof state.token !== 'string' || state.token.trim() === '') {
+            console.warn('🔍 AuthStore - Invalid token from storage, clearing...');
+            state.token = null;
+            state.isAuthenticated = false;
+          } else {
+            console.log('🔍 AuthStore - Token loaded from storage, length:', state.token.length);
+          }
+        }
+      },
     }
   )
 );

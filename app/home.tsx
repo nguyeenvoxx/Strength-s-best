@@ -15,20 +15,20 @@ import {
   Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';    
-import { Product } from '../../types/product.type';
-import { useProductStore } from '../../store/useProductStore';
-import { useAuthStore } from '../../store/useAuthStore';
-import { useCategoryStore } from '../../store/useCategoryStore';
-import { getShortDescription, calculateOriginalPrice, getFullImageUrl, getProductImages } from '../../utils/productUtils';
-import { getPlatformContainerStyle } from '../../utils/platformUtils';
-import DailyDealItem from '../../modules/HomeScreen/DailyDealItem';
-import TrendingProductItem from '../../modules/HomeScreen/TrendingProductItem';
-import HomeHeader from '../../modules/HomeScreen/HomeHeader';
-import HomeCategory from '../../modules/HomeScreen/HomeCategory';
-import HeaderSection from '../../modules/HomeScreen/HeaderSection';
-import NewsCard from '../../modules/HomeScreen/NewsCard';
-import { useTheme } from '../../store/ThemeContext';
-import { LightColors, DarkColors } from '../../constants/Colors';
+import { Product } from '../types/product.type';
+import { useProductStore } from '../store/useProductStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { useCategoryStore } from '../store/useCategoryStore';
+import { getShortDescription, calculateOriginalPrice, getFullImageUrl, getProductImages } from '../utils/productUtils';
+import { getPlatformContainerStyle } from '../utils/platformUtils';
+import DailyDealItem from '../modules/HomeScreen/DailyDealItem';
+import TrendingProductItem from '../modules/HomeScreen/TrendingProductItem';
+import HomeHeader from '../modules/HomeScreen/HomeHeader';
+import HomeCategory from '../modules/HomeScreen/HomeCategory';
+import HeaderSection from '../modules/HomeScreen/HeaderSection';
+import NewsCard from '../modules/HomeScreen/NewsCard';
+import { useTheme } from '../store/ThemeContext';
+import { LightColors, DarkColors } from '../constants/Colors';
 
 const { width } = Dimensions.get('window');
 const CAROUSEL_WIDTH = width - 32;
@@ -56,7 +56,7 @@ const HomeScreen: React.FC = () => {
   ];
   
   const handleViewAllProducts = () => {
-    router.push('../products');
+    router.push('./products');
   };
 
   // Load products using store - không cần đăng nhập
@@ -88,7 +88,7 @@ const HomeScreen: React.FC = () => {
   };
 
   // Lọc sản phẩm có giảm giá (chỉ 10 sản phẩm đầu tiên)
-  const discountedProducts = products
+  const discountedProducts = (products || [])
     .filter((product: Product) => product.discount && product.discount > 0)
     .slice(0, 10);
 
@@ -134,7 +134,7 @@ const HomeScreen: React.FC = () => {
       rating: product.rating || 5,
       reviewCount: 123,
       onPress: () => {
-        router.push(`/product/${product._id}`);
+        router.push(`./product/${product._id}`);
       },
     };
   });
@@ -198,7 +198,7 @@ const HomeScreen: React.FC = () => {
   if (loading) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color="#FF6B35" />
+        <ActivityIndicator size="large" color={colors.accent} />
         <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Đang tải sản phẩm...</Text>
       </View>
     );
@@ -242,7 +242,7 @@ const HomeScreen: React.FC = () => {
           onCategoryPress={(categoryId) => {
             console.log('Category pressed:', categoryId);
             // Navigate to products filtered by category
-            router.push(`../products?category=${categoryId}`);
+            router.push(`./products?category=${categoryId}`);
           }}
         />
 
@@ -315,7 +315,7 @@ const HomeScreen: React.FC = () => {
         {products.length > 0 && (
           <View style={[styles.specialOfferSection, { backgroundColor: colors.card }]}>
             <Image
-              source={getProductImages(products[0])[0] || require('../../assets/images/special_offer.png')}
+              source={getProductImages(products[0])[0] || require('../assets/images/special_offer.png')}
               style={styles.specialOfferImage}
               resizeMode="cover"
             />
@@ -329,7 +329,7 @@ const HomeScreen: React.FC = () => {
         {products.length > 1 && (
           <View style={[styles.healthComboSection, { backgroundColor: colors.card }]}>
             <Image
-              source={getProductImages(products[1])[0] || require('../../assets/images/combo.png')}
+              source={getProductImages(products[1])[0] || require('../assets/images/combo.png')}
               style={styles.healthComboImage}
               resizeMode="cover"
             />
@@ -373,7 +373,7 @@ const HomeScreen: React.FC = () => {
         {products.length > 2 && (
           <View style={styles.newArrivalsCard}>
             <Image
-              source={getProductImages(products[2])[0] || require('../../assets/images_sp/dau_ca_omega.png')}
+              source={getProductImages(products[2])[0] || require('../assets/images_sp/dau_ca_omega.png')}
               style={styles.newArrivalsImage}
               resizeMode="cover"
             />
@@ -791,4 +791,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default HomeScreen;
+export default HomeScreen; 

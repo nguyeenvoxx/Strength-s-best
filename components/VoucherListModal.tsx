@@ -18,7 +18,7 @@ const VoucherListModal: React.FC<Props> = ({ vouchers, onApply, onDelete, onClos
   <View style={styles.modalContainer}>
     <Text style={styles.title}>Chọn mã giảm giá</Text>
     <ScrollView>
-      {vouchers.map((voucher, idx) => (
+      {(vouchers || []).map((voucher, idx) => (
         <View key={voucher._id || idx} style={styles.voucherCard}>
           <Text style={styles.desc}>{voucher.description}</Text>
           <Text style={styles.date}>{new Date(voucher.expiryDate).toLocaleDateString('vi-VN')}</Text>

@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { getPlatformContainerStyle } from '../utils/platformUtils';
 import { useAuthStore } from '../store/useAuthStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTheme } from '../store/ThemeContext';
+import { LightColors, DarkColors } from '../constants/Colors';
 
 interface Address {
   id: string;
@@ -16,6 +18,9 @@ interface Address {
 
 export default function OrderSummaryScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const colors = isDark ? DarkColors : LightColors;
   const { selected, id, total, date, voucher, status, customerName, customerPhone, customerAddress, customerEmail } = useLocalSearchParams();
   const orderItems = selected ? JSON.parse(selected as string) : [];
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
@@ -164,7 +169,7 @@ export default function OrderSummaryScreen() {
       </View>
 
       <TouchableOpacity 
-        style={styles.backButton}
+        style={[styles.backButton, { backgroundColor: colors.primary || colors.accent }]}
         onPress={() => router.push('./(tabs)/home')}
       >
         <Text style={styles.backButtonText}>Về trang chủ</Text>
@@ -322,7 +327,6 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   backButton: {
-    backgroundColor: '#469B43',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',

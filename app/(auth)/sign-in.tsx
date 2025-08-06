@@ -37,7 +37,7 @@ const SignInScreen: React.FC = () => {
 
     try {
       await login({ email: email.trim().toLowerCase(), password });
-      router.replace('../(tabs)/home');
+      router.replace('../products');
     } catch (error: any) {
       Alert.alert('Đăng nhập thất bại', error.response?.data?.message || 'Email hoặc mật khẩu không đúng');
     }
@@ -116,6 +116,10 @@ const SignInScreen: React.FC = () => {
           <Text style={styles.signUpLink}>Đăng ký</Text>
         </TouchableOpacity>
       </View>
+      
+      <TouchableOpacity onPress={() => router.push('../products')}>
+        <Text style={styles.guestText}>Bạn sẽ tiếp tục là khách</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -234,6 +238,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 15,
   },
   signUpText: {
     textAlign: 'center',
@@ -243,6 +248,12 @@ const styles = StyleSheet.create({
   signUpLink: {
     color: '#000',
     fontWeight: 'bold',
+  },
+  guestText: {
+    color: '#469B43',
+    fontSize: 14,
+    textDecorationLine: 'underline',
+    marginTop: 10,
   },
 });
 

@@ -1,8 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Image } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import OrderStatusCard from '../components/OrderStatusCard';
+import ReviewModal from '../components/ReviewModal';
+import { useAuthStore } from '../store/useAuthStore';
+import { useTheme } from '../store/ThemeContext';
+import { LightColors, DarkColors } from '../constants/Colors';
+import { API_CONFIG } from '../constants/config';
+import { getProductImageUrl, formatPrice } from '../utils/productUtils';
+import { getOrderDetail } from '../services/orderApi';
+import { getUserReviews } from '../services/reviewApi';
 
 interface OrderItem {
   _id: string;
@@ -14,71 +22,123 @@ interface OrderItem {
 
 interface OrderDetail {
   _id: string;
-  orderNumber: string;
-  orderDate: string;
+  userId?: string;
   totalAmount: number;
-  status: 'pending' | 'processing' | 'shipped' | 'completed' | 'cancelled';
-  paymentStatus: 'pending' | 'success' | 'failed' | 'cancelled';
+  totalPrice?: number; // Backend có thể trả về totalPrice
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
   paymentMethod: string;
-  items: OrderItem[];
+  paymentStatus?: 'pending' | 'success' | 'failed' | 'cancelled';
+  voucherDiscount?: number;
+  items: {
+    productId: any;
+    quantity: number;
+    price: number;
+    name?: string; // Backend có thể trả về name
+    image?: string; // Backend có thể trả về image
+  }[];
   shippingAddress: {
     name: string;
     phone: string;
     address: string;
+    province?: string;
+    district?: string;
+    ward?: string;
+    city?: string;
+    fullName?: string;
   };
+  createdAt: string;
+  updatedAt: string;
+  created_at?: string; // Backend có thể trả về created_at
+  updated_at?: string; // Backend có thể trả về updated_at
+  paidAt?: string;
+  totalQuantity?: number;
+  payment?: any;
 }
 
 const OrderDetailScreen: React.FC = () => {
   const router = useRouter();
-  const { orderId } = useLocalSearchParams();
+  const params = useLocalSearchParams();
+  const { orderId } = params;
+  const { token } = useAuthStore();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const colors = isDark ? DarkColors : LightColors;
+  
+
+  
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [userReviews, setUserReviews] = useState<any[]>([]);
+  const [reviewModalVisible, setReviewModalVisible] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [selectedOrderDetailId, setSelectedOrderDetailId] = useState<string>('');
 
   useEffect(() => {
     loadOrderDetail();
   }, [orderId]);
 
+  useEffect(() => {
+    if (token && order?.status === 'delivered') {
+      loadUserReviews();
+    }
+  }, [token, order?.status]);
+
   const loadOrderDetail = async () => {
     try {
       setLoading(true);
-      // Mock data - trong thực tế sẽ gọi API
-      const mockOrder: OrderDetail = {
-        _id: orderId as string,
-        orderNumber: 'ORD001',
-        orderDate: new Date().toISOString(),
-        totalAmount: 1500000,
-        status: 'processing',
-        paymentStatus: 'success',
-        paymentMethod: 'vnpay',
-        items: [
-          {
-            _id: '1',
-            nameProduct: 'Whey Protein',
-            priceProduct: 500000,
-            quantity: 2,
-            image: 'https://via.placeholder.com/100'
-          },
-          {
-            _id: '2',
-            nameProduct: 'BCAA',
-            priceProduct: 300000,
-            quantity: 1,
-            image: 'https://via.placeholder.com/100'
-          }
-        ],
-        shippingAddress: {
-          name: 'Nguyễn Văn A',
-          phone: '0123456789',
-          address: '123 Đường ABC, Quận 1, TP.HCM'
-        }
+      
+      if (!token || !orderId) {
+        Alert.alert('Lỗi', 'Không tìm thấy thông tin đơn hàng');
+        router.back();
+        return;
+      }
+
+      const orderData = await getOrderDetail(token, orderId as string);
+      
+
+      
+      const mappedOrder = {
+        _id: orderData._id,
+        status: orderData.status || 'pending',
+        paymentStatus: orderData.paymentStatus || 'pending',
+        totalAmount: orderData.totalAmount || orderData.totalPrice || 0,
+        totalQuantity: orderData.totalQuantity || 0,
+        createdAt: orderData.createdAt || orderData.created_at,
+        updatedAt: orderData.updatedAt || orderData.updated_at,
+        paidAt: orderData.paidAt,
+        paymentMethod: orderData.paymentMethod,
+        items: orderData.items || [],
+        shippingAddress: orderData.shippingAddress || {
+          name: orderData.fullName || '',
+          phone: orderData.phone || '',
+          address: orderData.address || '',
+          fullName: orderData.fullName || ''
+        },
+        payment: orderData.payment || null
       };
       
-      setOrder(mockOrder);
-    } catch (error) {
-      console.error('Error loading order detail:', error);
+
+      
+      setOrder(mappedOrder);
+    } catch (error: any) {
+      console.error('❌ Error loading order detail:', error);
+      console.error('❌ Error details:', {
+        message: error?.message || 'Unknown error',
+        stack: error?.stack || 'No stack trace'
+      });
       Alert.alert('Lỗi', 'Không thể tải thông tin đơn hàng');
+      router.back();
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadUserReviews = async () => {
+    try {
+      const result = await getUserReviews(token!, 1, 100);
+      setUserReviews(result.reviews);
+    } catch (error: any) {
+      console.error('Error loading user reviews:', error);
     }
   };
 
@@ -116,6 +176,22 @@ const OrderDetailScreen: React.FC = () => {
     );
   };
 
+  const handleReviewProduct = (product: any, orderDetailId: string) => {
+    setSelectedProduct(product);
+    setSelectedOrderDetailId(orderDetailId);
+    setReviewModalVisible(true);
+  };
+
+  const handleReviewSubmitted = () => {
+    loadUserReviews();
+  };
+
+  const hasUserReviewed = (productId: string, orderDetailId: string) => {
+    return userReviews.some(review => 
+      review.idProduct === productId && review.idOrderDetail === orderDetailId
+    );
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -143,84 +219,211 @@ const OrderDetailScreen: React.FC = () => {
     );
   }
 
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'pending': return 'Chờ xử lý';
+      case 'processing': return 'Đang xử lý';
+      case 'shipped': return 'Đang giao hàng';
+      case 'delivered': return 'Đã giao hàng';
+      case 'cancelled': return 'Đã hủy';
+      default: return 'Không xác định';
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending': return '#ffa500';
+      case 'processing': return '#007bff';
+      case 'shipped': return '#17a2b8';
+      case 'delivered': return '#28a745';
+      case 'cancelled': return '#dc3545';
+      default: return '#6c757d';
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('vi-VN', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  console.log('🔍 Rendering order detail with order:', {
+    hasOrder: !!order,
+    orderId: order?._id,
+    status: order?.status,
+    totalAmount: order?.totalAmount,
+    itemsCount: order?.items?.length || 0
+  });
+
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header */}
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Chi tiết đơn hàng</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Chi tiết đơn hàng</Text>
         <View style={styles.placeholder} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Order Status Card */}
-        <OrderStatusCard
-          orderStatus={order.status}
-          paymentStatus={order.paymentStatus}
-          orderNumber={order.orderNumber}
-          orderDate={order.orderDate}
-          totalAmount={order.totalAmount}
-          paymentMethod={order.paymentMethod}
-        />
+        {/* Order Status */}
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
+          <View style={styles.statusHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Trạng thái đơn hàng</Text>
+            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) }]}>
+              <Text style={styles.statusText}>{getStatusText(order.status)}</Text>
+            </View>
+          </View>
+          <Text style={[styles.orderInfo, { color: colors.textSecondary }]}>
+            Mã đơn hàng: {order._id}
+          </Text>
+          <Text style={[styles.orderInfo, { color: colors.textSecondary }]}>
+            Ngày đặt: {formatDate(order.createdAt || order.created_at || '')}
+          </Text>
+          {order.paidAt && (
+            <Text style={[styles.orderInfo, { color: colors.textSecondary }]}>
+              Ngày thanh toán: {formatDate(order.paidAt)}
+            </Text>
+          )}
+          <Text style={[styles.orderInfo, { color: colors.textSecondary }]}>
+            Tổng số lượng: {order.totalQuantity || 0} sản phẩm
+          </Text>
+          <Text style={[styles.orderInfo, { color: colors.textSecondary }]}>
+            Phương thức thanh toán: {order.paymentMethod === 'card' ? 'Thẻ tín dụng' : order.paymentMethod || 'Chưa chọn'}
+          </Text>
+          {order.payment && (
+            <Text style={[styles.orderInfo, { color: colors.textSecondary }]}>
+              Mã giao dịch: {order.payment.transactionId}
+            </Text>
+          )}
+        </View>
 
         {/* Order Items */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Sản phẩm đã đặt</Text>
-          {order.items.map((item, index) => (
-            <View key={item._id} style={styles.itemCard}>
-              <View style={styles.itemImageContainer}>
-                <View style={styles.itemImage} />
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Sản phẩm đã đặt</Text>
+          {order.items && order.items.length > 0 ? (
+            order.items.map((item, index) => {
+            const product = item.productId;
+            const itemTotal = (item.price || 0) * (item.quantity || 0);
+            const orderDetailId = (item as any)._id || `${order._id}_${index}`;
+            const productId = product?._id || item.productId;
+            const hasReviewed = hasUserReviewed(productId, orderDetailId);
+            
+            return (
+              <View key={index} style={[styles.itemCard, { borderBottomColor: colors.border }]}>
+                <Image
+                  source={{ uri: getProductImageUrl(product?.image || item?.image) }}
+                  style={styles.itemImage}
+                  defaultSource={require('../assets/images_sp/dau_ca_omega.png')}
+                />
+                <View style={styles.itemInfo}>
+                  <Text style={[styles.itemName, { color: colors.text }]}>
+                    {item?.name || product?.nameProduct || 'Sản phẩm'}
+                  </Text>
+                  <Text style={[styles.itemPrice, { color: colors.textSecondary }]}>
+                    {formatPrice(item.price || 0)} x {item.quantity || 0}
+                  </Text>
+                  <Text style={[styles.itemTotal, { color: colors.accent }]}>
+                    {formatPrice(itemTotal)}
+                  </Text>
+                  
+                  {/* Review Button for delivered orders */}
+                  {order.status === 'delivered' && (
+                    <View style={styles.reviewContainer}>
+                      {hasReviewed ? (
+                        <View style={styles.reviewedBadge}>
+                          <Ionicons name="checkmark-circle" size={16} color="#28a745" />
+                          <Text style={[styles.reviewedText, { color: '#28a745' }]}>
+                            Đã đánh giá
+                          </Text>
+                        </View>
+                      ) : (
+                        <TouchableOpacity
+                          style={[styles.reviewButton, { backgroundColor: colors.accent }]}
+                          onPress={() => handleReviewProduct(product, orderDetailId)}
+                        >
+                          <Ionicons name="star-outline" size={16} color="#fff" />
+                          <Text style={styles.reviewButtonText}>
+                            Đánh giá sản phẩm
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
+                </View>
               </View>
-              <View style={styles.itemInfo}>
-                <Text style={styles.itemName}>{item.nameProduct}</Text>
-                <Text style={styles.itemPrice}>
-                  {formatPrice(item.priceProduct)} x {item.quantity}
-                </Text>
-                <Text style={styles.itemTotal}>
-                  {formatPrice(item.priceProduct * item.quantity)}
-                </Text>
-              </View>
-            </View>
-          ))}
+            );
+          })
+          ) : (
+            <Text style={[styles.itemName, { color: colors.textSecondary, textAlign: 'center', padding: 20 }]}>
+              Không có thông tin sản phẩm
+            </Text>
+          )}
         </View>
 
         {/* Shipping Information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Thông tin giao hàng</Text>
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Thông tin giao hàng</Text>
           <View style={styles.shippingCard}>
             <View style={styles.shippingRow}>
-              <Ionicons name="person-outline" size={20} color="#666" />
-              <Text style={styles.shippingText}>{order.shippingAddress.name}</Text>
+              <Ionicons name="person-outline" size={20} color={colors.textSecondary} />
+              <Text style={[styles.shippingText, { color: colors.text }]}>{order.shippingAddress.name || order.shippingAddress.fullName}</Text>
             </View>
             <View style={styles.shippingRow}>
-              <Ionicons name="call-outline" size={20} color="#666" />
-              <Text style={styles.shippingText}>{order.shippingAddress.phone}</Text>
+              <Ionicons name="call-outline" size={20} color={colors.textSecondary} />
+              <Text style={[styles.shippingText, { color: colors.text }]}>{order.shippingAddress.phone}</Text>
             </View>
             <View style={styles.shippingRow}>
-              <Ionicons name="location-outline" size={20} color="#666" />
-              <Text style={styles.shippingText}>{order.shippingAddress.address}</Text>
+              <Ionicons name="location-outline" size={20} color={colors.textSecondary} />
+              <Text style={[styles.shippingText, { color: colors.text }]}>
+                {order.shippingAddress.address}
+                {order.shippingAddress.ward && `, ${order.shippingAddress.ward}`}
+                {order.shippingAddress.district && `, ${order.shippingAddress.district}`}
+                {order.shippingAddress.city && `, ${order.shippingAddress.city}`}
+              </Text>
             </View>
           </View>
         </View>
 
         {/* Order Summary */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Tóm tắt đơn hàng</Text>
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Tóm tắt đơn hàng</Text>
           <View style={styles.summaryCard}>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Tổng tiền hàng:</Text>
-              <Text style={styles.summaryValue}>{formatPrice(order.totalAmount)}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Phí vận chuyển:</Text>
-              <Text style={styles.summaryValue}>Miễn phí</Text>
-            </View>
-            <View style={styles.summaryDivider} />
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabelTotal}>Tổng cộng:</Text>
-              <Text style={styles.summaryValueTotal}>{formatPrice(order.totalAmount)}</Text>
-            </View>
+            {(() => {
+              const subtotal = order.items && order.items.length > 0 
+                ? order.items.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 0)), 0)
+                : 0;
+              const discount = order.voucherDiscount || 0;
+              return (
+                <>
+                  <View style={styles.summaryRow}>
+                    <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Tạm tính:</Text>
+                    <Text style={[styles.summaryValue, { color: colors.text }]}>{formatPrice(subtotal)}</Text>
+                  </View>
+                  {discount > 0 && (
+                    <View style={styles.summaryRow}>
+                      <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Giảm giá:</Text>
+                      <Text style={[styles.summaryValue, { color: '#28a745' }]}>-{formatPrice(discount)}</Text>
+                    </View>
+                  )}
+                  <View style={styles.summaryRow}>
+                    <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Phí vận chuyển:</Text>
+                    <Text style={[styles.summaryValue, { color: colors.text }]}>Miễn phí</Text>
+                  </View>
+                  <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
+                  <View style={styles.summaryRow}>
+                    <Text style={[styles.summaryLabelTotal, { color: colors.text }]}>Tổng cộng:</Text>
+                    <Text style={[styles.summaryValueTotal, { color: colors.accent }]}>{formatPrice(order?.totalAmount || order?.totalPrice || 0)}</Text>
+                  </View>
+                </>
+              );
+            })()}
           </View>
         </View>
 
@@ -244,6 +447,17 @@ const OrderDetailScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Review Modal */}
+      {selectedProduct && (
+        <ReviewModal
+          visible={reviewModalVisible}
+          onClose={() => setReviewModalVisible(false)}
+          product={selectedProduct}
+          orderDetailId={selectedOrderDetailId}
+          onReviewSubmitted={handleReviewSubmitted}
+        />
+      )}
     </View>
   );
 };
@@ -310,30 +524,47 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   section: {
-    marginBottom: 20,
+    marginBottom: 16,
+    borderRadius: 8,
+    padding: 16,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    marginBottom: 16,
+  },
+  statusHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 12,
   },
-  itemCard: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
-  itemImageContainer: {
-    marginRight: 12,
+  statusText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  orderInfo: {
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  itemCard: {
+    flexDirection: 'row',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    alignItems: 'center',
   },
   itemImage: {
     width: 60,
     height: 60,
-    backgroundColor: '#F0F0F0',
     borderRadius: 8,
+    marginRight: 12,
+    backgroundColor: '#f5f5f5',
   },
   itemInfo: {
     flex: 1,
@@ -449,6 +680,33 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  reviewContainer: {
+    marginTop: 8,
+  },
+  reviewedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  reviewedText: {
+    marginLeft: 4,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  reviewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    marginTop: 4,
+  },
+  reviewButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 4,
   },
 });
 

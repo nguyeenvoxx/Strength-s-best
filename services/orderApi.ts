@@ -1,7 +1,8 @@
-import { API_CONFIG } from '../constants/config';
+import { API_CONFIG } from './config';
 
 export interface OrderItem {
-  productId: string;
+  productId: string | any; // Có thể là string hoặc object
+  idProduct?: any; // Backend có thể trả về idProduct
   quantity: number;
   price: number;
 }
@@ -27,6 +28,8 @@ export interface Order {
   userId: string;
   items: OrderItem[];
   totalAmount: number;
+  totalPrice?: number; // Backend có thể trả về totalPrice
+  totalQuantity?: number; // Backend có thể trả về totalQuantity
   paymentMethod: string;
   status: string;
   voucherId?: string;
@@ -41,6 +44,8 @@ export interface Order {
   };
   createdAt: string;
   updatedAt: string;
+  created_at?: string; // Backend có thể trả về created_at
+  updated_at?: string; // Backend có thể trả về updated_at
 }
 
 export const createOrder = async (token: string, orderData: CreateOrderRequest): Promise<Order> => {
@@ -102,6 +107,62 @@ export const getUserOrders = async (token: string): Promise<Order[]> => {
     }
   } catch (error) {
     console.error('=== ORDER API: GET USER ORDERS ERROR ===');
+    console.error('Error:', error);
+    throw error;
+  }
+};
+
+export const getOrderDetail = async (token: string, orderId: string): Promise<any> => {
+  try {
+    console.log('=== ORDER API: GET ORDER DETAIL REQUEST ===');
+    console.log('Order ID:', orderId);
+    console.log('API URL:', `${API_CONFIG.BASE_URL}/orders/${orderId}/detail`);
+
+    const response = await fetch(`${API_CONFIG.BASE_URL}/orders/${orderId}/detail`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    console.log('Response headers:', response.headers);
+
+    console.log('=== ORDER API: GET ORDER DETAIL RESPONSE ===');
+    console.log('Status:', response.status);
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log('Get Order Detail Response:', data);
+      console.log('Response data structure:', {
+        hasData: !!data.data,
+        hasOrder: !!(data.data && data.data.order),
+        dataKeys: Object.keys(data)
+      });
+      
+      // Kiểm tra cả hai cấu trúc response có thể có
+      const orderData = data.data?.order || data.order;
+      if (!orderData) {
+        console.error('❌ No order data in response');
+        console.error('Available data keys:', Object.keys(data));
+        throw new Error('Không tìm thấy dữ liệu đơn hàng');
+      }
+      
+      console.log('✅ Order data found:', {
+        id: orderData._id,
+        status: orderData.status,
+        totalAmount: orderData.totalAmount,
+        itemsCount: orderData.items?.length || 0
+      });
+      
+      return orderData;
+    } else {
+      const errorData = await response.json();
+      console.error('Get Order Detail Error:', errorData);
+      throw new Error(errorData.message || 'Không thể lấy chi tiết đơn hàng');
+    }
+  } catch (error) {
+    console.error('=== ORDER API: GET ORDER DETAIL ERROR ===');
     console.error('Error:', error);
     throw error;
   }

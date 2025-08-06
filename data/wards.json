@@ -1,0 +1,28 @@
+{
+  "005": [
+    { "code": "00001", "name": "Dịch Vọng" },
+    { "code": "00002", "name": "Dịch Vọng Hậu" },
+    { "code": "00003", "name": "Mai Dịch" },
+    { "code": "00004", "name": "Nghĩa Đô" },
+    { "code": "00005", "name": "Nghĩa Tân" },
+    { "code": "00006", "name": "Quan Hoa" },
+    { "code": "00007", "name": "Trung Hòa" },
+    { "code": "00008", "name": "Yên Hòa" }
+  ],
+  "001": [
+    { "code": "00101", "name": "Cống Vị" },
+    { "code": "00102", "name": "Điện Biên" },
+    { "code": "00103", "name": "Đội Cấn" },
+    { "code": "00104", "name": "Giảng Võ" },
+    { "code": "00105", "name": "Kim Mã" },
+    { "code": "00106", "name": "Liễu Giai" },
+    { "code": "00107", "name": "Ngọc Hà" },
+    { "code": "00108", "name": "Ngọc Khánh" },
+    { "code": "00109", "name": "Nguyễn Trung Trực" },
+    { "code": "00110", "name": "Phúc Xá" },
+    { "code": "00111", "name": "Quán Thánh" },
+    { "code": "00112", "name": "Thành Công" },
+    { "code": "00113", "name": "Trúc Bạch" },
+    { "code": "00114", "name": "Vĩnh Phúc" }
+  ]
+}

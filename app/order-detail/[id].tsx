@@ -60,6 +60,24 @@ const OrderDetailScreen: React.FC = () => {
     try {
       setLoading(true);
       const orderData = await getOrderDetailById(token!, orderId);
+      console.log('🔍 Order Data:', {
+        paymentMethod: orderData.paymentMethod,
+        payment: orderData.payment,
+        status: orderData.status,
+        paymentStatus: orderData.payment?.status
+      });
+      
+      // Debug chi tiết payment
+      if (orderData.payment) {
+        console.log('🔍 Payment Details:', {
+          method: orderData.payment.method,
+          status: orderData.payment.status,
+          amount: orderData.payment.amount,
+          transactionId: orderData.payment.transactionId
+        });
+      } else {
+        console.log('🔍 No payment record found');
+      }
       setOrder(orderData);
     } catch (error: any) {
       console.error('Error loading order detail:', error);
@@ -165,6 +183,103 @@ const OrderDetailScreen: React.FC = () => {
     });
   };
 
+  const getPaymentMethodText = (method: string) => {
+    console.log('🔍 Payment Method Input:', method);
+    const methodMap: { [key: string]: string } = {
+      'card': 'Thẻ tín dụng',
+      'vnpay': 'VNPay',
+      'momo': 'MoMo',
+      'cod': 'Thanh toán khi nhận hàng',
+      'online': 'Thanh toán online',
+      'offline': 'Thanh toán khi nhận hàng',
+      'cash': 'Tiền mặt',
+      'bank_transfer': 'Chuyển khoản ngân hàng'
+    };
+    const result = methodMap[method] || method;
+    console.log('🔍 Payment Method Output:', result);
+    return result;
+  };
+
+  const getPaymentStatusText = (status: string, paymentMethod?: string, orderStatus?: string) => {
+    if (paymentMethod === 'cod') {
+      return (orderStatus === 'delivered' || orderStatus === 'completed') ? 'Đã thanh toán' : 'Chờ thanh toán';
+    }
+    // Đặc biệt cho thanh toán bằng thẻ: ưu tiên payment status trước
+    if (paymentMethod === 'card') {
+      const statusMap: { [key: string]: string } = {
+        'success': 'Đã thanh toán',
+        'completed': 'Đã thanh toán',
+        'pending': 'Chờ thanh toán',
+        'failed': 'Thanh toán thất bại',
+        'cancelled': 'Đã hủy'
+      };
+      return statusMap[status] || 'Chờ thanh toán';
+    }
+    // Với vnpay/momo: vẫn giữ logic cũ
+    if (paymentMethod === 'vnpay' || paymentMethod === 'momo') {
+      if (orderStatus === 'delivered' || orderStatus === 'completed') {
+        return 'Đã thanh toán';
+      }
+      const statusMap: { [key: string]: string } = {
+        'success': 'Đã thanh toán',
+        'completed': 'Đã thanh toán',
+        'pending': 'Chờ thanh toán',
+        'failed': 'Thanh toán thất bại',
+        'cancelled': 'Đã hủy'
+      };
+      return statusMap[status] || 'Chờ thanh toán';
+    }
+    const statusMap: { [key: string]: string } = {
+      'success': 'Đã thanh toán',
+      'completed': 'Đã thanh toán',
+      'pending': 'Chờ thanh toán',
+      'failed': 'Thanh toán thất bại',
+      'cancelled': 'Đã hủy'
+    };
+    return statusMap[status] || 'Chờ thanh toán';
+  };
+
+  const getPaymentStatusColor = (status: string, paymentMethod?: string, orderStatus?: string) => {
+    // COD: Nếu đơn hàng đã giao thì màu xanh (đã thanh toán), ngược lại màu cam (chờ thanh toán)
+    if (paymentMethod === 'cod') {
+      return (orderStatus === 'delivered' || orderStatus === 'completed') ? '#4CAF50' : '#FF9800';
+    }
+    // Đặc biệt cho thanh toán bằng thẻ: ưu tiên payment status trước
+    if (paymentMethod === 'card') {
+      const colorMap: { [key: string]: string } = {
+        'success': '#4CAF50',
+        'completed': '#4CAF50',
+        'pending': '#FF9800',
+        'failed': '#F44336',
+        'cancelled': '#666'
+      };
+      return colorMap[status] || '#FF9800';
+    }
+    // Với vnpay/momo: vẫn giữ logic cũ
+    if (paymentMethod === 'vnpay' || paymentMethod === 'momo') {
+      if (orderStatus === 'delivered' || orderStatus === 'completed') {
+        return '#4CAF50';
+      }
+      const colorMap: { [key: string]: string } = {
+        'success': '#4CAF50',
+        'completed': '#4CAF50',
+        'pending': '#FF9800',
+        'failed': '#F44336',
+        'cancelled': '#666'
+      };
+      return colorMap[status] || '#FF9800';
+    }
+    
+    // Với các phương thức thanh toán online khác, dựa vào status
+    const colorMap: { [key: string]: string } = {
+      'completed': '#4CAF50', // Xanh lá cho "Đã thanh toán"
+      'pending': '#FF9800',   // Cam cho "Chờ thanh toán"
+      'failed': '#F44336',    // Đỏ cho "Thanh toán thất bại"
+      'cancelled': '#666'     // Xám cho "Đã hủy"
+    };
+    return colorMap[status] || '#666';
+  };
+
   if (loading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
@@ -179,7 +294,7 @@ const OrderDetailScreen: React.FC = () => {
   if (!order) {
     return (
       <View style={[styles.errorContainer, { backgroundColor: colors.background }]}>
-        <Ionicons name="alert-circle" size={64} color={colors.error} />
+                 <Ionicons name="alert-circle" size={64} color={colors.danger} />
         <Text style={[styles.errorText, { color: colors.text }]}>
           Không tìm thấy đơn hàng
         </Text>
@@ -197,13 +312,15 @@ const OrderDetailScreen: React.FC = () => {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => router.replace('/purchased-orders')} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>
@@ -245,7 +362,7 @@ const OrderDetailScreen: React.FC = () => {
               Phương thức thanh toán:
             </Text>
             <Text style={[styles.infoValue, { color: colors.text }]}>
-              {order.paymentMethod === 'card' ? 'Thẻ tín dụng' : order.paymentMethod}
+              {getPaymentMethodText(order.paymentMethod)}
             </Text>
           </View>
           <View style={styles.infoRow}>
@@ -267,6 +384,28 @@ const OrderDetailScreen: React.FC = () => {
             </View>
           )}
         </View>
+
+        {/* Voucher Info */}
+        {order.voucherId && (
+          <View style={[styles.section, { backgroundColor: colors.card }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Voucher đã sử dụng
+            </Text>
+            <View style={styles.voucherContainer}>
+              <View style={styles.voucherInfo}>
+                <Text style={[styles.voucherCode, { color: colors.accent }]}>
+                  {order.voucherId}
+                </Text>
+                <Text style={[styles.voucherDiscount, { color: colors.success }]}>
+                  -{formatPrice(order.voucherDiscount || 0)}
+                </Text>
+              </View>
+              <View style={[styles.voucherBadge, { backgroundColor: colors.success }]}>
+                <Text style={styles.voucherBadgeText}>Đã áp dụng</Text>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Shipping Address */}
         <View style={[styles.section, { backgroundColor: colors.card }]}>
@@ -327,45 +466,79 @@ const OrderDetailScreen: React.FC = () => {
         </View>
 
         {/* Payment Info */}
-        {order.payment && (
-          <View style={[styles.section, { backgroundColor: colors.card }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Thông tin thanh toán
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Thông tin thanh toán
+          </Text>
+          <View style={styles.infoRow}>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
+              Trạng thái:
             </Text>
+            {(() => {
+              const status = (order.payment?.status as string) || (order as any).paymentStatus || 'pending';
+              const bg = getPaymentStatusColor(status, order.paymentMethod, order.status);
+              const text = getPaymentStatusText(status, order.paymentMethod, order.status);
+              return (
+                <View style={[styles.paymentStatusBadge, { backgroundColor: bg }]}> 
+                  <Text style={styles.paymentStatusText}>{text}</Text>
+                </View>
+              );
+            })()}
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
+              Số tiền:
+            </Text>
+            <Text style={[styles.paymentAmount, { color: colors.accent }]}>
+              {formatPrice(order.payment?.amount || order.totalAmount)}
+            </Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
+              Phương thức:
+            </Text>
+            <Text style={[styles.infoValue, { color: colors.text }]}>
+              {order.paymentMethod ? getPaymentMethodText(order.paymentMethod) : 'Chưa chọn'}
+            </Text>
+          </View>
+          {order.payment?.transactionId && (
             <View style={styles.infoRow}>
               <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
-                Trạng thái:
+                Mã giao dịch:
               </Text>
-              <Text style={[styles.infoValue, { color: colors.text }]}>
-                {order.payment.status === 'completed' ? 'Đã thanh toán' : order.payment.status}
+              <Text style={[styles.transactionId, { color: colors.text }]}>
+                {order.payment.transactionId}
               </Text>
             </View>
-            {order.payment.transactionId && (
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
-                  Mã giao dịch:
-                </Text>
-                <Text style={[styles.infoValue, { color: colors.text }]}>
-                  {order.payment.transactionId}
-                </Text>
-              </View>
-            )}
-          </View>
-        )}
+          )}
+          {order.payment?.paidAt && (
+            <View style={styles.infoRow}>
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
+                Thời gian thanh toán:
+              </Text>
+              <Text style={[styles.infoValue, { color: colors.text }]}>
+                {formatDate(order.payment.paidAt)}
+              </Text>
+            </View>
+          )}
+        </View>
 
         {/* Action Buttons */}
         {order.status === 'pending' && (
           <View style={styles.actionContainer}>
             <TouchableOpacity
-              style={[styles.cancelButton, { borderColor: colors.error }]}
+                             style={[styles.cancelButton, { borderColor: colors.danger }]}
               onPress={handleCancelOrder}
             >
-              <Text style={[styles.cancelButtonText, { color: colors.error }]}>
+                             <Text style={[styles.cancelButtonText, { color: colors.danger }]}>
                 Hủy đơn hàng
               </Text>
             </TouchableOpacity>
           </View>
         )}
+
+        {/* Bottom Spacer to avoid bottom tabs */}
+        <View style={styles.bottomSpacer} />
       </ScrollView>
 
       {/* Review Modal */}
@@ -575,6 +748,63 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  bottomSpacer: {
+    height: 100, // Space to avoid bottom tabs
+  },
+  paymentStatusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  paymentStatusText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  paymentAmount: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  transactionId: {
+    fontSize: 14,
+    fontWeight: '500',
+    fontFamily: 'monospace',
+  },
+  voucherContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(76, 175, 80, 0.3)',
+  },
+  voucherInfo: {
+    flex: 1,
+  },
+  voucherCode: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  voucherDiscount: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  voucherBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  voucherBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
 });
 
 export default OrderDetailScreen;
+
+

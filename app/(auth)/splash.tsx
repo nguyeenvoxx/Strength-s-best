@@ -9,13 +9,13 @@ const SplashScreen: React.FC = () => {
   const handleGetStarted = () => {
     // Đánh dấu không còn là lần đầu tiên
     setIsFirstTime(false);
-    router.push('../products');
+    router.replace('/home');
   };
 
   const handleSignIn = () => {
     // Đánh dấu không còn là lần đầu tiên
     setIsFirstTime(false);
-    router.push('./sign-in');
+    router.replace('./sign-in');
   };
 
   return (

@@ -52,7 +52,7 @@ const HelpScreen = () => {
       <View style={[styles.header, { backgroundColor: colors.card }]}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => router.back()}
+          onPress={() => router.replace('/settings')}
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
@@ -60,7 +60,7 @@ const HelpScreen = () => {
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             Câu hỏi thường gặp

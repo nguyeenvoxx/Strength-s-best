@@ -29,7 +29,7 @@ export interface Product {
   }
   idBrand?: string | {
     _id: string;
-    nameBrand: string;
+    name: string;
   }
   favoriteId?: string
 }

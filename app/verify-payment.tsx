@@ -172,7 +172,7 @@ const VerifyPaymentScreen: React.FC = () => {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={handleCancelPayment} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.replace('/checkout')} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Xác minh thanh toán</Text>

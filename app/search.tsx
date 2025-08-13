@@ -188,7 +188,7 @@ const SearchScreen: React.FC = () => {
   };
 
   const onProductPress = (productId: string) => {
-    router.push(`./product/${productId}`);
+    router.replace(`./product/${productId}`);
   };
 
   const formatPrice = (price: number) => {
@@ -268,7 +268,7 @@ const SearchScreen: React.FC = () => {
 
         {/* Filter Container */}
         <View style={[styles.filterContainer, { backgroundColor: colors.background }]}> 
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/products')}>
             <Ionicons name="chevron-back" size={20} color={colors.text} />
             <Text style={[styles.backButtonText, { color: colors.text }]}>Quay lại</Text>
           </TouchableOpacity>
@@ -562,7 +562,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
   },
   productList: {
-    paddingBottom: 20,
+    paddingBottom: 120,
   },
   productCard: {
     width: (width - 40) / 2,

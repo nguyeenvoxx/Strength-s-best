@@ -7,8 +7,8 @@ export const transformApiProductToProduct = (apiProduct: ApiProduct): Product =>
   const sections: ProductSection[] = [];
   
   // Thêm thông tin brand và category
-  const brandName = typeof apiProduct.idBrand === 'object' && apiProduct.idBrand?.nameBrand 
-    ? apiProduct.idBrand.nameBrand 
+  const brandName = typeof apiProduct.idBrand === 'object' && apiProduct.idBrand?.name 
+    ? apiProduct.idBrand.name 
     : 'Không xác định';
   
   const categoryName = typeof apiProduct.idCategory === 'object' && apiProduct.idCategory?.nameCategory 

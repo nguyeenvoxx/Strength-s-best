@@ -17,6 +17,8 @@ export interface OrderDetail {
   totalAmount: number;
   totalQuantity: number;
   paymentMethod: string;
+  voucherId?: string;
+  voucherDiscount?: number;
   items: OrderDetailItem[];
   shippingAddress: {
     name: string;
@@ -137,3 +139,5 @@ export const cancelOrder = async (token: string, orderId: string): Promise<Order
     throw error;
   }
 };
+
+

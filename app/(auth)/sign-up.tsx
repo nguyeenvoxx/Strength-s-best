@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, Alert, ActivityIndicator, ScrollView, SafeAreaView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -16,6 +16,7 @@ const SignUpScreen: React.FC = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [phone, setPhone] = useState('');
   const [phoneError, setPhoneError] = useState('');
+  const [address, setAddress] = useState('');
   
   const { signup, isLoading, error, clearError } = useAuthStore();
 
@@ -25,8 +26,9 @@ const SignUpScreen: React.FC = () => {
   };
 
   const validatePhone = (phone: string) => {
-    // Chấp nhận format: +84 9xxxxxxxx hoặc 09xxxxxxxx
-    const phoneRegex = /^(\+84\s?9\d{8}|09\d{8})$/;
+    // Chấp nhận tất cả các đầu số phổ biến ở Việt Nam
+    // 03, 05, 07, 08, 09 (các nhà mạng chính)
+    const phoneRegex = /^(\+84\s?[35789]\d{8}|0[35789]\d{8})$/;
     return phoneRegex.test(phone);
   };
 
@@ -87,6 +89,11 @@ const SignUpScreen: React.FC = () => {
       return;
     }
 
+    if (!address) {
+      Alert.alert('Lỗi', 'Vui lòng nhập địa chỉ giao hàng');
+      return;
+    }
+
     const formattedPhone = formatPhone(phone);
     if (!validatePhone(formattedPhone)) {
       Alert.alert('Lỗi', 'Số điện thoại không hợp lệ. Vui lòng nhập đúng định dạng');
@@ -97,7 +104,8 @@ const SignUpScreen: React.FC = () => {
       console.log('🔍 Đang đăng ký với dữ liệu:', { 
         name: data.name, 
         email: data.email, 
-        phone: data.phone 
+        phone: data.phone,
+        address: data.address
       });
 
       await signup(data);
@@ -105,7 +113,7 @@ const SignUpScreen: React.FC = () => {
       console.log('✅ Đăng ký thành công, chuyển đến email verification');
       
       // Sau khi đăng ký thành công, chuyển đến trang xác thực email
-      router.push({ 
+      router.replace({ 
         pathname: './email-verification', 
         params: { email: data.email } 
       });
@@ -122,13 +130,28 @@ const SignUpScreen: React.FC = () => {
       name: fullName.trim(), 
       email: email.trim().toLowerCase(), 
       password,
-      phoneNumber: phoneToSave
+      phoneNumber: phoneToSave,
+      addressDetails: {
+        fullName: fullName.trim(),
+        phone: phoneToSave,
+        address: address.trim(),
+        province: '',
+        district: '',
+        ward: ''
+      }
     });
   };
 
   return (
-    <View style={[styles.container, getPlatformContainerStyle()]}>
-      <Image source={require('../../assets/images/logo.png')} style={styles.logo} />
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={[styles.container, getPlatformContainerStyle()]}>
+          <Image source={require('../../assets/images/logo.png')} style={styles.logo} />
       <View style={styles.inputWrapper}>
         <TextInput
           style={styles.textInput}
@@ -188,19 +211,31 @@ const SignUpScreen: React.FC = () => {
       <View style={styles.inputWrapper}>
         <TextInput
           style={styles.textInput}
-          placeholder="Số điện thoại (09xxxxxxxx hoặc +84 9xxxxxxxx)"
+          placeholder="Số điện thoại (03, 05, 07, 08, 09xxxxxxxx)"
           value={phone}
           onChangeText={text => {
             // Cho phép nhập số và dấu +
             let formatted = text.replace(/[^0-9+]/g, '');
             
-            // Nếu bắt đầu bằng 0, giữ nguyên
+            // Nếu bắt đầu bằng 0, kiểm tra đầu số hợp lệ (03, 05, 07, 08, 09)
             if (formatted.startsWith('0')) {
-              if (formatted.length > 10) formatted = formatted.slice(0, 10);
+              const secondDigit = formatted.charAt(1);
+              if (['3', '5', '7', '8', '9'].includes(secondDigit)) {
+                if (formatted.length > 10) formatted = formatted.slice(0, 10);
+              } else {
+                // Nếu đầu số không hợp lệ, chỉ giữ lại số 0
+                formatted = '0';
+              }
             } 
-            // Nếu bắt đầu bằng +84, giữ nguyên
+            // Nếu bắt đầu bằng +84, kiểm tra đầu số hợp lệ
             else if (formatted.startsWith('+84')) {
-              if (formatted.length > 13) formatted = formatted.slice(0, 13);
+              const fifthDigit = formatted.charAt(4);
+              if (['3', '5', '7', '8', '9'].includes(fifthDigit)) {
+                if (formatted.length > 13) formatted = formatted.slice(0, 13);
+              } else {
+                // Nếu đầu số không hợp lệ, chỉ giữ lại +84
+                formatted = '+84';
+              }
             }
             // Nếu không có prefix, thêm 0
             else if (formatted.length > 0 && !formatted.startsWith('0') && !formatted.startsWith('+')) {
@@ -215,6 +250,22 @@ const SignUpScreen: React.FC = () => {
           maxLength={13}
         />
         {phoneError ? <Text style={{color: 'red', marginBottom: 8}}>{phoneError}</Text> : null}
+      </View>
+
+      {/* Thông tin địa chỉ */}
+      <Text style={styles.sectionTitle}>Địa chỉ giao hàng</Text>
+      
+      <View style={styles.inputWrapper}>
+        <TextInput
+          style={styles.textInput}
+          placeholder="Nhập địa chỉ giao hàng của bạn"
+          value={address}
+          onChangeText={setAddress}
+          autoCapitalize="words"
+          multiline={true}
+          numberOfLines={3}
+          textAlignVertical="top"
+        />
       </View>
 
       <View style={styles.options}>
@@ -255,17 +306,32 @@ const SignUpScreen: React.FC = () => {
           <Text style={styles.footerLink}>Đăng nhập</Text>
         </TouchableOpacity>
       </View>
-    </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 100, // Thêm padding bottom để tránh bị che bởi bottom tabs
+  },
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#fff',
     paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 20,
   },
   logo: {
     width: 100,
@@ -274,19 +340,28 @@ const styles = StyleSheet.create({
   },
   inputWrapper: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     borderWidth: 1,
     borderColor: '#000',
     borderRadius: 8,
     paddingHorizontal: 10,
+    paddingVertical: 10,
     marginBottom: 15,
     width: '100%',
-    height: 48,
+    minHeight: 48,
   },
   textInput: {
     flex: 1,
     fontSize: 16,
     color: '#000',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#000',
+    marginBottom: 15,
+    marginTop: 10,
+    alignSelf: 'flex-start',
   },
   options: {
     flexDirection: 'row',

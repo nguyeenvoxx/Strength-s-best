@@ -58,19 +58,19 @@ const ChangePasswordScreen: React.FC = () => {
   };
 
   const handleCancel = () => {
-    router.back();
+    router.replace('/profile');
   };
 
   return (
     <View style={[styles.container, getPlatformContainerStyle(), { backgroundColor: colors.background }]}>
       {/* Header */}
-      {/* <View style={styles.headerContainer}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
+      <View style={styles.headerContainer}>
+        <TouchableOpacity onPress={() => router.replace('/profile')}>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.header}>Đổi mật khẩu</Text>
+        <Text style={[styles.header, { color: colors.text }]}>Đổi mật khẩu</Text>
         <View style={styles.placeholder} />
-      </View> */}
+      </View>
 
       {/* Form */}
       <View style={styles.formContainer}>

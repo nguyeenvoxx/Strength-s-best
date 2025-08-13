@@ -218,7 +218,7 @@ const PurchasedOrdersScreen: React.FC = () => {
         <Text style={styles.headerTitle}>Đơn hàng đã mua</Text>
       </View>
       
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 120 }}>
         {loading ? (
           <View style={styles.emptyContainer}>
             <ActivityIndicator size="large" color="#007bff" />
@@ -264,7 +264,7 @@ const PurchasedOrdersScreen: React.FC = () => {
               <View style={styles.orderActions}>
                 <TouchableOpacity
                   style={styles.viewButton}
-                  onPress={() => router.push({
+                  onPress={() => router.replace({
           pathname: '/order-detail/[id]',
           params: { id: order?._id }
         })}

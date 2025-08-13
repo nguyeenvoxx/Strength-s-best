@@ -12,6 +12,7 @@ export interface CreateOrderRequest {
   totalAmount: number;
   paymentMethod: string;
   voucherId?: string;
+  userVoucherId?: string;
   voucherDiscount?: number;
   shippingAddress: {
     name: string;

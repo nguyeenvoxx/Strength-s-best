@@ -20,8 +20,8 @@ export default function Index() {
           // Lần đầu sử dụng - chuyển đến welcome
           router.replace('/(auth)/splash');
         } else if (isAuthenticated) {
-          // Đã đăng nhập - chuyển đến products
-          router.replace('/products');
+          // Đã đăng nhập - chuyển đến home
+          router.replace('/home');
         } else {
           // Chưa đăng nhập - chuyển đến sign-in
           router.replace('/(auth)/sign-in');

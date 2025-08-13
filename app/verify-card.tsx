@@ -100,8 +100,12 @@ const VerifyCardScreen: React.FC = () => {
         'Thẻ của bạn đã được xác minh và lưu thành công.',
         [
           {
-            text: 'OK',
-            onPress: () => router.replace('/profile')
+            text: 'Quay lại checkout',
+            onPress: () => router.replace('/checkout')
+          },
+          {
+            text: 'Xem thẻ của tôi',
+            onPress: () => router.replace('/my-cards')
           }
         ]
       );
@@ -150,7 +154,7 @@ const VerifyCardScreen: React.FC = () => {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.replace('/profile')} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.replace('/my-cards')} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Xác minh thẻ</Text>

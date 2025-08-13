@@ -37,7 +37,7 @@ const SignInScreen: React.FC = () => {
 
     try {
       await login({ email: email.trim().toLowerCase(), password });
-      router.replace('../products');
+      router.replace('/home');
     } catch (error: any) {
       Alert.alert('Đăng nhập thất bại', error.response?.data?.message || 'Email hoặc mật khẩu không đúng');
     }
@@ -85,7 +85,7 @@ const SignInScreen: React.FC = () => {
           </View>
         </TouchableOpacity>
         <Text style={styles.optionText}>Bạn có nhớ</Text>
-        <TouchableOpacity onPress={() => router.push('./forgot-password')}>
+        <TouchableOpacity onPress={() => router.replace('./forgot-password')}>
           <Text style={styles.forgotText}>Quên mật khẩu</Text>
         </TouchableOpacity>
       </View>
@@ -112,12 +112,12 @@ const SignInScreen: React.FC = () => {
       </View>      
       <View style={styles.signUpContainer}>
         <Text style={styles.signUpText}>Chưa có tài khoản? </Text>
-        <TouchableOpacity onPress={() => router.push('./sign-up')}>
+        <TouchableOpacity onPress={() => router.replace('./sign-up')}>
           <Text style={styles.signUpLink}>Đăng ký</Text>
         </TouchableOpacity>
       </View>
       
-      <TouchableOpacity onPress={() => router.push('../products')}>
+      <TouchableOpacity onPress={() => router.replace('/home')}>
         <Text style={styles.guestText}>Bạn sẽ tiếp tục là khách</Text>
       </TouchableOpacity>
     </View>

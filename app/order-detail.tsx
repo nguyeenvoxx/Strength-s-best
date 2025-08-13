@@ -264,14 +264,14 @@ const OrderDetailScreen: React.FC = () => {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.replace('/purchased-orders')} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Chi tiết đơn hàng</Text>
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         {/* Order Status */}
         <View style={[styles.section, { backgroundColor: colors.card }]}>
           <View style={styles.statusHeader}>
@@ -296,6 +296,17 @@ const OrderDetailScreen: React.FC = () => {
           </Text>
           <Text style={[styles.orderInfo, { color: colors.textSecondary }]}>
             Phương thức thanh toán: {order.paymentMethod === 'card' ? 'Thẻ tín dụng' : order.paymentMethod || 'Chưa chọn'}
+          </Text>
+          <Text style={[styles.orderInfo, { color: colors.textSecondary }]}> 
+            Trạng thái thanh toán: {
+              (() => {
+                const status = (order.payment?.status as string) || (order.paymentStatus as string) || 'pending';
+                if (status === 'success' || status === 'completed') return 'Đã thanh toán';
+                if (status === 'failed') return 'Thanh toán thất bại';
+                if (status === 'cancelled') return 'Đã hủy';
+                return 'Chờ thanh toán';
+              })()
+            }
           </Text>
           {order.payment && (
             <Text style={[styles.orderInfo, { color: colors.textSecondary }]}>

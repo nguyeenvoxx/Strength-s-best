@@ -19,7 +19,14 @@ export interface SignupRequest {
   email: string;
   password: string;
   phoneNumber?: string;
-  address?: string;
+  addressDetails?: {
+    fullName: string;
+    phone: string;
+    address: string;
+    province?: string;
+    district?: string;
+    ward?: string;
+  };
 }
 
 export interface VerifyEmailRequest {
@@ -40,13 +47,22 @@ export interface AuthResponse {
       name: string;
       email: string;
       phoneNumber?: string;
-      address?: string;
       role: string;
       status: string;
       avatarUrl?: string;
       emailVerified: boolean;
       createdAt: string;
       updatedAt: string;
+    };
+    address?: {
+      _id: string;
+      name: string;
+      phone: string;
+      address: string;
+      province: string;
+      district: string;
+      ward: string;
+      isDefault: boolean;
     };
   };
 }
@@ -117,24 +133,48 @@ export const updateProfile = async (token: string, data: { name?: string; email?
 };
 
 export const uploadAvatar = async (token: string, imageUri: string) => {
-  const formData = new FormData();
-  formData.append('avatar', {
-    uri: imageUri,
-    type: 'image/jpeg',
-    name: 'avatar.jpg'
-  } as any);
+  try {
+    console.log('🔄 Preparing to upload avatar:', imageUri);
+    
+    const formData = new FormData();
+    formData.append('avatar', {
+      uri: imageUri,
+      type: 'image/jpeg',
+      name: 'avatar.jpg'
+    } as any);
 
-  const res = await axios.post(
-    `${API_CONFIG.BASE_URL}/users/upload-avatar`,
-    formData,
-    { 
-      headers: { 
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'multipart/form-data'
-      } 
+    console.log('🔄 Sending upload request...');
+    const res = await axios.post(
+      `${API_CONFIG.BASE_URL}/users/upload-avatar`,
+      formData,
+      { 
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        },
+        timeout: 30000 // 30 seconds timeout
+      }
+    );
+    
+    console.log('✅ Upload response:', res.data);
+    return res.data;
+  } catch (error: any) {
+    console.error('❌ Upload avatar error:', error);
+    
+    if (error.response) {
+      // Server trả về lỗi
+      console.error('❌ Server error:', error.response.data);
+      throw new Error(error.response.data.message || 'Lỗi server khi upload ảnh');
+    } else if (error.request) {
+      // Không nhận được response
+      console.error('❌ Network error:', error.request);
+      throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra internet.');
+    } else {
+      // Lỗi khác
+      console.error('❌ Other error:', error.message);
+      throw new Error(error.message || 'Lỗi không xác định khi upload ảnh');
     }
-  );
-  return res.data;
+  }
 };
 
 export const changePassword = async (token: string, currentPassword: string, newPassword: string) => {

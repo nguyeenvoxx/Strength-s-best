@@ -77,7 +77,7 @@ export interface ApiProduct {
   status: 'active' | 'inactive' | 'available';
   idBrand: string | {
     _id: string;
-    nameBrand: string;
+    name: string;
   };
   idCategory: string | {
     _id: string;
@@ -120,6 +120,27 @@ export interface ApiVoucher {
     minOrderValue?: number;
     userLimit?: number;
   };
+  created_at: string;
+  updated_at: string;
+}
+
+// Interface cho UserVoucher từ API
+export interface ApiUserVoucher {
+  _id: string;
+  userId: string;
+  voucherId: {
+    _id: string;
+    code: string;
+    description: string;
+  };
+  code: string;
+  discount: number;
+  expiryDate: string;
+  description: string;
+  status: 'active' | 'used' | 'expired';
+  usedAt?: string;
+  usedInOrder?: string;
+  pointsSpent: number;
   created_at: string;
   updated_at: string;
 }
@@ -310,7 +331,7 @@ export const rewardsApi = {
 
   // Đổi voucher bằng điểm
   exchangeVoucher: async (voucherId: string): Promise<ApiResponse<{
-    voucher: ApiVoucher;
+    userVoucher: ApiUserVoucher;
     remainingPoints: number;
   }>> => {
     const response = await api.post('/vouchers/rewards/exchange', { voucherId });
@@ -349,6 +370,21 @@ export const rewardsApi = {
     lastLoginDate: string;
   }>> => {
     const response = await api.post('/vouchers/rewards/daily-login');
+    return response.data;
+  },
+};
+
+// UserVoucher API services
+export const userVoucherApi = {
+  // Lấy voucher của user
+  getUserVouchers: async (): Promise<ApiResponse<{ userVouchers: ApiUserVoucher[] }>> => {
+    const response = await api.get('/vouchers/user/vouchers');
+    return response.data;
+  },
+
+  // Sử dụng voucher trong đơn hàng
+  useVoucher: async (userVoucherId: string, orderId: string): Promise<ApiResponse<{ userVoucher: ApiUserVoucher }>> => {
+    const response = await api.post('/vouchers/user/use-voucher', { userVoucherId, orderId });
     return response.data;
   },
 };

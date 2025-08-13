@@ -20,7 +20,7 @@ const ForgotPasswordScreen: React.FC = () => {
         Alert.alert('Lỗi', 'Vui lòng nhập địa chỉ email hợp lệ (ví dụ: user@example.com)');
         return;
       }
-      router.push('./email-verification')
+      router.replace('./email-verification')
     }
   }
 

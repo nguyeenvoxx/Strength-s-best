@@ -6,12 +6,14 @@ import {
   TouchableOpacity,
   Modal,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useTheme } from '../store/ThemeContext';
 import { useAuthStore } from '../store/useAuthStore';
 import { Address, getUserAddresses } from '../services/addressApi';
+import { useSimpleDataSync } from '../hooks/useSimpleDataSync';
 
 interface AddressSelectorProps {
   selectedAddress: Address | null;
@@ -38,28 +40,42 @@ const AddressSelector: React.FC<AddressSelectorProps> = ({ selectedAddress, onAd
     border: '#e0e0e0'
   };
 
-  const [addresses, setAddresses] = useState<Address[]>([]);
   const [showModal, setShowModal] = useState(false);
 
-  useEffect(() => {
-    loadAddresses();
-  }, [token]);
-
-  const loadAddresses = async () => {
-    try {
-      if (!token) return;
+  // Use custom hook for data synchronization
+  const {
+    data: addresses,
+    loading: addressesLoading,
+    refresh: refreshAddresses,
+    lastUpdated: addressesLastUpdated
+  } = useSimpleDataSync(
+    async (token: string) => {
       const userAddresses = await getUserAddresses(token);
-      setAddresses(userAddresses);
-      
-      // Nếu chưa có địa chỉ được chọn, chọn địa chỉ mặc định
-      if (!selectedAddress && userAddresses.length > 0) {
-        const defaultAddress = userAddresses.find(addr => addr.isDefault) || userAddresses[0];
-        onAddressSelect(defaultAddress);
-      }
-    } catch (error) {
-      console.error('Error loading addresses:', error);
+      return userAddresses;
+    },
+    {
+      autoRefresh: true,
+      refreshInterval: 30000, // 30 seconds
+      cacheTime: 60000 // 1 minute
     }
-  };
+  );
+
+  // Refresh addresses when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      if (token) {
+        refreshAddresses();
+      }
+    }, [token, refreshAddresses])
+  );
+
+  // Auto-select default address when addresses are loaded
+  useEffect(() => {
+    if (addresses && addresses.length > 0 && !selectedAddress) {
+      const defaultAddress = addresses.find(addr => addr.isDefault) || addresses[0];
+      onAddressSelect(defaultAddress);
+    }
+  }, [addresses, selectedAddress, onAddressSelect]);
 
   const handleAddressSelect = (address: Address) => {
     onAddressSelect(address);
@@ -71,13 +87,27 @@ const AddressSelector: React.FC<AddressSelectorProps> = ({ selectedAddress, onAd
     router.push('/add-address');
   };
 
+  const handleOpenModal = async () => {
+    setShowModal(true);
+    // Refresh addresses when modal opens
+    await refreshAddresses();
+  };
+
+  const handleEditAddress = (address: Address) => {
+    setShowModal(false);
+    router.push({
+      pathname: '/edit-address',
+      params: { addressId: address._id }
+    } as any);
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.card }]}>
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>
           Địa chỉ giao hàng
         </Text>
-        <TouchableOpacity onPress={() => setShowModal(true)}>
+        <TouchableOpacity onPress={handleOpenModal}>
           <Text style={[styles.changeText, { color: colors.accent }]}>
             Thay đổi
           </Text>
@@ -132,31 +162,66 @@ const AddressSelector: React.FC<AddressSelectorProps> = ({ selectedAddress, onAd
             </View>
             
             <ScrollView style={styles.addressList}>
-              {addresses.map((address) => (
-                <TouchableOpacity
-                  key={address._id}
-                  style={[styles.addressItem, { borderBottomColor: colors.border }]}
-                  onPress={() => handleAddressSelect(address)}
-                >
-                  <View style={styles.addressItemInfo}>
-                    <Text style={[styles.addressItemName, { color: colors.text }]}>
-                      {address.name}
-                    </Text>
-                    <Text style={[styles.addressItemPhone, { color: colors.textSecondary }]}>
-                      {address.phone}
-                    </Text>
-                    <Text style={[styles.addressItemAddress, { color: colors.textSecondary }]}>
-                      {address.address}
-                      {address.ward && `, ${address.ward}`}
-                      {address.district && `, ${address.district}`}
-                      {address.province && `, ${address.province}`}
-                    </Text>
-                  </View>
-                  {selectedAddress?._id === address._id && (
-                    <Ionicons name="checkmark-circle" size={24} color={colors.accent} />
-                  )}
-                </TouchableOpacity>
-              ))}
+              {addressesLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={colors.accent} />
+                  <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+                    Đang tải địa chỉ...
+                  </Text>
+                </View>
+              ) : addresses && addresses.length === 0 ? (
+                <View style={styles.emptyAddresses}>
+                  <Ionicons name="location-outline" size={48} color={colors.textSecondary} />
+                  <Text style={[styles.emptyAddressesText, { color: colors.textSecondary }]}>
+                    Chưa có địa chỉ nào
+                  </Text>
+                  <Text style={[styles.emptyAddressesSubtext, { color: colors.textSecondary }]}>
+                    Hãy thêm địa chỉ để tiếp tục
+                  </Text>
+                </View>
+                             ) : addresses ? (
+                 addresses.map((address) => (
+                  <View key={address._id} style={[styles.addressItem, { borderBottomColor: colors.border }]}>
+                    <TouchableOpacity
+                      style={styles.addressSelectableArea}
+                      onPress={() => handleAddressSelect(address)}
+                    >
+                      <View style={styles.addressItemInfo}>
+                        <View style={styles.addressItemHeader}>
+                          <Text style={[styles.addressItemName, { color: colors.text }]}>
+                            {address.name}
+                          </Text>
+                          {address.isDefault && (
+                            <View style={[styles.defaultBadge, { backgroundColor: colors.accent }]}>
+                              <Text style={styles.defaultBadgeText}>Mặc định</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={[styles.addressItemPhone, { color: colors.textSecondary }]}>
+                          {address.phone}
+                        </Text>
+                        <Text style={[styles.addressItemAddress, { color: colors.textSecondary }]}>
+                          {address.address}
+                          {address.ward && `, ${address.ward}`}
+                          {address.district && `, ${address.district}`}
+                          {address.province && `, ${address.province}`}
+                        </Text>
+                      </View>
+                      <View style={styles.addressItemActions}>
+                        {selectedAddress?._id === address._id && (
+                          <Ionicons name="checkmark-circle" size={24} color={colors.accent} />
+                        )}
+                        <TouchableOpacity
+                          style={styles.editButton}
+                          onPress={() => handleEditAddress(address)}
+                        >
+                          <Ionicons name="create-outline" size={20} color={colors.textSecondary} />
+                        </TouchableOpacity>
+                      </View>
+                    </TouchableOpacity>
+                                     </View>
+                 ))
+               ) : null}
             </ScrollView>
 
             <TouchableOpacity
@@ -254,13 +319,60 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   addressItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingVertical: 16,
     borderBottomWidth: 1,
   },
+  addressSelectableArea: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   addressItemInfo: {
     flex: 1,
+  },
+  addressItemHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  defaultBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  defaultBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  addressItemActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  editButton: {
+    padding: 4,
+  },
+  emptyAddresses: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyAddressesText: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  emptyAddressesSubtext: {
+    fontSize: 14,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    fontSize: 14,
+    marginTop: 12,
   },
   addressItemName: {
     fontSize: 16,

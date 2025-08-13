@@ -114,19 +114,36 @@ const CartScreen: React.FC = () => {
 
   const handleClearCart = async () => {
     Alert.alert(
-      'Xác nhận xóa',
-      'Bạn có chắc muốn xóa tất cả sản phẩm khỏi giỏ hàng?',
+      'Xóa tất cả sản phẩm',
+      `Bạn có chắc chắn muốn xóa tất cả ${items.length} sản phẩm khỏi giỏ hàng?\n\nHành động này không thể hoàn tác.`,
       [
-        { text: 'Hủy', style: 'cancel' },
+        { 
+          text: 'Hủy bỏ', 
+          style: 'cancel',
+          onPress: () => console.log('Clear cart cancelled')
+        },
         {
           text: 'Xóa tất cả',
           style: 'destructive',
           onPress: async () => {
             try {
+              setIsLoading(true);
               await clearCart(token!);
+              // Hiển thị thông báo thành công
+              Alert.alert(
+                'Thành công',
+                'Đã xóa tất cả sản phẩm khỏi giỏ hàng',
+                [{ text: 'OK' }]
+              );
             } catch (error) {
               console.error('Error clearing cart:', error);
-              Alert.alert('Lỗi', 'Không thể xóa giỏ hàng');
+              Alert.alert(
+                'Lỗi', 
+                'Không thể xóa giỏ hàng. Vui lòng thử lại.',
+                [{ text: 'OK' }]
+              );
+            } finally {
+              setIsLoading(false);
             }
           }
         }
@@ -147,7 +164,7 @@ const CartScreen: React.FC = () => {
     }
 
     // Navigate to checkout
-    router.push('./checkout');
+    router.replace('./checkout');
   };
 
   const calculateSubtotal = () => {
@@ -278,8 +295,26 @@ const CartScreen: React.FC = () => {
       <View style={styles.header}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Giỏ hàng</Text>
         {items.length > 0 && (
-          <TouchableOpacity onPress={handleClearCart}>
-            <Text style={[styles.clearButton, { color: colors.accent }]}>Xóa tất cả</Text>
+          <TouchableOpacity 
+            style={[
+              styles.clearButton, 
+              { 
+                backgroundColor: isLoading ? colors.textSecondary : colors.danger,
+                opacity: isLoading ? 0.7 : 1
+              }
+            ]} 
+            onPress={handleClearCart}
+            activeOpacity={0.7}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#fff" style={styles.clearButtonIcon} />
+            ) : (
+              <Ionicons name="trash-outline" size={16} color="#fff" style={styles.clearButtonIcon} />
+            )}
+            <Text style={styles.clearButtonText}>
+              {isLoading ? 'Đang xóa...' : 'Xóa tất cả'}
+            </Text>
           </TouchableOpacity>
         )}
       </View>
@@ -382,10 +417,24 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   clearButton: {
-    backgroundColor: '#ff4444',
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
+    paddingVertical: 8,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  clearButtonIcon: {
+    marginRight: 4,
+  },
+  clearButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   scrollView: {
     flex: 1,
@@ -426,7 +475,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   discountBadge: {
-    backgroundColor: '#FF6B35',
+    backgroundColor: '#4CAF50',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -620,7 +669,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   voucherDiscount: {
-    backgroundColor: '#FF6B35',
+    backgroundColor: '#4CAF50',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,

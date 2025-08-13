@@ -11,6 +11,7 @@ import {
   ScrollView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useTheme } from '../store/ThemeContext';
 import { LightColors, DarkColors } from '../constants/Colors';
 import { createReview, CreateReviewRequest } from '../services/reviewApi';
@@ -35,6 +36,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
   orderDetailId,
   onReviewSubmitted
 }) => {
+  const router = useRouter();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const colors = isDark ? DarkColors : LightColors;
@@ -74,7 +76,19 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
       Alert.alert(
         'Thành công', 
         'Đánh giá của bạn đã được gửi! +5 điểm',
-        [{ text: 'OK', onPress: onClose }]
+        [
+          { text: 'Ở lại', style: 'cancel', onPress: onClose },
+          { 
+            text: 'Xem đánh giá', 
+            onPress: () => {
+              // Điều hướng tới trang chi tiết sản phẩm và cuộn tới phần đánh giá
+              router.replace({
+                pathname: `/product/${product._id}` as any,
+                params: { scrollTo: 'reviews' }
+              });
+            }
+          }
+        ]
       );
       
       // Reset form
@@ -341,3 +355,7 @@ const styles = StyleSheet.create({
 });
 
 export default ReviewModal;
+
+
+
+

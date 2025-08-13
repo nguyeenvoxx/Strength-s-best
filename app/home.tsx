@@ -56,7 +56,7 @@ const HomeScreen: React.FC = () => {
   ];
   
   const handleViewAllProducts = () => {
-    router.push('./products');
+    router.replace('./products');
   };
 
   // Load products using store - không cần đăng nhập
@@ -75,7 +75,7 @@ const HomeScreen: React.FC = () => {
   };
 
   const handleLoginPress = () => {
-    router.push('/(auth)/sign-in');
+    router.replace('/(auth)/sign-in');
   };
 
   const formatPrice = (price: number) => {
@@ -134,7 +134,7 @@ const HomeScreen: React.FC = () => {
       rating: product.rating || 5,
       reviewCount: 123,
       onPress: () => {
-        router.push(`./product/${product._id}`);
+        router.replace(`./product/${product._id}`);
       },
     };
   });
@@ -312,10 +312,9 @@ const HomeScreen: React.FC = () => {
           </View>
         )}
 
-        {products.length > 0 && (
-          <View style={[styles.specialOfferSection, { backgroundColor: colors.card }]}>
+        <View style={[styles.specialOfferSection, { backgroundColor: colors.card }]}>
             <Image
-              source={getProductImages(products[0])[0] || require('../assets/images/special_offer.png')}
+              source={require('../assets/images/special_offer.png')}
               style={styles.specialOfferImage}
               resizeMode="cover"
             />
@@ -324,12 +323,10 @@ const HomeScreen: React.FC = () => {
               <Text style={[styles.specialOfferDescription, { color: colors.textSecondary }]}>Chúng tôi đảm bảo bạn nhận được ưu đãi mà bạn cần với giá tốt nhất.</Text>
             </View>
           </View>
-        )}
 
-        {products.length > 1 && (
-          <View style={[styles.healthComboSection, { backgroundColor: colors.card }]}>
+        <View style={[styles.healthComboSection, { backgroundColor: colors.card }]}>
             <Image
-              source={getProductImages(products[1])[0] || require('../assets/images/combo.png')}
+              source={require('../assets/images/combo.png')}
               style={styles.healthComboImage}
               resizeMode="cover"
             />
@@ -342,7 +339,6 @@ const HomeScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
           </View>
-        )}
 
         <HeaderSection
           title="Sản phẩm thịnh hành"
@@ -421,6 +417,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 16,
+    paddingBottom: 120,
   },
   carouselContainer: {
     height: 200,
@@ -711,7 +708,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   retryButton: {
-    backgroundColor: '#FF6B35',
+    backgroundColor: '#4CAF50',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 6,
@@ -750,7 +747,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   loginButton: {
-    backgroundColor: '#FF6B35',
+    backgroundColor: '#4CAF50',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,

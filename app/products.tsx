@@ -12,6 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getProductImages } from '../utils/productUtils';
 import { useTheme } from '../store/ThemeContext';
 import { LightColors, DarkColors } from '../constants/Colors';
+import Pagination from '../components/Pagination';
 
 // Thêm interface cho Brand
 interface Brand {
@@ -23,7 +24,7 @@ interface Brand {
 const ProductListScreen: React.FC = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { products, isLoading, error, fetchProducts } = useProductStore();
+  const { products, isLoading, error, fetchProducts, currentPage, totalPages, totalProducts, setPage } = useProductStore();
   const { isAuthenticated, token } = useAuthStore();
   const { categories, isLoading: categoriesLoading, fetchCategories } = useCategoryStore();
   const cartStore = useCartStore();
@@ -33,7 +34,7 @@ const ProductListScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedBrand, setSelectedBrand] = useState('all');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [localCurrentPage, setLocalCurrentPage] = useState(1);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [showBrands, setShowBrands] = useState(false);
 
@@ -53,7 +54,7 @@ const ProductListScreen: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        await fetchProducts({ limit: 100 }); // Load nhiều sản phẩm hơn cho listing
+        await fetchProducts({ page: 1, limit: 10 }); // Load 10 sản phẩm mỗi trang
         await fetchCategories(); // Load categories
         
         // Fetch brands from API - sử dụng fallback nếu API không có dữ liệu
@@ -131,6 +132,24 @@ const ProductListScreen: React.FC = () => {
     }
   }, [params.category]);
 
+  // Load products when page changes
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        await fetchProducts({ 
+          page: currentPage, 
+          limit: 10,
+          category: selectedCategory !== 'all' ? selectedCategory : undefined,
+          brand: selectedBrand !== 'all' ? selectedBrand : undefined
+        });
+      } catch (error) {
+        console.error('Error loading products:', error);
+      }
+    };
+    
+    loadProducts();
+  }, [currentPage, selectedCategory, selectedBrand, fetchProducts]);
+
   // Add to cart function
   const addToCart = async (product: Product) => {
     if (!isAuthenticated) {
@@ -152,37 +171,10 @@ const ProductListScreen: React.FC = () => {
     }
   };
 
-  // Filter products based on selected category and brand
-  const filteredProducts = useMemo(() => {
-    const safeProducts = products || [];
-    if (selectedCategory === 'all') {
-      return safeProducts;
-    }
-
-    return safeProducts.filter(product => {
-      // Luôn filter theo category trước
-      if (!product.idCategory) return false;
-      
-      const categoryMatch = typeof product.idCategory === 'object' && product.idCategory?._id
-        ? product.idCategory._id === selectedCategory
-        : product.idCategory === selectedCategory;
-      
-      if (!categoryMatch) return false;
-      
-      // Nếu đang chọn brand cụ thể, filter thêm theo brand
-      if (selectedBrand && selectedBrand !== 'all') {
-        if (!product.idBrand) return false;
-        
-        const brandMatch = typeof product.idBrand === 'object' && product.idBrand?._id
-          ? product.idBrand._id === selectedBrand
-          : product.idBrand === selectedBrand;
-        
-        return brandMatch;
-      }
-      
-      return true; // Chỉ filter theo category
-    });
-  }, [products, selectedCategory, selectedBrand]);
+  // Use products directly from store (already filtered by backend)
+  const displayProducts = useMemo(() => {
+    return products || [];
+  }, [products]);
 
   // Get brands for selected category
   const getBrandsForCategory = (categoryId: string) => {
@@ -251,33 +243,10 @@ const ProductListScreen: React.FC = () => {
     return categories.filter(category => categoryIds.has(category._id));
   };
 
-  // Convert Product to display format
-  const displayProducts = filteredProducts.map(product => {
-    // Tính toán giá khuyến mãi
-    const numericPrice = typeof product.priceProduct === 'string' 
-      ? parseFloat((product.priceProduct as string).replace(/[^0-9.-]+/g, '')) 
-      : product.priceProduct || 0;
-    
-    // Giá gốc là giá từ API
-    const originalPrice = numericPrice;
-    const salePrice = originalPrice * 0.6;
-    
-    // Sử dụng utility function để xử lý hình ảnh
-    const productImages = getProductImages(product);
-    const imageSource = productImages.length > 0 ? productImages[0] : 'https://via.placeholder.com/150x150?text=No+Image';
 
-    return {
-      _id: product._id,
-      id: product._id, // Để tương thích với keyExtractor
-      title: product.title,
-      priceProduct: product.priceProduct,
-      image: imageSource,
-      originalProduct: product // Keep reference to original product
-    };
-  });
 
   const handleProductPress = (productId: string) => {
-    router.push(`./product/${productId}`);
+    router.replace(`./product/${productId}`);
   };
 
   // Bỏ kiểm tra đăng nhập để xem sản phẩm - cho phép xem mà không cần đăng nhập
@@ -287,11 +256,11 @@ const ProductListScreen: React.FC = () => {
       <View style={[styles.container, getPlatformContainerStyle()]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#333" />
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Sản phẩm</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Sản phẩm</Text>
           <TouchableOpacity onPress={() => router.push('./search')}>
-            <Ionicons name="search" size={24} color="#333" />
+            <Ionicons name="search" size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
                  <View style={styles.loadingContainer}>
@@ -362,45 +331,22 @@ const ProductListScreen: React.FC = () => {
     );
   };
 
-  const renderPagination = () => {
-    const pages = [1, 2, 3, 4, 5];
-    return (
-      <View style={styles.pagination}>
-        {pages.map(page => (
-          <TouchableOpacity
-            key={page}
-            style={[
-              styles.pageButton,
-              currentPage === page && styles.activePageButton
-            ]}
-            onPress={() => setCurrentPage(page)}
-          >
-            <Text style={[
-              styles.pageText,
-              currentPage === page && styles.activePageText
-            ]}>
-              {page}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    );
-  };
+
 
   return (
     <View style={[styles.container, getPlatformContainerStyle()]}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Sản phẩm</Text>
-        <TouchableOpacity onPress={() => router.push('./search')}>
-          <Ionicons name="search" size={24} color="#333" />
-        </TouchableOpacity>
-      </View>
+              <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.replace('/home')}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Sản phẩm</Text>
+          <TouchableOpacity onPress={() => router.replace('./search')}>
+            <Ionicons name="search" size={24} color={colors.text} />
+          </TouchableOpacity>
+        </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         {/* Category Selection */}
         <View style={styles.categorySection}>
           <Text style={styles.sectionTitle}>Danh mục sản phẩm</Text>
@@ -549,7 +495,12 @@ const ProductListScreen: React.FC = () => {
         )}
 
         {/* Pagination */}
-        {renderPagination()}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={(page) => setPage(page)}
+          isLoading={isLoading}
+        />
 
         {/* Footer */}
         <View style={styles.footer}>
@@ -735,14 +686,14 @@ const styles = StyleSheet.create({
   productPrice: {
     fontSize: 16,
     fontWeight: 'bold',
-              color: '#FF6B35',
+    color: '#4CAF50',
     marginBottom: 10,
   },
   addToCartButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-            backgroundColor: '#FF6B35',
+    backgroundColor: '#4CAF50',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
@@ -756,36 +707,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  pagination: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 20,
-    gap: 10,
-  },
-  pageButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-  },
-  activePageButton: {
-            backgroundColor: '#FF6B35',
-    borderColor: '#4CAF50',
-  },
-  pageText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
-  },
-  activePageText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
+
   footer: {
     alignItems: 'center',
     paddingVertical: 30,
@@ -815,7 +737,7 @@ const styles = StyleSheet.create({
   },
   footerLinkText: {
     fontSize: 14,
-              color: '#FF6B35',
+    color: '#4CAF50',
     fontWeight: '500',
   },
   footerCopyright: {
@@ -845,7 +767,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   loginButton: {
-            backgroundColor: '#FF6B35',
+    backgroundColor: '#4CAF50',
     paddingHorizontal: 30,
     paddingVertical: 12,
     borderRadius: 25,
@@ -909,7 +831,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   activeToggleButton: {
-            backgroundColor: '#FF6B35',
+    backgroundColor: '#4CAF50',
   },
   toggleText: {
     fontSize: 14,

@@ -128,9 +128,10 @@ function RootTabsLayout() {
         }}
       />
 
-      {/* Hidden screens - ẩn hoàn toàn khỏi bottom tabs */}
+      Hidden screens - ẩn hoàn toàn khỏi bottom tabs
       <Tabs.Screen name="(auth)" options={{ href: null }} />
       <Tabs.Screen name="product" options={{ href: null }} />
+      <Tabs.Screen name="product/[id]" options={{ href: null }} />
       <Tabs.Screen name="products" options={{ href: null }} />
       <Tabs.Screen name="checkout" options={{ href: null }} />
       <Tabs.Screen name="payment-success" options={{ href: null }} />
@@ -145,12 +146,15 @@ function RootTabsLayout() {
       <Tabs.Screen name="about" options={{ href: null }} />
       <Tabs.Screen name="help" options={{ href: null }} />
       <Tabs.Screen name="rewards" options={{ href: null }} />
+      <Tabs.Screen name="settings" options={{ href: null }} />
+      <Tabs.Screen name="notifications" options={{ href: null }} />
       <Tabs.Screen name="index" options={{ href: null }} />
       <Tabs.Screen name="add-card" options={{ href: null }} />
       <Tabs.Screen name="verify-card" options={{ href: null }} />
       <Tabs.Screen name="my-cards" options={{ href: null }} />
       <Tabs.Screen name="verify-payment" options={{ href: null }} />
       <Tabs.Screen name="order-detail" options={{ href: null }} />
+      <Tabs.Screen name="order-detail/[id]" options={{ href: null }} />
     </Tabs>
   );
 }

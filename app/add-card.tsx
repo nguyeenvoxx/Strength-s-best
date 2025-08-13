@@ -174,14 +174,14 @@ const AddCardScreen: React.FC = () => {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.replace('/profile')} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.replace('/my-cards')} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Thêm thẻ mới</Text>
         <View style={styles.headerRight} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         {/* Card Preview */}
         <View style={[styles.cardPreview, { backgroundColor: colors.accent }]}>
           <View style={styles.cardHeader}>

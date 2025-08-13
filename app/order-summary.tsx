@@ -78,7 +78,7 @@ export default function OrderSummaryScreen() {
   const orderQuantity = orderItems.length > 0 ? orderItems.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0) : 0;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 30 }}>
+          <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 120 }}>
       <Text style={styles.header}>Xem đơn hàng</Text>
       
       {/* Thông tin giao hàng

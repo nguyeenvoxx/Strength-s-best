@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -8,8 +9,8 @@ import {
   Image,
   Alert,
   ActivityIndicator,
-  ScrollView,
   Modal,
+  ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,9 +21,13 @@ import { formatPrice, getProductImageUrl } from '../utils/productUtils';
 import { useTheme } from '../store/ThemeContext';
 import { createOrder, CreateOrderRequest } from '../services/orderApi';
 import AddressSelector from '../components/AddressSelector';
-import { Address } from '../services/addressApi';
+import { Address, getUserAddresses } from '../services/addressApi';
 import { Card, getUserCards, deleteCard, setDefaultCard } from '../services/cardApi';
 import { API_CONFIG } from '../constants/config';
+import { userVoucherApi, ApiUserVoucher } from '../services/api';
+import { useSimpleDataSync } from '../hooks/useSimpleDataSync';
+import PullToRefresh from '../components/PullToRefresh';
+import UpdateStatusBar from '../components/UpdateStatusBar';
 
 const CheckoutScreen: React.FC = () => {
   const router = useRouter();
@@ -51,19 +56,136 @@ const CheckoutScreen: React.FC = () => {
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [showVoucherModal, setShowVoucherModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [showCardModal, setShowCardModal] = useState(false);
+
   const [showCardManagementModal, setShowCardManagementModal] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
   const [userCards, setUserCards] = useState<Card[]>([]);
-  const [loadingCards, setLoadingCards] = useState(false);
+  const [userVouchers, setUserVouchers] = useState<ApiUserVoucher[]>([]);
+  const [selectedUserVoucher, setSelectedUserVoucher] = useState<ApiUserVoucher | null>(null);
+  const [loadingUserVouchers, setLoadingUserVouchers] = useState(false);
+  const [shouldRefreshCards, setShouldRefreshCards] = useState(false);
+  const [showCardAddedMessage, setShowCardAddedMessage] = useState(false);
+  const [cardVerified, setCardVerified] = useState(false);
+  const [autoSelectedCard, setAutoSelectedCard] = useState(false);
+  const [returnedFromMyCards, setReturnedFromMyCards] = useState(false);
+
+  // Use custom hook for data synchronization
+  const {
+    data: addresses,
+    loading: addressesLoading,
+    refresh: refreshAddresses,
+    lastUpdated: addressesLastUpdated
+  } = useSimpleDataSync(
+    async (token: string) => {
+      const userAddresses = await getUserAddresses(token);
+      return userAddresses;
+    },
+    {
+      autoRefresh: true,
+      refreshInterval: 30000, // 30 seconds
+      cacheTime: 60000 // 1 minute
+    }
+  );
+
+  const {
+    data: cards,
+    loading: cardsLoading,
+    refresh: refreshCards,
+    lastUpdated: cardsLastUpdated
+  } = useSimpleDataSync(
+    async (token: string) => {
+      const userCards = await getUserCards(token);
+      return userCards;
+    },
+    {
+      autoRefresh: true,
+      refreshInterval: 60000, // 1 minute
+      cacheTime: 120000 // 2 minutes
+    }
+  );
+
+  const {
+    data: userVouchersData,
+    loading: userVouchersLoading,
+    refresh: refreshUserVouchers,
+    lastUpdated: userVouchersLastUpdated
+  } = useSimpleDataSync(
+    async (token: string) => {
+      const response = await userVoucherApi.getUserVouchers();
+      return response.data.userVouchers.filter(v => v.status === 'active');
+    },
+    {
+      autoRefresh: true,
+      refreshInterval: 45000, // 45 seconds
+      cacheTime: 90000 // 1.5 minutes
+    }
+  );
+
+  // Update local state when data changes
+  useEffect(() => {
+    if (userVouchersData) {
+      setUserVouchers(userVouchersData);
+    }
+  }, [userVouchersData]);
+
+  // Đồng bộ danh sách thẻ và tự động chọn thẻ hợp lệ khi cần
+  useEffect(() => {
+    if (!cards) return;
+    // đồng bộ danh sách thẻ từ API vào state cục bộ (chỉ khi thật sự thay đổi)
+    setUserCards((prev) => {
+      const isSame = Array.isArray(prev)
+        && prev.length === cards.length
+        && prev.every((c, i) => c._id === cards[i]._id && c.isDefault === cards[i].isDefault);
+      return isSame ? prev : cards;
+    });
+    // nếu đang chọn thanh toán bằng thẻ mà chưa có thẻ được chọn thì chọn thẻ mặc định/đầu tiên
+    if (selectedPaymentMethod === 'card' && !selectedCard && cards.length > 0) {
+      const defaultCard = cards.find(c => c.isDefault) || cards[0];
+      setSelectedCard(defaultCard);
+    }
+  }, [cards, selectedPaymentMethod]);
 
   useEffect(() => {
     if (isAuthenticated && token) {
       loadCartData();
       fetchVouchers(token);
-      loadUserCards();
     }
   }, [isAuthenticated, token]);
+
+  // Tự động chọn thẻ khi thay đổi phương thức thanh toán
+  useEffect(() => {
+    if (selectedPaymentMethod === 'card' && !selectedCard && userCards.length > 0) {
+      const defaultCard = userCards.find(card => card.isDefault) || userCards[0];
+      setSelectedCard(defaultCard);
+    }
+  }, [selectedPaymentMethod, userCards]);
+
+  // Refresh data when screen comes into focus (chỉ refresh, tránh setState lặp)
+  useFocusEffect(
+    React.useCallback(() => {
+      if (isAuthenticated && token) {
+        refreshCards();
+        refreshUserVouchers();
+        setShouldRefreshCards(false);
+        setCardVerified(false);
+        setAutoSelectedCard(false);
+      }
+    }, [isAuthenticated, token, refreshCards, refreshUserVouchers])
+  );
+
+  const loadUserVouchers = async () => {
+    if (!token) return;
+    
+    try {
+      setLoadingUserVouchers(true);
+      const response = await userVoucherApi.getUserVouchers();
+      setUserVouchers(response.data.userVouchers.filter(v => v.status === 'active'));
+    } catch (error) {
+      console.error('Error loading user vouchers:', error);
+    } finally {
+      setLoadingUserVouchers(false);
+    }
+  };
 
   const loadCartData = async () => {
     try {
@@ -73,23 +195,42 @@ const CheckoutScreen: React.FC = () => {
     }
   };
 
-  const loadUserCards = async () => {
+
+
+  const loadDefaultAddress = async () => {
     if (!token) return;
     
     try {
-      setLoadingCards(true);
-      const cards = await getUserCards(token);
-      setUserCards(cards);
+      const response = await fetch(`${API_CONFIG.BASE_URL}/orders/default-address`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       
-      // Tự động chọn thẻ default nếu có
-      const defaultCard = cards.find(card => card.isDefault);
-      if (defaultCard) {
-        setSelectedCard(defaultCard);
+      if (response.ok) {
+        const data = await response.json();
+        const defaultAddress = data.data.address;
+        
+        // Chuyển đổi format để phù hợp với AddressSelector
+        const addressForSelector: Address = {
+          _id: defaultAddress._id,
+          userId: defaultAddress.userId,
+          name: defaultAddress.name,
+          phone: defaultAddress.phone,
+          address: defaultAddress.address,
+          province: defaultAddress.province,
+          district: defaultAddress.district,
+          ward: defaultAddress.ward,
+          isDefault: defaultAddress.isDefault,
+          createdAt: defaultAddress.createdAt,
+          updatedAt: defaultAddress.updatedAt
+        };
+        
+        setSelectedAddress(addressForSelector);
       }
     } catch (error) {
-      console.error('Error loading user cards:', error);
-    } finally {
-      setLoadingCards(false);
+      console.error('Error loading default address:', error);
     }
   };
 
@@ -105,19 +246,24 @@ const CheckoutScreen: React.FC = () => {
 
   const calculateTotal = () => {
     let total = calculateSubtotal();
-    if (selectedVoucher) {
-      total = total * (1 - selectedVoucher.discount / 100);
+    if (selectedUserVoucher) {
+      total = total * (1 - selectedUserVoucher.discount / 100);
     }
     return total;
   };
 
   const calculateDiscount = () => {
-    if (!selectedVoucher) return 0;
-    return calculateSubtotal() * (selectedVoucher.discount / 100);
+    if (!selectedUserVoucher) return 0;
+    return calculateSubtotal() * (selectedUserVoucher.discount / 100);
   };
 
   const handleVoucherSelect = (voucher: any) => {
     selectVoucher(voucher);
+    setShowVoucherModal(false);
+  };
+
+  const handleUserVoucherSelect = (userVoucher: ApiUserVoucher) => {
+    setSelectedUserVoucher(userVoucher);
     setShowVoucherModal(false);
   };
 
@@ -127,13 +273,21 @@ const CheckoutScreen: React.FC = () => {
     
     // Nếu chọn thẻ tín dụng, hiển thị modal chọn thẻ
     if (method === 'card') {
-      setShowCardModal(true);
+      // Nếu chưa có thẻ nào được chọn và có thẻ trong danh sách, tự động chọn thẻ đầu tiên
+      if (!selectedCard && userCards.length > 0) {
+        const defaultCard = userCards.find(card => card.isDefault);
+        setSelectedCard(defaultCard || userCards[0]);
+      }
+      // Nếu không có thẻ nào, hiển thị modal để người dùng có thể thêm thẻ
+      if (userCards.length === 0) {
+        setShowCardManagementModal(true);
+      }
     }
   };
 
   const handleCardSelect = (card: any) => {
     setSelectedCard(card);
-    setShowCardModal(false);
+    setShowCardManagementModal(false);
   };
 
   const handleDeleteCard = async (cardId: string) => {
@@ -152,7 +306,7 @@ const CheckoutScreen: React.FC = () => {
               await deleteCard(token, cardId);
               
               // Reload danh sách thẻ
-              await loadUserCards();
+              await refreshCards();
               
               // Nếu thẻ bị xóa là thẻ đang chọn, reset selection
               if (selectedCard?._id === cardId) {
@@ -216,7 +370,7 @@ const CheckoutScreen: React.FC = () => {
               { text: 'Hủy', style: 'cancel' },
               { 
                 text: 'Thêm thẻ', 
-                onPress: () => router.push('/add-card' as any) 
+                onPress: () => router.replace('/add-card' as any) 
               }
             ]
           );
@@ -235,8 +389,8 @@ const CheckoutScreen: React.FC = () => {
         items: orderItems,
         totalAmount: calculateTotal(),
         paymentMethod: selectedPaymentMethod,
-        voucherId: selectedVoucher?._id,
-        voucherDiscount: selectedVoucher ? calculateDiscount() : 0,
+        userVoucherId: selectedUserVoucher?._id,
+        voucherDiscount: selectedUserVoucher ? calculateDiscount() : 0,
         shippingAddress: {
           name: selectedAddress.name,
           phone: selectedAddress.phone,
@@ -269,7 +423,7 @@ const CheckoutScreen: React.FC = () => {
 
           if (verifyResponse.ok) {
             setIsProcessing(false);
-            router.push({
+            router.replace({
               pathname: '/verify-payment' as any,
               params: {
                 orderId: createdOrder._id,
@@ -286,7 +440,7 @@ const CheckoutScreen: React.FC = () => {
         
         // Fallback: vẫn chuyển đến trang xác minh ngay cả khi gửi OTP thất bại
         setIsProcessing(false);
-        router.push({
+        router.replace({
           pathname: '/verify-payment' as any,
           params: {
             orderId: createdOrder._id,
@@ -308,7 +462,7 @@ const CheckoutScreen: React.FC = () => {
         [
           {
             text: 'OK',
-            onPress: () => router.push('/purchased-orders')
+            onPress: () => router.replace('/purchased-orders')
           }
         ]
       );
@@ -444,14 +598,40 @@ const CheckoutScreen: React.FC = () => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => router.replace('/cart')}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Thanh toán</Text>
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 160 }}>
+      <PullToRefresh
+        style={styles.content}
+        contentContainerStyle={{ paddingBottom: 160 }}
+        onRefresh={async () => {
+          await Promise.all([
+            refreshAddresses(),
+            refreshCards(),
+            refreshUserVouchers(),
+            loadCartData(),
+            fetchVouchers(token!)
+          ]);
+        }}
+        refreshing={addressesLoading || cardsLoading || userVouchersLoading || loading}
+      >
+        {/* Update Status Bar */}
+        <UpdateStatusBar
+          lastUpdated={addressesLastUpdated}
+          loading={addressesLoading}
+          error={null}
+        />
+
+        {/* Address Section - Di chuyển lên đầu */}
+        <AddressSelector
+          selectedAddress={selectedAddress}
+          onAddressSelect={setSelectedAddress}
+        />
+
         {/* Order Items */}
         <View style={[styles.section, { backgroundColor: colors.card }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -474,18 +654,18 @@ const CheckoutScreen: React.FC = () => {
             </Text>
             <TouchableOpacity onPress={() => setShowVoucherModal(true)}>
               <Text style={[styles.selectText, { color: colors.accent }]}>
-                {selectedVoucher ? 'Thay đổi' : 'Chọn mã'}
+                {selectedUserVoucher ? 'Thay đổi' : 'Chọn mã'}
               </Text>
             </TouchableOpacity>
           </View>
           
-          {selectedVoucher ? (
+          {selectedUserVoucher ? (
             <View style={styles.selectedVoucher}>
               <Text style={[styles.voucherCode, { color: colors.text }]}>
-                {selectedVoucher.code}
+                {selectedUserVoucher.code}
               </Text>
               <Text style={[styles.voucherDiscount, { color: colors.accent }]}>
-                -{selectedVoucher.discount}%
+                -{selectedUserVoucher.discount}%
               </Text>
             </View>
           ) : (
@@ -494,12 +674,6 @@ const CheckoutScreen: React.FC = () => {
             </Text>
           )}
         </View>
-
-        {/* Address Section */}
-        <AddressSelector
-          selectedAddress={selectedAddress}
-          onAddressSelect={setSelectedAddress}
-        />
 
         {/* Payment Method Section */}
         <View style={[styles.section, { backgroundColor: colors.card }]}>
@@ -529,6 +703,16 @@ const CheckoutScreen: React.FC = () => {
         {/* Card Information - Only show when card payment is selected */}
         {selectedPaymentMethod === 'card' && (
           <View style={[styles.section, { backgroundColor: colors.card }]}>
+            {showCardAddedMessage && (
+              <View style={[styles.cardAddedMessage, { backgroundColor: colors.accent + '20' }]}>
+                <Ionicons name="checkmark-circle" size={20} color={colors.accent} />
+                <Text style={[styles.cardAddedMessageText, { color: colors.accent }]}>
+                  {autoSelectedCard ? 'Đã tự động chọn thẻ thanh toán!' : 
+                   cardVerified ? 'Thẻ đã được xác minh và sẵn sàng sử dụng!' : 
+                   'Thẻ mới đã được thêm thành công!'}
+                </Text>
+              </View>
+            )}
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
                 Thông tin thẻ
@@ -565,9 +749,22 @@ const CheckoutScreen: React.FC = () => {
                 </Text>
                 <TouchableOpacity 
                   style={[styles.addCardButton, { backgroundColor: colors.accent }]}
-                  onPress={() => router.push('/add-card' as any)}
+                  onPress={() => {
+                    setShouldRefreshCards(true);
+                    setReturnedFromMyCards(true);
+                    router.push('/add-card' as any);
+                  }}
                 >
                   <Text style={styles.addCardButtonText}>Thêm thẻ mới</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.addCardButton, { backgroundColor: colors.textSecondary, marginTop: 10 }]}
+                  onPress={() => {
+                    setReturnedFromMyCards(true);
+                    router.push('/my-cards' as any);
+                  }}
+                >
+                  <Text style={[styles.addCardButtonText, { color: colors.text }]}>Xem thẻ của tôi</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -589,7 +786,7 @@ const CheckoutScreen: React.FC = () => {
             </Text>
           </View>
 
-          {selectedVoucher && (
+          {selectedUserVoucher && (
             <View style={styles.summaryRow}>
               <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
                 Giảm giá
@@ -609,7 +806,7 @@ const CheckoutScreen: React.FC = () => {
             </Text>
           </View>
         </View>
-      </ScrollView>
+      </PullToRefresh>
 
       {/* Payment Button */}
       <View style={[styles.paymentContainer, { backgroundColor: colors.card }]}>
@@ -651,33 +848,47 @@ const CheckoutScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
             
-            <FlatList
-              data={vouchers}
-              keyExtractor={(item) => item._id}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.voucherItem}
-                  onPress={() => handleVoucherSelect(item)}
-                >
-                  <View style={styles.voucherInfo}>
-                    <Text style={[styles.voucherCode, { color: colors.text }]}>
-                      {item.code}
-                    </Text>
-                    <Text style={[styles.voucherDescription, { color: colors.textSecondary }]}>
-                      {item.description}
-                    </Text>
-                    <Text style={[styles.voucherExpiry, { color: colors.textSecondary }]}>
-                      Hết hạn: {new Date(item.expiryDate).toLocaleDateString('vi-VN')}
-                    </Text>
-                  </View>
-                  <View style={styles.voucherDiscount1}>
-                    <Text style={styles.discountAmount}>
-                      -{item.discount}%
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              )}
-            />
+            {loadingUserVouchers ? (
+              <ActivityIndicator size="large" color={colors.accent} style={styles.loadingContainer} />
+            ) : userVouchers.length > 0 ? (
+              <FlatList
+                data={userVouchers}
+                keyExtractor={(item) => item._id}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.voucherItem}
+                    onPress={() => handleUserVoucherSelect(item)}
+                  >
+                    <View style={styles.voucherInfo}>
+                      <Text style={[styles.voucherCode, { color: colors.text }]}>
+                        {item.code}
+                      </Text>
+                      <Text style={[styles.voucherDescription, { color: colors.textSecondary }]}>
+                        {item.description}
+                      </Text>
+                      <Text style={[styles.voucherExpiry, { color: colors.textSecondary }]}>
+                        Hết hạn: {new Date(item.expiryDate).toLocaleDateString('vi-VN')}
+                      </Text>
+                    </View>
+                    <View style={styles.voucherDiscount1}>
+                      <Text style={styles.discountAmount}>
+                        -{item.discount}%
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+              />
+            ) : (
+              <View style={styles.emptyVouchers}>
+                <Ionicons name="ticket-outline" size={48} color={colors.textSecondary} />
+                <Text style={[styles.emptyVouchersText, { color: colors.textSecondary }]}>
+                  Chưa có voucher nào
+                </Text>
+                <Text style={[styles.emptyVouchersSubtext, { color: colors.textSecondary }]}>
+                  Đổi voucher trong phần Quà tặng để nhận ưu đãi
+                </Text>
+              </View>
+            )}
           </View>
         </View>
       </Modal>
@@ -742,12 +953,16 @@ const CheckoutScreen: React.FC = () => {
               <Text style={[styles.modalTitle, { color: colors.text }]}>
                 Quản lý thẻ thanh toán
               </Text>
-              <TouchableOpacity onPress={() => setShowCardManagementModal(false)}>
+              <TouchableOpacity onPress={() => {
+                setShowCardManagementModal(false);
+                setCardVerified(false);
+                setAutoSelectedCard(false);
+              }}>
                 <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
             
-            {loadingCards ? (
+            {cardsLoading ? (
               <View style={styles.cardLoadingContainer}>
                 <ActivityIndicator size="large" color={colors.accent} />
                 <Text style={[styles.cardLoadingText, { color: colors.textSecondary }]}>
@@ -772,6 +987,8 @@ const CheckoutScreen: React.FC = () => {
                         onPress={() => {
                           setSelectedCard(card);
                           setShowCardManagementModal(false);
+                          setCardVerified(false);
+                          setAutoSelectedCard(false);
                         }}
                       >
                         <View style={styles.cardItemInfo}>
@@ -822,6 +1039,10 @@ const CheckoutScreen: React.FC = () => {
                   style={[styles.addNewCardButton, { backgroundColor: colors.accent }]}
                   onPress={() => {
                     setShowCardManagementModal(false);
+                    setCardVerified(false);
+                    setAutoSelectedCard(false);
+                    setShouldRefreshCards(true);
+                    setReturnedFromMyCards(true);
                     router.push('/add-card' as any);
                   }}
                 >
@@ -909,7 +1130,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   discountBadge: {
-    backgroundColor: '#FF6B35',
+    backgroundColor: '#4CAF50',
     paddingHorizontal: 4,
     paddingVertical: 2,
     borderRadius: 4,
@@ -1123,7 +1344,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   voucherDiscount1: {
-    backgroundColor: '#FF6B35',
+    backgroundColor: '#4CAF50',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
@@ -1302,6 +1523,34 @@ const styles = StyleSheet.create({
   addNewCardButtonText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  // Empty Vouchers Styles
+  emptyVouchers: {
+    alignItems: 'center',
+    padding: 40,
+  },
+  emptyVouchersText: {
+    fontSize: 16,
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  emptyVouchersSubtext: {
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
+    color: '#666',
+  },
+  cardAddedMessage: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  cardAddedMessageText: {
+    fontSize: 14,
     fontWeight: '600',
     marginLeft: 8,
   },

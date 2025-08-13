@@ -69,7 +69,7 @@ const EmailVerificationScreen: React.FC = () => {
         [
           {
             text: 'OK',
-            onPress: () => router.push('./create-account-success')
+            onPress: () => router.replace('./create-account-success')
           }
         ]
       );
@@ -159,7 +159,7 @@ const EmailVerificationScreen: React.FC = () => {
 
       <TouchableOpacity 
         style={styles.backButton} 
-        onPress={() => router.push('./sign-up')}
+        onPress={() => router.replace('./sign-up')}
       >
         <Text style={styles.backText}>Quay lại đăng ký</Text>
       </TouchableOpacity>

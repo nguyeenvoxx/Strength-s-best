@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,8 @@ import { useTheme } from '../../store/ThemeContext';
 import { LightColors, DarkColors } from '../../constants/Colors';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useNotificationStore } from '../../store/useNotificationStore';
+import { useUserStatsStore } from '../../store/useUserStatsStore';
 
 interface User {
   _id: string;
@@ -48,15 +50,32 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
   isAuthenticated 
 }) => {
   const [showMenuModal, setShowMenuModal] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
+
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const colors = isDark ? DarkColors : LightColors;
   const router = useRouter();
-  const { logout } = useAuthStore();
+  const { logout, token } = useAuthStore();
+  const { unreadCount, fetchNotifications, fetchUnreadCount, refreshNotifications } = useNotificationStore();
+  const { stats, fetchUserStats, refreshStats, isLoading: statsLoading } = useUserStatsStore();
+
+  // Load user stats and notifications when component mounts if authenticated
+  useEffect(() => {
+    if (isAuthenticated && token) {
+      fetchUserStats(token);
+      fetchNotifications(token);
+      fetchUnreadCount(token);
+    }
+  }, [isAuthenticated, token, fetchUserStats, fetchNotifications, fetchUnreadCount]);
 
   const handleMenuPress = () => {
     setShowMenuModal(true);
+    // Load notifications and user stats when menu is opened
+    if (isAuthenticated) {
+      // Không refresh để giữ nguyên số liệu thực tế
+      // refreshNotifications();
+      // refreshStats();
+    }
   };
 
   const handleCloseModal = () => {
@@ -158,23 +177,29 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
                         <Text style={[styles.modalUserName, { color: colors.text }]}>
                           {isAuthenticated && user ? user.name : 'Khách'}
                         </Text>
-                        <Text style={[styles.modalUserEmail, { color: isDark ? '#ccc' : '#666' }] }>
+                                                <Text style={[styles.modalUserEmail, { color: isDark ? '#ccc' : '#666' }] }>
                           {isAuthenticated && user ? user.email : 'Đăng nhập để sử dụng đầy đủ tính năng'}
                         </Text>
                         {isAuthenticated && (
                           <View style={styles.userStats}>
                             <View style={styles.statItem}>
-                              <Text style={[styles.statNumber, { color: colors.accent }]}>12</Text>
+                              <Text style={[styles.statNumber, { color: colors.accent }]}>
+                                {statsLoading ? '...' : stats.orderCount}
+                              </Text>
                               <Text style={[styles.statLabel, { color: isDark ? '#ccc' : '#666' }]}>Đơn hàng</Text>
                             </View>
                             <View style={[styles.statDivider, { backgroundColor: colors.menuBorder }]} />
                             <View style={styles.statItem}>
-                              <Text style={[styles.statNumber, { color: colors.accent }]}>5</Text>
+                              <Text style={[styles.statNumber, { color: colors.accent }]}>
+                                {statsLoading ? '...' : stats.favoriteCount}
+                              </Text>
                               <Text style={[styles.statLabel, { color: isDark ? '#ccc' : '#666' }]}>Yêu thích</Text>
                             </View>
                             <View style={[styles.statDivider, { backgroundColor: colors.menuBorder }]} />
                             <View style={styles.statItem}>
-                              <Text style={[styles.statNumber, { color: colors.accent }]}>3</Text>
+                              <Text style={[styles.statNumber, { color: colors.accent }]}>
+                                {statsLoading ? '...' : stats.reviewCount}
+                              </Text>
                               <Text style={[styles.statLabel, { color: isDark ? '#ccc' : '#666' }]}>Đánh giá</Text>
                             </View>
                           </View>
@@ -202,7 +227,7 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
                           style={styles.menuItem} 
                           onPress={() => {
                             handleCloseModal();
-                            router.push('/(tabs)/cart');
+                            router.push('/cart');
                           }}
                         >
                           <Ionicons name="cart-outline" size={24} color={colors.accent} />
@@ -214,7 +239,7 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
                           style={styles.menuItem} 
                           onPress={() => {
                             handleCloseModal();
-                            router.push('/(tabs)/favorite');
+                            router.push('/favorite');
                           }}
                         >
                           <Ionicons name="heart-outline" size={24} color={colors.accent} />
@@ -226,7 +251,7 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
                           style={styles.menuItem} 
                           onPress={() => {
                             handleCloseModal();
-                            router.push('/(tabs)/profile');
+                            router.push('/settings');
                           }}
                         >
                           <Ionicons name="settings-outline" size={24} color={colors.accent} />
@@ -238,14 +263,16 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
                           style={styles.menuItem} 
                           onPress={() => {
                             handleCloseModal();
-                            setShowNotifications(true);
+                            router.push('/notifications');
                           }}
                         >
                           <Ionicons name="notifications-outline" size={24} color={colors.accent} />
                           <Text style={[styles.menuItemText, { color: colors.text }]}>Thông báo</Text>
-                          <View style={[styles.badge, { backgroundColor: colors.danger }]}>
-                            <Text style={styles.badgeText}>3</Text>
-                          </View>
+                          {unreadCount > 0 && (
+                            <View style={[styles.badge, { backgroundColor: colors.danger }]}>
+                              <Text style={styles.badgeText}>{unreadCount}</Text>
+                            </View>
+                          )}
                         </TouchableOpacity>
 
                         <TouchableOpacity 
@@ -306,34 +333,7 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* Notifications Modal */}
-      <Modal
-        visible={showNotifications}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowNotifications(false)}
-      >
-        <TouchableWithoutFeedback onPress={() => setShowNotifications(false)}>
-          <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={[styles.modalContent, { backgroundColor: colors.card }]}> 
-                <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}> 
-                  <Text style={[styles.modalTitle, { color: colors.text }]}>Thông báo</Text>
-                  <TouchableOpacity onPress={() => setShowNotifications(false)}>
-                    <Ionicons name="close" size={24} color={isDark ? '#fff' : '#666'} />
-                  </TouchableOpacity>
-                </View>
-                <ScrollView>
-                  <Text style={{ color: colors.text, marginBottom: 10 }}>Bạn có 3 thông báo mới!</Text>
-                  <Text style={{ color: colors.text }}>- Đơn hàng #1234 đã được giao.</Text>
-                  <Text style={{ color: colors.text }}>- Sản phẩm yêu thích đang giảm giá!</Text>
-                  <Text style={{ color: colors.text }}>- Cập nhật chính sách bảo mật.</Text>
-                </ScrollView>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
+
       </SafeAreaView>
     </View>
   );

@@ -18,7 +18,7 @@ const CreateAccountSuccessScreen: React.FC = () => {
         
         <TouchableOpacity
           style={styles.button}
-          onPress={() => router.replace('../products')}
+          onPress={() => router.replace('/home')}
         >
           <Text style={styles.buttonText}>Bắt đầu sử dụng</Text>
         </TouchableOpacity>

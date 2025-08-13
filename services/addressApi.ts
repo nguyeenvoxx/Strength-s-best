@@ -139,4 +139,42 @@ export const deleteAddress = async (token: string, addressId: string): Promise<v
     console.error('Error deleting address:', error);
     throw error;
   }
+};
+
+// Đặt địa chỉ làm mặc định
+export const setDefaultAddress = async (token: string, addressId: string): Promise<Address> => {
+  try {
+    console.log('🔍 Setting default address:', addressId);
+    console.log('🔍 URL:', `${API_CONFIG.BASE_URL}/addresses/${addressId}/default`);
+    
+    const response = await fetch(`${API_CONFIG.BASE_URL}/addresses/${addressId}/default`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    console.log('🔍 Response status:', response.status);
+    console.log('🔍 Response headers:', response.headers);
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log('🔍 Success response:', data);
+      return data.data?.address;
+    } else {
+      const responseText = await response.text();
+      console.log('🔍 Error response text:', responseText);
+      
+      try {
+        const errorData = JSON.parse(responseText);
+        throw new Error(errorData.message || 'Không thể đặt địa chỉ mặc định');
+      } catch (parseError) {
+        throw new Error(`Server error: ${response.status} - ${responseText}`);
+      }
+    }
+  } catch (error) {
+    console.error('Error setting default address:', error);
+    throw error;
+  }
 }; 

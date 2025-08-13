@@ -3,9 +3,14 @@ import { View, Text, StyleSheet, TouchableOpacity, Image, Alert, ActivityIndicat
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
+import { useTheme } from '../store/ThemeContext';
+import { LightColors, DarkColors } from '../constants/Colors';
 
 const QRPaymentScreen: React.FC = () => {
   const router = useRouter();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const colors = isDark ? DarkColors : LightColors;
   const { method, orderId, paymentId, paymentUrl } = useLocalSearchParams();
   const [isLoading, setIsLoading] = useState(true);
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'success' | 'failed'>('pending');
@@ -166,8 +171,8 @@ const QRPaymentScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
+        <TouchableOpacity onPress={() => router.replace('/checkout')} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Thanh toán {paymentInfo.name}</Text>
         <View style={styles.placeholder} />

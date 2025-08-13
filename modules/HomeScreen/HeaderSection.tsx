@@ -1,86 +1,93 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../store/ThemeContext';
+import { LightColors, DarkColors } from '../../constants/Colors';
 
 interface HeaderSectionProps {
   title: string;
-  color: string;
-  onViewAll?: () => void;
   remainingTime?: string;
+  color?: string;
+  onViewAll?: () => void;
 }
 
-const HeaderSection: React.FC<HeaderSectionProps> = ({ title, color, onViewAll, remainingTime }) => (
-  <View style={[styles.sectionHeader, { backgroundColor: color }]}>
-    <View style={styles.sectionTitleContainer}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      {remainingTime && (
-        <View style={styles.timerContainer}>
-          <Ionicons name="time-outline" size={12} color="#FFFFFF" />
-          <Text style={styles.timerText}>{remainingTime}</Text>
-        </View>
+const HeaderSection: React.FC<HeaderSectionProps> = ({
+  title,
+  remainingTime,
+  color = '#3B82F6',
+  onViewAll,
+}) => {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const colors = isDark ? DarkColors : LightColors;
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.titleContainer}>
+        <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+        {remainingTime && (
+          <View style={[styles.timeContainer, { backgroundColor: color }]}>
+            <Ionicons name="time-outline" size={14} color="white" />
+            <Text style={styles.timeText}>{remainingTime}</Text>
+          </View>
+        )}
+      </View>
+      {onViewAll && (
+        <TouchableOpacity style={styles.viewAllButton} onPress={onViewAll}>
+          <Text style={[styles.viewAllText, { color: colors.accent }]}>Xem tất cả</Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.accent} />
+        </TouchableOpacity>
       )}
     </View>
-    <TouchableOpacity style={styles.viewAllButton} onPress={onViewAll}>
-      <Text style={styles.viewAllText}>Xem tất cả</Text>
-      <Ionicons name="chevron-forward" size={16} color="#FFFFFF" />
-    </TouchableOpacity>
-  </View>
-);
+  );
+};
 
 const styles = StyleSheet.create({
-  sectionHeader: {
-    padding: 15,
-    borderRadius: 10,
+  container: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  titleContainer: {
     flexDirection: 'row',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-    position: 'relative',
-    marginVertical: 16
-  },
-  sectionTitleContainer: {
     alignItems: 'center',
-    gap: 8
+    flex: 1,
   },
-  sectionTitle: {
+  title: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    marginRight: 8,
   },
-  timerContainer: {
+  timeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 4,
     borderRadius: 12,
-    alignSelf: 'flex-start',
-    marginTop: 5,
   },
-  timerText: {
-    color: '#FFFFFF',
+  timeText: {
+    color: 'white',
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: '600',
     marginLeft: 4,
   },
   viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#FFFFFF',
-    borderRadius: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
   },
   viewAllText: {
-    color: '#FFFFFF',
     fontSize: 14,
-    marginRight: 2,
+    fontWeight: '600',
+    marginRight: 4,
   },
 });
 
 export default HeaderSection;
+

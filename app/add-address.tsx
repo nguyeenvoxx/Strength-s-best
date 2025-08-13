@@ -65,7 +65,7 @@ const AddAddressScreen: React.FC = () => {
       await addAddress(token, addressData);
       
       Alert.alert('Thành công', 'Đã thêm địa chỉ mới', [
-        { text: 'OK', onPress: () => router.replace('/select-address') }
+        { text: 'OK', onPress: () => router.replace('/select-address?refresh=true') }
       ]);
     } catch (error: any) {
       console.error('Error adding address:', error);

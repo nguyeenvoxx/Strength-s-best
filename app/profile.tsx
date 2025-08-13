@@ -56,19 +56,19 @@ const ProfileScreen: React.FC = () => {
   };
 
   const handleManageAddresses = () => {
-    router.push('./select-address');
+    router.replace('./select-address');
   };
 
   const handleEditProfile = () => {
-    router.push('./edit-profile');
+    router.replace('./edit-profile');
   };
 
   const handleChangePassword = () => {
-    router.push('./change-password');
+    router.replace('./change-password');
   };
 
   const handleViewOrders = () => {
-    router.push('./purchased-orders');
+    router.replace('./purchased-orders');
   };
 
   return (
@@ -96,7 +96,7 @@ const ProfileScreen: React.FC = () => {
         <View style={styles.userInfo}>
           <Text style={[styles.userName, { color: colors.text }]}>{user?.name || 'Khách hàng'}</Text>
           <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{user?.email || 'Chưa có email'}</Text>
-          <Text style={[styles.userPhone, { color: colors.textSecondary }]}>{user?.phone || (user as any)?.phoneNumber || 'Chưa có số điện thoại'}</Text>
+          <Text style={[styles.userPhone, { color: colors.textSecondary }]}>{user?.phoneNumber || (user as any)?.phoneNumber || 'Chưa có số điện thoại'}</Text>
         </View>
       </View>
       {/* Nút Đăng nhập/Đăng ký cho khách hàng */}
@@ -117,12 +117,14 @@ const ProfileScreen: React.FC = () => {
         </View>
       )}
 
+
+
       {/* Menu Items */}
       <ScrollView style={[styles.menuContainer, { backgroundColor: colors.card }]} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         <View style={[styles.menuSection, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Thông tin cá nhân</Text>
 
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('./edit-profile')}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.replace('./edit-profile')}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="person-outline" size={24} color={colors.accent} />
               <Text style={[styles.menuItemText, { color: colors.text }]}>Chỉnh sửa thông tin</Text>
@@ -153,7 +155,7 @@ const ProfileScreen: React.FC = () => {
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/my-cards')}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.replace('/my-cards')}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="card-outline" size={24} color={colors.accent} />
               <Text style={[styles.menuItemText, { color: colors.text }]}>Thẻ của tôi</Text>
@@ -183,9 +185,37 @@ const ProfileScreen: React.FC = () => {
         </View>
 
         <View style={[styles.menuSection, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Tính năng</Text>
+
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.replace('/rewards')}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="gift-outline" size={24} color={colors.accent} />
+              <Text style={[styles.menuItemText, { color: colors.text }]}>Quà tặng</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={isDark ? '#fff' : '#ccc'} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.replace('/notifications')}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="notifications-outline" size={24} color={colors.accent} />
+              <Text style={[styles.menuItemText, { color: colors.text }]}>Thông báo</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={isDark ? '#fff' : '#ccc'} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.replace('/settings')}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="settings-outline" size={24} color={colors.accent} />
+              <Text style={[styles.menuItemText, { color: colors.text }]}>Cài đặt</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={isDark ? '#fff' : '#ccc'} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={[styles.menuSection, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Hỗ trợ</Text>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.replace('/help')}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="help-circle-outline" size={24} color={colors.accent} />
               <Text style={[styles.menuItemText, { color: colors.text }]}>Trợ giúp</Text>
@@ -193,7 +223,7 @@ const ProfileScreen: React.FC = () => {
             <Ionicons name="chevron-forward" size={20} color={isDark ? '#fff' : '#ccc'} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.replace('/about')}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="information-circle-outline" size={24} color={colors.accent} />
               <Text style={[styles.menuItemText, { color: colors.text }]}>Về ứng dụng</Text>
@@ -327,6 +357,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 8,
   },
+
 });
 
 export default ProfileScreen; 

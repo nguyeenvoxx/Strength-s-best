@@ -90,7 +90,7 @@ const EditAddressScreen: React.FC = () => {
       await updateAddress(token, addressId, addressData);
       
       Alert.alert('Thành công', 'Đã cập nhật địa chỉ', [
-        { text: 'OK', onPress: () => router.replace('/select-address') }
+        { text: 'OK', onPress: () => router.replace('/select-address?refresh=true') }
       ]);
     } catch (error: any) {
       console.error('Error updating address:', error);

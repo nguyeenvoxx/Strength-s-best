@@ -19,6 +19,7 @@ import { useFavoriteStore } from '../../store/useFavoriteStore';
 import { useCartStore } from '../../store/useCartStore';
 import { getProductImages, formatPrice, getShortDescription } from '../../utils/productUtils';
 import { useTheme } from '../../store/ThemeContext';
+import { getReviewsByProduct } from '../../services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -33,7 +34,7 @@ interface Section {
 }
 
 const ProductScreen = () => {
-  const { id } = useLocalSearchParams();
+  const { id, scrollTo } = useLocalSearchParams();
   const router = useRouter();
   const { theme } = useTheme();
   const colors = theme === 'dark' ? {
@@ -62,7 +63,15 @@ const ProductScreen = () => {
   const [favoriteId, setFavoriteId] = useState<string | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [showCartModal, setShowCartModal] = useState(false);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [showAllReviews, setShowAllReviews] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // Tính rating trung bình từ reviews
+  const averageRating = reviews.length > 0 
+    ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length 
+    : 0;
 
   // Load product data
   const loadProduct = async () => {
@@ -70,7 +79,7 @@ const ProductScreen = () => {
       try {
         await fetchProductById(id as string);
         await fetchRelatedProducts(id as string);
-
+        await loadReviews();
       } catch (error) {
         console.error('Error loading product:', error);
         Alert.alert('Lỗi', 'Không thể tải thông tin sản phẩm');
@@ -78,9 +87,35 @@ const ProductScreen = () => {
     }
   };
 
+  // Load reviews
+  const loadReviews = async () => {
+    if (!id) return;
+    
+    try {
+      setReviewsLoading(true);
+      const response = await getReviewsByProduct(id as string, 1, 10);
+      setReviews(response.data.reviews || []);
+    } catch (error) {
+      console.error('Error loading reviews:', error);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadProduct();
   }, [id]);
+
+  // Nếu có yêu cầu cuộn tới phần reviews (sau khi người dùng gửi đánh giá)
+  useEffect(() => {
+    if (scrollTo === 'reviews' && scrollViewRef.current) {
+      // chờ 1 frame để đảm bảo UI render xong
+      setTimeout(() => {
+        // cuộn tương đối xuống gần khu vực reviews
+        scrollViewRef.current?.scrollTo({ y: 1000, animated: true });
+      }, 300);
+    }
+  }, [scrollTo, reviews.length]);
 
   // Check favorite status when product loads
   useEffect(() => {
@@ -358,8 +393,8 @@ const ProductScreen = () => {
             <View style={styles.detailRow}>
               <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Thương hiệu:</Text>
               <Text style={[styles.detailValue, { color: colors.text }]}>
-                {typeof currentProduct.idBrand === 'object' && currentProduct.idBrand?.nameBrand 
-                  ? currentProduct.idBrand.nameBrand 
+                {typeof currentProduct.idBrand === 'object' && currentProduct.idBrand?.name 
+                  ? currentProduct.idBrand.name 
                   : typeof currentProduct.idBrand === 'string' 
                     ? currentProduct.idBrand 
                     : 'Không xác định'}
@@ -406,14 +441,134 @@ const ProductScreen = () => {
 
         {/* Reviews Section */}
         <View style={[styles.reviewsContainer, { backgroundColor: colors.card }]}>
-          <Text style={[styles.reviewsTitle, { color: colors.text }]}>
-            Đánh giá của khách hàng
-          </Text>
-          <View style={styles.reviewsContent}>
-            <Text style={[styles.noReviewsText, { color: colors.textSecondary }]}>
-              Chưa có đánh giá nào cho sản phẩm này
-            </Text>
+          {/* Overall Rating Header */}
+          <View style={styles.overallRatingContainer}>
+            <View style={styles.ratingLeft}>
+              <Text style={[styles.overallRating, { color: colors.text }]}>
+                {averageRating > 0 ? averageRating.toFixed(1) : '0.0'}
+              </Text>
+              <View style={styles.overallStars}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Ionicons
+                    key={star}
+                    name={star <= averageRating ? 'star' : 'star-outline'}
+                    size={16}
+                    color={star <= averageRating ? '#FFD700' : colors.textSecondary}
+                    style={styles.overallStar}
+                  />
+                ))}
+              </View>
+              <Text style={[styles.ratingCount, { color: colors.textSecondary }]}>
+                {reviews.length} đánh giá
+              </Text>
+            </View>
+            <View style={styles.ratingRight}>
+              <TouchableOpacity 
+                style={styles.viewAllButton}
+                onPress={() => setShowAllReviews(!showAllReviews)}
+              >
+                <Text style={[styles.viewAllText, { color: colors.accent }]}>
+                  Xem tất cả
+                </Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.accent} />
+              </TouchableOpacity>
+            </View>
           </View>
+          
+          {/* Reviews Content */}
+          {reviewsLoading ? (
+            <View style={styles.reviewsLoadingContainer}>
+              <ActivityIndicator size="small" color={colors.accent} />
+              <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+                Đang tải đánh giá...
+              </Text>
+            </View>
+          ) : reviews.length > 0 ? (
+            <View style={styles.reviewsContent}>
+              {(showAllReviews ? reviews : reviews.slice(0, 3)).map((review, index) => (
+                <View key={review._id || index} style={[styles.reviewItem, { borderBottomColor: colors.border }]}>
+                  {/* Review Header */}
+                  <View style={styles.reviewHeader}>
+                    <View style={styles.reviewerInfo}>
+                      <View style={styles.reviewerAvatar}>
+                        <Ionicons name="person" size={20} color={colors.textSecondary} />
+                      </View>
+                      <View style={styles.reviewerDetails}>
+                        <Text style={[styles.reviewerName, { color: colors.text }]}>
+                          {review.idUser?.name || 'Khách hàng'}
+                        </Text>
+                        <View style={styles.ratingContainer}>
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Ionicons
+                              key={star}
+                              name={star <= review.rating ? 'star' : 'star-outline'}
+                              size={14}
+                              color={star <= review.rating ? '#FFD700' : colors.textSecondary}
+                              style={styles.starIcon}
+                            />
+                          ))}
+                          <Text style={[styles.reviewDate, { color: colors.textSecondary }]}>
+                            {new Date(review.createdAt).toLocaleDateString('vi-VN')}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                  
+                  {/* Review Content */}
+                  {review.review && (
+                    <View style={styles.reviewContent}>
+                      {review.productClassification && (
+                        <View style={[styles.reviewCategoryContainer, { backgroundColor: colors.background }]}>
+                          <Text style={[styles.reviewCategory, { color: colors.textSecondary }]}>
+                            Phân loại: <Text style={[styles.reviewCategoryItalic, { color: colors.text }]}>
+                              {review.productClassification}
+                            </Text>
+                          </Text>
+                        </View>
+                      )}
+                      <Text style={[styles.reviewText, { color: colors.text }]}>
+                        {review.review}
+                      </Text>
+                    </View>
+                  )}
+                  
+                  {/* Review Actions */}
+                  <View style={styles.reviewActions}>
+                    <TouchableOpacity style={styles.helpfulButton}>
+                      <Ionicons name="thumbs-up-outline" size={16} color={colors.textSecondary} />
+                      <Text style={[styles.helpfulText, { color: colors.textSecondary }]}>
+                        Hữu ích ({review.helpfulCount || 0})
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+              
+              {/* Show More Button */}
+              {reviews.length > 3 && !showAllReviews && (
+                <TouchableOpacity 
+                  style={[styles.showMoreReviewsButton, { borderColor: colors.border }]}
+                  onPress={() => setShowAllReviews(true)}
+                >
+                  <Text style={[styles.showMoreReviewsText, { color: colors.accent }]}>
+                    Xem thêm {reviews.length - 3} đánh giá khác
+                  </Text>
+                  <Ionicons name="chevron-down" size={16} color={colors.accent} />
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : (
+            <View style={styles.noReviewsContainer}>
+              <Ionicons name="chatbubble-outline" size={48} color={colors.textSecondary} />
+              <Text style={[styles.noReviewsText, { color: colors.textSecondary }]}>
+                Chưa có đánh giá nào
+              </Text>
+              <Text style={[styles.noReviewsSubtext, { color: colors.textSecondary }]}>
+                Hãy là người đầu tiên đánh giá sản phẩm này
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Related Products */}
@@ -720,6 +875,177 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
+  overallRatingContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  ratingLeft: {
+    alignItems: 'flex-start',
+    minWidth: 100,
+  },
+  overallRating: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  overallStars: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  overallStar: {
+    marginRight: 2,
+  },
+  ratingCount: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  ratingRight: {
+    flex: 1,
+    marginLeft: 20,
+    justifyContent: 'flex-end',
+    alignItems: 'flex-end',
+  },
+  reviewsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  viewAllText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginRight: 4,
+  },
+  reviewsLoadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 30,
+  },
+  reviewItem: {
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    paddingHorizontal: 16,
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  reviewerInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    flex: 1,
+  },
+  reviewerAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  reviewerDetails: {
+    flex: 1,
+  },
+  reviewerName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  starIcon: {
+    marginRight: 2,
+  },
+  ratingText: {
+    fontSize: 12,
+    marginLeft: 6,
+  },
+  reviewDate: {
+    fontSize: 12,
+    color: '#999',
+    marginLeft: 8,
+  },
+  reviewContent: {
+    marginLeft: 52, // Align with reviewer name
+    marginTop: 12,
+  },
+  reviewText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  reviewActions: {
+    marginLeft: 52,
+    marginTop: 8,
+    alignItems: 'flex-start',
+  },
+  helpfulButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  helpfulText: {
+    fontSize: 12,
+    marginLeft: 6,
+    fontWeight: '500',
+  },
+  reviewCategory: {
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  reviewCategoryContainer: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginBottom: 8,
+  },
+  reviewCategoryItalic: {
+    fontStyle: 'italic',
+  },
+  showMoreReviewsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    marginHorizontal: 16,
+    marginTop: 10,
+    borderWidth: 1,
+    borderRadius: 8,
+    backgroundColor: 'rgba(70, 155, 67, 0.05)',
+  },
+  showMoreReviewsText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginRight: 6,
+  },
+  noReviewsContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  noReviewsSubtext: {
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
+  },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -748,11 +1074,6 @@ const styles = StyleSheet.create({
   reviewsContainer: {
     marginTop: 10,
     padding: 20,
-  },
-  reviewsTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
   },
   reviewsContent: {
     alignItems: 'center',

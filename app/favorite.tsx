@@ -119,7 +119,7 @@ const FavoriteScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.favoriteList}>
+        <ScrollView contentContainerStyle={[styles.favoriteList, { paddingBottom: 120 }]}>
           {Array.isArray(favorites) && favorites
             .filter((product) => product && typeof product === 'object')
             .map((product) => (
@@ -142,7 +142,7 @@ const FavoriteScreen: React.FC = () => {
                     </Text>
                     {product.idBrand && (
                       <Text style={[styles.productBrand, { color: colors.textSecondary }]}>
-                        {typeof product.idBrand === 'object' ? product.idBrand.nameBrand : product.idBrand}
+                        {typeof product.idBrand === 'object' ? product.idBrand.name : product.idBrand}
                       </Text>
                     )}
                   </View>

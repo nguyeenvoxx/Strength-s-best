@@ -267,6 +267,7 @@ const styles = StyleSheet.create({
   },
   cardsList: {
     padding: 16,
+    paddingBottom: 120,
   },
   cardContainer: {
     borderRadius: 12,

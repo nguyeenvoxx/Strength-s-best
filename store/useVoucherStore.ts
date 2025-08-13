@@ -96,7 +96,7 @@ export const useVoucherStore = create<VoucherStore>((set, get) => ({
   fetchExchangeableVouchers: async (token: string) => {
     try {
       set({ isLoading: true, error: null });
-      const response = await fetch(`${API_CONFIG.BASE_URL}/vouchers/exchangeable`, {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/vouchers/rewards/exchangeable`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -128,7 +128,7 @@ export const useVoucherStore = create<VoucherStore>((set, get) => ({
   fetchUserPoints: async (token: string) => {
     try {
       set({ isLoading: true, error: null });
-      const response = await fetch(`${API_CONFIG.BASE_URL}/users/points`, {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/vouchers/rewards/points`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -168,7 +168,7 @@ export const useVoucherStore = create<VoucherStore>((set, get) => ({
         throw new Error('Không có token xác thực');
       }
 
-      const response = await fetch(`${API_CONFIG.BASE_URL}/vouchers/exchange`, {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/vouchers/rewards/exchange`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -197,7 +197,7 @@ export const useVoucherStore = create<VoucherStore>((set, get) => ({
 
   checkDailyLogin: async (token: string) => {
     try {
-      const response = await fetch(`${API_CONFIG.BASE_URL}/users/daily-login`, {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/vouchers/rewards/daily-login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

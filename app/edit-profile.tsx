@@ -4,6 +4,7 @@ import { getPlatformContainerStyle } from '../utils/platformUtils';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
 import { useAuthStore } from '../store/useAuthStore';
 import { updateProfile, uploadAvatar } from '../services/authApi';
+import { getUserAddresses, updateAddress } from '../services/addressApi';
 import { useTheme } from '../store/ThemeContext';
 import { LightColors, DarkColors } from '../constants/Colors';
 import * as ImagePicker from 'expo-image-picker';
@@ -14,19 +15,19 @@ const EditProfileScreen: React.FC = () => {
   const token = useAuthStore((state) => state.token);
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
-  const [address, setAddress] = useState(user?.address || '');
   // Hàm format số điện thoại về dạng +84 123456789
   function formatPhone(raw: string | undefined): string {
     if (!raw) return '';
     if (/^\+84\s\d{9}$/.test(raw)) return raw; // Đúng định dạng
-    if (/^0\d{9}$/.test(raw)) return '+84 ' + raw.slice(1); // 0xxxxxxxxx => +84 xxxxxxxxx
-    if (/^\+84\d{9}$/.test(raw)) return '+84 ' + raw.slice(3); // +849xxxxxxxx => +84 9xxxxxxxx
+    if (/^0\d{9}$/.test(raw)) return ' ' + raw.slice(1); // 0xxxxxxxxx => +84 xxxxxxxxx
+    if (/^\+84\d{9}$/.test(raw)) return ' ' + raw.slice(3); // +849xxxxxxxx => +84 9xxxxxxxx
     return raw;
   }
   const [phone, setPhone] = useState(user?.phoneNumber || '');
   const [phoneError, setPhoneError] = useState('');
   // Thêm dòng này để fix lỗi avatarUrl chưa khai báo
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || '');
+  const [isUploading, setIsUploading] = useState(false);
   // Xóa trường address vì API không hỗ trợ
   // const [address, setAddress] = useState(user?.address || '');
   const router = useRouter();
@@ -34,48 +35,80 @@ const EditProfileScreen: React.FC = () => {
   const isDark = theme === 'dark';
   const colors = isDark ? DarkColors : LightColors;
 
-  // Khi mở màn hình, lấy địa chỉ đầu tiên từ AsyncStorage nếu có
-  React.useEffect(() => {
-    setAddress(user?.address || '');
-  }, [user?.address]);
+
 
   const handleSave = async () => {
-    // Tự động thêm +84 nếu cần khi lưu
+
     let phoneToSave = phone.trim();
-    if (phoneToSave.startsWith('0') && phoneToSave.length === 10) {
-      phoneToSave = '+84' + phoneToSave.slice(1);
-    } else if (!phoneToSave.startsWith('+84')) {
-      // Nếu không có +84 và không bắt đầu bằng 0, giữ nguyên
-    }
+   
     if (!user || !user._id || !token) {
       Alert.alert('Lỗi', 'Không tìm thấy thông tin người dùng');
       return;
     }
+    
+    if (isUploading) {
+      Alert.alert('Đang xử lý', 'Vui lòng đợi upload ảnh hoàn tất');
+      return;
+    }
+    
     try {
       let finalAvatarUrl = avatarUrl;
       
       // Nếu có avatar mới (không phải từ server), upload lên server trước
-      if (avatarUrl && avatarUrl.startsWith('file://') || avatarUrl.startsWith('content://')) {
+      if (avatarUrl && (avatarUrl.startsWith('file://') || avatarUrl.startsWith('content://'))) {
         try {
+          setIsUploading(true);
+          console.log('🔄 Đang upload avatar...');
           const uploadRes = await uploadAvatar(token, avatarUrl);
           finalAvatarUrl = uploadRes.data.imageUrl;
+          console.log('✅ Upload avatar thành công:', finalAvatarUrl);
         } catch (uploadErr: any) {
-          console.log('Upload avatar error:', uploadErr?.response?.data || uploadErr?.message || uploadErr);
-          Alert.alert('Lỗi', 'Không thể upload ảnh. Vui lòng thử lại.');
+          console.error('❌ Upload avatar error:', uploadErr?.response?.data || uploadErr?.message || uploadErr);
+          const errorMessage = uploadErr?.response?.data?.message || uploadErr?.message || 'Không thể upload ảnh';
+          Alert.alert(
+            'Lỗi upload ảnh', 
+            `${errorMessage}\n\nVui lòng kiểm tra:\n• Kết nối internet\n• Kích thước ảnh (tối đa 5MB)\n• Định dạng ảnh (JPG, PNG)`,
+            [{ text: 'OK' }]
+          );
           return;
+        } finally {
+          setIsUploading(false);
         }
       }
       
-      // Gửi avatarUrl cùng với các thông tin khác
+      // Cập nhật thông tin user
       const res = await updateProfile(token, { 
         name, 
         email, 
         phoneNumber: phoneToSave, 
-        address,
         avatarUrl: finalAvatarUrl 
       });
       setUser(res.data.user);
-      Alert.alert('Thành công', 'Thông tin đã được cập nhật', [
+
+      // Đồng bộ thông tin với địa chỉ mặc định
+      try {
+        const addresses = await getUserAddresses(token);
+        const defaultAddress = addresses.find(addr => addr.isDefault);
+        
+        if (defaultAddress && defaultAddress._id) {
+          // Cập nhật địa chỉ mặc định với thông tin mới
+          await updateAddress(token, defaultAddress._id, {
+            name: name.trim(),
+            phone: phoneToSave,
+            address: defaultAddress.address,
+            province: defaultAddress.province,
+            district: defaultAddress.district,
+            ward: defaultAddress.ward,
+            isDefault: true
+          });
+          console.log('✅ Đã đồng bộ thông tin với địa chỉ mặc định');
+        }
+      } catch (addressErr: any) {
+        console.log('Address sync error:', addressErr?.response?.data || addressErr?.message || addressErr);
+        // Không hiển thị lỗi cho user vì cập nhật profile đã thành công
+      }
+
+      Alert.alert('Thành công', 'Thông tin đã được cập nhật và đồng bộ với địa chỉ giao hàng', [
         {
           text: 'OK',
           onPress: () => router.back()
@@ -88,26 +121,59 @@ const EditProfileScreen: React.FC = () => {
   };
 
   const handleCancel = () => {
-    router.back();
+    router.replace('/profile');
   };
   const handleChangePassword = () => {
     router.push('./change-password');
   };
 
   const handlePickAvatar = async () => {
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permissionResult.granted) {
-      Alert.alert('Bạn cần cho phép truy cập thư viện ảnh!');
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.7,
-    });
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      setAvatarUrl(result.assets[0].uri);
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert(
+          'Quyền truy cập cần thiết', 
+          'Bạn cần cho phép truy cập thư viện ảnh để chọn ảnh đại diện!',
+          [
+            { text: 'Hủy', style: 'cancel' },
+            { text: 'Cài đặt', onPress: () => ImagePicker.requestMediaLibraryPermissionsAsync() }
+          ]
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+        allowsMultipleSelection: false,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const selectedImage = result.assets[0];
+        console.log('📸 Selected image:', selectedImage);
+        
+        // Kiểm tra kích thước file (nếu có)
+        if (selectedImage.fileSize && selectedImage.fileSize > 5 * 1024 * 1024) {
+          Alert.alert(
+            'Ảnh quá lớn', 
+            'Kích thước ảnh không được vượt quá 5MB. Vui lòng chọn ảnh nhỏ hơn.',
+            [{ text: 'OK' }]
+          );
+          return;
+        }
+        
+        setAvatarUrl(selectedImage.uri);
+        console.log('✅ Avatar URL set:', selectedImage.uri);
+      }
+    } catch (error: any) {
+      console.error('❌ Error picking image:', error);
+      Alert.alert(
+        'Lỗi chọn ảnh', 
+        'Không thể mở thư viện ảnh. Vui lòng thử lại.',
+        [{ text: 'OK' }]
+      );
     }
   };
 
@@ -115,7 +181,7 @@ const EditProfileScreen: React.FC = () => {
     <View style={[styles.container, getPlatformContainerStyle(), { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={styles.headerContainer}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => router.replace('/profile')}>
           <Text style={[styles.backButton, { color: colors.text }]}>‹</Text>
         </TouchableOpacity>
         <Text style={[styles.header, { color: colors.text }]}>Chỉnh sửa hồ sơ</Text>
@@ -161,14 +227,7 @@ const EditProfileScreen: React.FC = () => {
           placeholderTextColor={colors.textSecondary}
         />
 
-        <Text style={[styles.label, { color: colors.text }]}>Địa chỉ</Text>
-        <TextInput
-          style={[styles.input, { color: colors.text, borderBottomColor: colors.border }]}
-          value={address}
-          onChangeText={setAddress}
-          placeholder="Nhập địa chỉ của bạn"
-          placeholderTextColor={colors.textSecondary}
-        />
+
         {phoneError ? <Text style={{ color: 'red', marginBottom: 8 }}>{phoneError}</Text> : null}
 
         {/* Change Password */}
@@ -183,8 +242,20 @@ const EditProfileScreen: React.FC = () => {
         <TouchableOpacity style={[styles.cancelButton, { backgroundColor: colors.accent, borderColor: colors.border }]} onPress={handleCancel}>
           <Text style={[styles.cancelButtonText, { color: '#fff' }]}>Hủy</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.saveButton, { backgroundColor: isDark ? colors.text : '#404040' }]} onPress={handleSave}>
-          <Text style={[styles.saveButtonText, { color: isDark ? colors.background : '#fff' }]}>Lưu</Text>
+        <TouchableOpacity 
+          style={[
+            styles.saveButton, 
+            { 
+              backgroundColor: isUploading ? colors.textSecondary : (isDark ? colors.text : '#404040'),
+              opacity: isUploading ? 0.7 : 1
+            }
+          ]} 
+          onPress={handleSave}
+          disabled={isUploading}
+        >
+          <Text style={[styles.saveButtonText, { color: isDark ? colors.background : '#fff' }]}>
+            {isUploading ? 'Đang lưu...' : 'Lưu'}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>

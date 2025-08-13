@@ -17,7 +17,7 @@ export interface Product {
   status?: string; // Thêm trường status
   sections: any[];
   idCategory?: string | { _id: string; nameCategory: string };
-  idBrand?: string | { _id: string; nameBrand: string };
+  idBrand?: string | { _id: string; name: string };
   favoriteId?: string;
 }
 
@@ -27,9 +27,19 @@ interface ProductState {
   relatedProducts: Product[];
   isLoading: boolean;
   error: string | null;
+  currentPage: number;
+  totalPages: number;
+  totalProducts: number;
   
   // Actions
-  fetchProducts: (params?: { limit?: number; category?: string; brand?: string; search?: string }) => Promise<void>;
+  fetchProducts: (params?: { 
+    page?: number;
+    limit?: number; 
+    category?: string; 
+    brand?: string; 
+    search?: string;
+    sort?: string;
+  }) => Promise<void>;
   fetchProductById: (id: string) => Promise<void>;
   fetchRelatedProducts: (productId: string) => Promise<void>;
   clearError: () => void;
@@ -37,6 +47,7 @@ interface ProductState {
   addProduct: (product: Product) => void;
   updateProduct: (id: string, product: Partial<Product>) => void;
   removeProduct: (id: string) => void;
+  setPage: (page: number) => void;
 }
 
 export const useProductStore = create<ProductState>((set, get) => ({
@@ -45,6 +56,9 @@ export const useProductStore = create<ProductState>((set, get) => ({
   relatedProducts: [],
   isLoading: false,
   error: null,
+  currentPage: 1,
+  totalPages: 1,
+  totalProducts: 0,
 
   fetchProducts: async (params = {}) => {
     try {
@@ -61,8 +75,17 @@ export const useProductStore = create<ProductState>((set, get) => ({
           transformedProducts = getFallbackProducts();
         }
         
+        // Cập nhật thông tin phân trang
+        const currentPage = params.page || 1;
+        const totalProducts = response.results || transformedProducts.length;
+        const limit = params.limit || 10;
+        const totalPages = Math.ceil(totalProducts / limit);
+        
         set({
           products: transformedProducts,
+          currentPage,
+          totalPages,
+          totalProducts,
           isLoading: false,
           error: null,
         });
@@ -94,8 +117,15 @@ export const useProductStore = create<ProductState>((set, get) => ({
         isLoading: false,
         error: null, // Không hiển thị lỗi nếu có fallback data
         products: fallbackProducts,
+        currentPage: 1,
+        totalPages: 1,
+        totalProducts: fallbackProducts.length,
       });
     }
+  },
+
+  setPage: (page: number) => {
+    set({ currentPage: page });
   },
 
   fetchProductById: async (id: string) => {

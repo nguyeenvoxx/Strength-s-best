@@ -19,49 +19,34 @@ const AboutScreen = () => {
   const colors = isDark ? DarkColors : LightColors;
   const router = useRouter();
 
-  const aboutInfo = [
+  const features = [
     {
-      title: 'Sứ mệnh',
-      description: 'Cung cấp các sản phẩm thực phẩm chức năng chất lượng cao, giúp người dùng có sức khỏe tốt nhất.',
-      icon: 'star-outline',
+      title: 'Chất lượng cao',
+      description: 'Sản phẩm chính hãng, chất lượng đảm bảo',
+      icon: 'checkmark-circle-outline',
     },
     {
-      title: 'Tầm nhìn',
-      description: 'Trở thành thương hiệu hàng đầu trong lĩnh vực thực phẩm chức năng tại Việt Nam.',
-      icon: 'eye-outline',
+      title: 'Giao hàng nhanh',
+      description: 'Giao hàng toàn quốc trong 1-3 ngày',
+      icon: 'rocket-outline',
     },
     {
-      title: 'Giá trị cốt lõi',
-      description: 'Chất lượng, uy tín, sự tin cậy và cam kết với sức khỏe cộng đồng.',
-      icon: 'heart-outline',
+      title: 'Hỗ trợ 24/7',
+      description: 'Đội ngũ hỗ trợ chuyên nghiệp',
+      icon: 'headset-outline',
+    },
+    {
+      title: 'Thanh toán an toàn',
+      description: 'Nhiều phương thức thanh toán bảo mật',
+      icon: 'shield-checkmark-outline',
     },
   ];
 
-  const companyInfo = [
-    {
-      label: 'Tên công ty',
-      value: 'Strength Best JSC',
-    },
-    {
-      label: 'Địa chỉ',
-      value: '123 Đường ABC, Quận 1, TP.HCM',
-    },
-    {
-      label: 'Điện thoại',
-      value: '1900-1234',
-    },
-    {
-      label: 'Email',
-      value: 'info@strengthbest.com',
-    },
-    {
-      label: 'Website',
-      value: 'www.strengthbest.com',
-    },
-    {
-      label: 'Giấy phép',
-      value: 'GPKD: 0123456789',
-    },
+  const stats = [
+    { number: '10K+', label: 'Khách hàng' },
+    { number: '500+', label: 'Sản phẩm' },
+    { number: '50+', label: 'Thương hiệu' },
+    { number: '4.8', label: 'Đánh giá' },
   ];
 
   return (
@@ -70,7 +55,7 @@ const AboutScreen = () => {
       <View style={[styles.header, { backgroundColor: colors.card }]}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => router.back()}
+          onPress={() => router.replace('/settings')}
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
@@ -78,80 +63,125 @@ const AboutScreen = () => {
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Logo Section */}
-        <View style={[styles.logoSection, { backgroundColor: colors.card }]}>
-          <Image
-            source={require('../assets/images/logo.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <Text style={[styles.appName, { color: colors.text }]}>Strength Best</Text>
-          <Text style={[styles.appVersion, { color: colors.textSecondary }]}>Phiên bản 1.0.0</Text>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+        {/* Hero Section */}
+        <View style={[styles.heroSection, { backgroundColor: colors.card }]}>
+          <View style={[styles.logoContainer, { backgroundColor: colors.accent + '20' }]}>
+            <Ionicons name="leaf" size={48} color={colors.accent} />
+          </View>
+          <Text style={[styles.companyName, { color: colors.text }]}>
+            Strength's Best
+          </Text>
+          <Text style={[styles.tagline, { color: colors.textSecondary }]}>
+            Sức khỏe là tài sản quý giá nhất
+          </Text>
         </View>
 
-        {/* About Info */}
-        <View style={styles.section}>
+        {/* Stats Section */}
+        <View style={[styles.statsSection, { backgroundColor: colors.card }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Thông tin công ty
+            Thành tựu của chúng tôi
           </Text>
-          
-          {aboutInfo.map((item, index) => (
-            <View key={index} style={[styles.aboutItem, { backgroundColor: colors.card }]}>
-              <View style={styles.aboutItemContent}>
-                <View style={[styles.iconContainer, { backgroundColor: colors.accent + '20' }]}>
-                  <Ionicons name={item.icon as any} size={24} color={colors.accent} />
-                </View>
-                <View style={styles.aboutItemText}>
-                  <Text style={[styles.aboutItemTitle, { color: colors.text }]}>
-                    {item.title}
-                  </Text>
-                  <Text style={[styles.aboutItemDescription, { color: colors.textSecondary }]}>
-                    {item.description}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          ))}
-        </View>
-
-        {/* Company Details */}
-        <View style={[styles.section, { backgroundColor: colors.card }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Thông tin liên hệ
-          </Text>
-          <View style={styles.companyInfo}>
-            {companyInfo.map((item, index) => (
-              <View key={index} style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
-                  {item.label}:
+          <View style={styles.statsGrid}>
+            {stats.map((stat, index) => (
+              <View key={index} style={styles.statItem}>
+                <Text style={[styles.statNumber, { color: colors.accent }]}>
+                  {stat.number}
                 </Text>
-                <Text style={[styles.infoValue, { color: colors.text }]}>
-                  {item.value}
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                  {stat.label}
                 </Text>
               </View>
             ))}
           </View>
         </View>
 
-        {/* Social Media */}
-        <View style={[styles.section, { backgroundColor: colors.card }]}>
+        {/* About Section */}
+        <View style={[styles.aboutSection, { backgroundColor: colors.card }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Kết nối với chúng tôi
+            Giới thiệu
           </Text>
-          <View style={styles.socialLinks}>
-            <TouchableOpacity style={[styles.socialButton, { backgroundColor: colors.accent + '20' }]}>
-              <Ionicons name="logo-facebook" size={24} color={colors.accent} />
-              <Text style={[styles.socialText, { color: colors.text }]}>Facebook</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.socialButton, { backgroundColor: colors.accent + '20' }]}>
-              <Ionicons name="logo-instagram" size={24} color={colors.accent} />
-              <Text style={[styles.socialText, { color: colors.text }]}>Instagram</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.socialButton, { backgroundColor: colors.accent + '20' }]}>
-              <Ionicons name="logo-youtube" size={24} color={colors.accent} />
-              <Text style={[styles.socialText, { color: colors.text }]}>YouTube</Text>
-            </TouchableOpacity>
+          <Text style={[styles.aboutText, { color: colors.textSecondary }]}>
+            Strength's Best là thương hiệu hàng đầu trong lĩnh vực thực phẩm bổ sung và dinh dưỡng thể thao tại Việt Nam. 
+            Chúng tôi cam kết mang đến những sản phẩm chất lượng cao, an toàn và hiệu quả cho sức khỏe của bạn.
+          </Text>
+          <Text style={[styles.aboutText, { color: colors.textSecondary }]}>
+            Với đội ngũ chuyên gia dinh dưỡng giàu kinh nghiệm, chúng tôi luôn nỗ lực nghiên cứu và phát triển 
+            những sản phẩm tốt nhất, phù hợp với nhu cầu của người Việt Nam.
+          </Text>
+        </View>
+
+        {/* Features Section */}
+        <View style={[styles.featuresSection, { backgroundColor: colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Tại sao chọn chúng tôi
+          </Text>
+          {features.map((feature, index) => (
+            <View key={index} style={styles.featureItem}>
+              <View style={[styles.featureIcon, { backgroundColor: colors.accent + '20' }]}>
+                <Ionicons name={feature.icon as any} size={24} color={colors.accent} />
+              </View>
+              <View style={styles.featureContent}>
+                <Text style={[styles.featureTitle, { color: colors.text }]}>
+                  {feature.title}
+                </Text>
+                <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>
+                  {feature.description}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        {/* Mission & Vision */}
+        <View style={[styles.missionSection, { backgroundColor: colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Sứ mệnh & Tầm nhìn
+          </Text>
+          <View style={styles.missionItem}>
+            <Text style={[styles.missionTitle, { color: colors.accent }]}>
+              Sứ mệnh
+            </Text>
+            <Text style={[styles.missionText, { color: colors.textSecondary }]}>
+              Cung cấp những sản phẩm dinh dưỡng chất lượng cao, giúp mọi người có được sức khỏe tốt nhất 
+              và cuộc sống hạnh phúc hơn.
+            </Text>
+          </View>
+          <View style={styles.missionItem}>
+            <Text style={[styles.missionTitle, { color: colors.accent }]}>
+              Tầm nhìn
+            </Text>
+            <Text style={[styles.missionText, { color: colors.textSecondary }]}>
+              Trở thành thương hiệu hàng đầu về dinh dưỡng và sức khỏe tại Việt Nam, được tin tưởng 
+              và lựa chọn bởi hàng triệu người dân.
+            </Text>
+          </View>
+        </View>
+
+        {/* Contact Section */}
+        <View style={[styles.contactSection, { backgroundColor: colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Liên hệ
+          </Text>
+          <View style={styles.contactInfo}>
+            <View style={styles.contactItem}>
+              <Ionicons name="location-outline" size={20} color={colors.accent} />
+              <Text style={[styles.contactText, { color: colors.textSecondary }]}>
+                123 Đường ABC, Quận 1, TP.HCM
+              </Text>
+            </View>
+            <View style={styles.contactItem}>
+              <Ionicons name="call-outline" size={20} color={colors.accent} />
+              <Text style={[styles.contactText, { color: colors.textSecondary }]}>
+                1900-1234
+              </Text>
+            </View>
+            <View style={styles.contactItem}>
+              <Ionicons name="mail-outline" size={20} color={colors.accent} />
+              <Text style={[styles.contactText, { color: colors.textSecondary }]}>
+                info@strengthbest.com
+              </Text>
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -189,43 +219,78 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
-  logoSection: {
+  heroSection: {
     alignItems: 'center',
-    padding: 24,
-    borderRadius: 12,
-    marginBottom: 24,
-  },
-  logo: {
-    width: 80,
-    height: 80,
+    padding: 32,
+    borderRadius: 16,
     marginBottom: 16,
   },
-  appName: {
+  logoContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  companyName: {
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 8,
   },
-  appVersion: {
-    fontSize: 14,
+  tagline: {
+    fontSize: 16,
+    textAlign: 'center',
   },
-  section: {
-    marginBottom: 24,
+  statsSection: {
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
     marginBottom: 16,
   },
-  aboutItem: {
-    borderRadius: 12,
-    marginBottom: 12,
-    padding: 16,
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
   },
-  aboutItemContent: {
+  statItem: {
+    width: '48%',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 14,
+  },
+  aboutSection: {
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 16,
+  },
+  aboutText: {
+    fontSize: 16,
+    lineHeight: 24,
+    marginBottom: 12,
+  },
+  featuresSection: {
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 16,
+  },
+  featureItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+    marginBottom: 16,
   },
-  iconContainer: {
+  featureIcon: {
     width: 48,
     height: 48,
     borderRadius: 24,
@@ -233,54 +298,51 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 16,
   },
-  aboutItemText: {
+  featureContent: {
     flex: 1,
   },
-  aboutItemTitle: {
+  featureTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 4,
   },
-  aboutItemDescription: {
+  featureDescription: {
     fontSize: 14,
     lineHeight: 20,
   },
-  companyInfo: {
+  missionSection: {
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 16,
+  },
+  missionItem: {
+    marginBottom: 16,
+  },
+  missionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  missionText: {
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  contactSection: {
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 16,
+  },
+  contactInfo: {
     padding: 16,
   },
-  infoRow: {
+  contactItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    marginBottom: 16,
   },
-  infoLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  infoValue: {
-    fontSize: 14,
-    textAlign: 'right',
-    flex: 1,
-    marginLeft: 16,
-  },
-  socialLinks: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    padding: 16,
-  },
-  socialButton: {
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    minWidth: 80,
-  },
-  socialText: {
-    fontSize: 12,
-    marginTop: 8,
-    fontWeight: '500',
+  contactText: {
+    fontSize: 16,
+    marginLeft: 12,
   },
 });
 

@@ -32,13 +32,30 @@ const AddCardScreen: React.FC = () => {
   });
   const [loading, setLoading] = useState(false);
 
-  // Xác định loại thẻ dựa trên số thẻ
+  // Xác định loại thẻ dựa trên số thẻ (đơn giản theo prefix)
   const detectCardType = (number: string) => {
     const cleaned = number.replace(/\s/g, '');
-    if (cleaned.startsWith('4')) return 'visa';
-    if (cleaned.startsWith('5')) return 'mastercard';
-    if (cleaned.startsWith('3')) return 'amex';
+    if (/^4/.test(cleaned)) return 'visa';
+    if (/^(5[1-5]|2[2-7])/.test(cleaned)) return 'mastercard';
+    if (/^3[47]/.test(cleaned)) return 'amex';
     return 'unknown';
+  };
+
+  // Kiểm tra Luhn (hợp lệ số thẻ)
+  const luhnCheck = (num: string) => {
+    let sum = 0;
+    let shouldDouble = false;
+    for (let i = num.length - 1; i >= 0; i--) {
+      let digit = parseInt(num.charAt(i), 10);
+      if (Number.isNaN(digit)) return false;
+      if (shouldDouble) {
+        digit *= 2;
+        if (digit > 9) digit -= 9;
+      }
+      sum += digit;
+      shouldDouble = !shouldDouble;
+    }
+    return sum % 10 === 0;
   };
 
   // Format số thẻ với khoảng trắng
@@ -79,23 +96,36 @@ const AddCardScreen: React.FC = () => {
   };
 
   const validateCard = () => {
-    if (!cardData.cardNumber || cardData.cardNumber.replace(/\s/g, '').length < 13) {
-      Alert.alert('Lỗi', 'Vui lòng nhập số thẻ hợp lệ (13-19 chữ số)');
+    const rawNumber = cardData.cardNumber.replace(/\s/g, '');
+    if (!cardData.cardNumber || rawNumber.length < 13) {
+      Alert.alert('Thông báo', 'Vui lòng nhập số thẻ hợp lệ (13-19 chữ số)');
+      return false;
+    }
+
+    // Kiểm tra loại thẻ nhận diện được
+    if (!['visa', 'mastercard', 'amex'].includes(cardData.cardType)) {
+      Alert.alert('Thông báo', 'Thông tin thẻ không hợp lệ hoặc không nhận diện được loại thẻ. Không thể xác minh. Vui lòng nhập đúng thông tin thẻ.');
+      return false;
+    }
+
+    // Kiểm tra Luhn cho số thẻ
+    if (!luhnCheck(rawNumber)) {
+      Alert.alert('Thông báo', 'Số thẻ không hợp lệ. Không thể xác minh. Vui lòng kiểm tra lại số thẻ.');
       return false;
     }
 
     if (!cardData.cardHolder || cardData.cardHolder.length < 2) {
-      Alert.alert('Lỗi', 'Vui lòng nhập tên chủ thẻ');
+      Alert.alert('Thông báo', 'Vui lòng nhập tên chủ thẻ');
       return false;
     }
 
     if (!cardData.expiryDate || !/^\d{2}\/\d{2}$/.test(cardData.expiryDate)) {
-      Alert.alert('Lỗi', 'Vui lòng nhập ngày hết hạn đúng định dạng MM/YY');
+      Alert.alert('Thông báo', 'Vui lòng nhập ngày hết hạn đúng định dạng MM/YY');
       return false;
     }
 
     if (!cardData.cvv || cardData.cvv.length < 3) {
-      Alert.alert('Lỗi', 'Vui lòng nhập mã CVV (3-4 chữ số)');
+      Alert.alert('Thông báo', 'Vui lòng nhập mã CVV (3-4 chữ số)');
       return false;
     }
 
@@ -104,7 +134,7 @@ const AddCardScreen: React.FC = () => {
     const expiry = new Date(2000 + parseInt(year), parseInt(month) - 1);
     const now = new Date();
     if (expiry < now) {
-      Alert.alert('Lỗi', 'Thẻ đã hết hạn');
+      Alert.alert('Thông báo', 'Thẻ đã hết hạn');
       return false;
     }
 
@@ -151,7 +181,7 @@ const AddCardScreen: React.FC = () => {
 
     } catch (error: any) {
       console.error('Error adding card:', error);
-      Alert.alert('Lỗi', error.message || 'Không thể thêm thẻ. Vui lòng thử lại.');
+      Alert.alert('Thông báo', error.message || 'Không thể thêm thẻ. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }

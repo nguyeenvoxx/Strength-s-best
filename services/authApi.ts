@@ -38,6 +38,17 @@ export interface ResendVerificationRequest {
   email: string;
 }
 
+export interface CheckEmailStatusRequest {
+  email: string;
+}
+
+export interface CheckEmailStatusResponse {
+  status: string;
+  message: string;
+  available: boolean;
+  reason?: 'already_registered' | 'pending_verification' | 'other';
+}
+
 export interface AuthResponse {
   status: string;
   token: string;
@@ -104,6 +115,16 @@ export const authService = {
       return response.data;
     } catch (error: any) {
       console.error('❌ Lỗi gửi lại mã xác thực:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  checkEmailStatus: async (data: CheckEmailStatusRequest): Promise<CheckEmailStatusResponse> => {
+    try {
+      const response = await authApi.post('/auth/check-email-status', data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Lỗi kiểm tra trạng thái email:', error.response?.data || error.message);
       throw error;
     }
   },
@@ -183,6 +204,34 @@ export const changePassword = async (token: string, currentPassword: string, new
     { currentPassword, newPassword },
     { headers: { Authorization: `Bearer ${token}` } }
   );
+  return res.data;
+};
+
+// Yêu cầu gửi mã đặt lại mật khẩu qua email
+export const requestResetPassword = async (email: string) => {
+  try {
+    const res = await authApi.post('/auth/request-reset-password', { email });
+    return res.data;
+  } catch (error: any) {
+    console.error('❌ Lỗi yêu cầu gửi mã đổi mật khẩu:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+// Xác minh mã và đặt mật khẩu mới (không cần đăng nhập)
+export const verifyResetPassword = async (params: { email: string; resetCode: string; newPassword: string; confirmPassword: string; }) => {
+  try {
+    const res = await authApi.post('/auth/verify-reset-password', params);
+    return res.data;
+  } catch (error: any) {
+    console.error('❌ Lỗi xác minh đổi mật khẩu:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+// Đăng nhập Google: client gửi idToken từ Google, server trả JWT ứng dụng
+export const loginWithGoogle = async (idToken: string): Promise<AuthResponse> => {
+  const res = await authApi.post('/auth/google', { idToken });
   return res.data;
 };
 

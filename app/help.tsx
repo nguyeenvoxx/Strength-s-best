@@ -70,6 +70,27 @@ const HelpScreen = () => {
             <TouchableOpacity
               key={index}
               style={[styles.helpItem, { backgroundColor: colors.card }]}
+              onPress={() => {
+                switch (index) {
+                  case 0:
+                    router.push('/help/ordering-guide');
+                    break;
+                  case 1:
+                    router.push('/help/return-policy');
+                    break;
+                  case 2:
+                    router.push('/help/shipping-info');
+                    break;
+                  case 3:
+                    router.push('/help/security-policy');
+                    break;
+                  case 4:
+                    router.push('/help/contact');
+                    break;
+                  default:
+                    break;
+                }
+              }}
             >
               <View style={styles.helpItemContent}>
                 <View style={[styles.iconContainer, { backgroundColor: colors.accent + '20' }]}>

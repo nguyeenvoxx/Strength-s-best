@@ -14,10 +14,11 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
 import { getUserOrders, Order } from '../services/orderApi';
-import { API_CONFIG } from '../services/config';
+import { API_CONFIG } from '../constants/config';
 
 // Helper function to get price in VND
 const getPriceVND = (price: any) => {
@@ -78,8 +79,7 @@ const PurchasedOrdersScreen: React.FC = () => {
   const [reviewText, setReviewText] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
 
-  useEffect(() => {
-    const fetchOrders = async () => {
+  const fetchOrders = async () => {
       if (!token || !userId) {
         setLoading(false);
         return;
@@ -89,15 +89,25 @@ const PurchasedOrdersScreen: React.FC = () => {
         setLoading(true);
         const userOrders = await getUserOrders(token);
         setOrders(userOrders);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching orders:', error);
-        Alert.alert('Lỗi', 'Không thể tải danh sách đơn hàng');
+        Alert.alert('Thông báo', 'Không thể tải danh sách đơn hàng');
       } finally {
         setLoading(false);
       }
-    };
+  };
+
+  useEffect(() => {
     fetchOrders();
   }, [token, userId]);
+
+  // Revalidate khi quay lại màn purchased orders
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchOrders();
+      return () => {};
+    }, [])
+  );
 
   useEffect(() => {
     const loadAddresses = async () => {
@@ -147,9 +157,9 @@ const PurchasedOrdersScreen: React.FC = () => {
         const errorData = await response.json();
         Alert.alert('Lỗi', errorData.message || 'Không thể gửi đánh giá');
       }
-    } catch (error) {
-      console.error('Error submitting review:', error);
-      Alert.alert('Lỗi', 'Không thể gửi đánh giá. Vui lòng thử lại.');
+    } catch (error: any) {
+      const errorData = error.response?.data || error;
+      Alert.alert('Thông báo', errorData.message || 'Không thể gửi đánh giá. Vui lòng thử lại.');
     } finally {
       setSubmittingReview(false);
     }
@@ -203,9 +213,9 @@ const PurchasedOrdersScreen: React.FC = () => {
               const errorData = await response.json();
               Alert.alert('Lỗi', errorData.message || 'Không thể hủy đơn hàng');
             }
-          } catch (error) {
-            console.error('Error canceling order:', error);
-            Alert.alert('Lỗi', 'Không thể hủy đơn hàng');
+          } catch (error: any) {
+            const errorData = error.response?.data || error;
+            Alert.alert('Thông báo', errorData.message || 'Không thể hủy đơn hàng');
           }
         },
       },

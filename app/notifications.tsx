@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import { LightColors, DarkColors } from '../constants/Colors';
 import { useRouter } from 'expo-router';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useAuthStore } from '../store/useAuthStore';
+import { useFocusEffect } from '@react-navigation/native';
 
 interface Notification {
   _id: string;
@@ -47,6 +48,7 @@ const NotificationsScreen = () => {
     clearError
   } = useNotificationStore();
   const { token } = useAuthStore();
+  const [refreshing, setRefreshing] = useState(false);
 
   // Load notifications when component mounts
   useEffect(() => {
@@ -54,6 +56,25 @@ const NotificationsScreen = () => {
       fetchNotifications(token);
     }
   }, [fetchNotifications, token]);
+
+  // Refresh khi màn hình được focus (quay lại từ trang khác)
+  useFocusEffect(
+    useCallback(() => {
+      if (token) {
+        fetchNotifications(token);
+      }
+    }, [token, fetchNotifications])
+  );
+
+  const onRefresh = async () => {
+    if (!token) return;
+    setRefreshing(true);
+    try {
+      await fetchNotifications(token);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -216,6 +237,8 @@ const NotificationsScreen = () => {
           keyExtractor={(item) => item._id}
           contentContainerStyle={styles.notificationsList}
           showsVerticalScrollIndicator={false}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
         />
       )}
     </SafeAreaView>

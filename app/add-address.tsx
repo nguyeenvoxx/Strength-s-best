@@ -29,23 +29,39 @@ const AddAddressScreen: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!token) {
-      Alert.alert('Lỗi', 'Vui lòng đăng nhập lại');
+      Alert.alert('Thông báo', 'Vui lòng đăng nhập lại');
       return;
     }
 
     // Validation
     if (!formData.name.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập tên người nhận');
+      Alert.alert('Thông báo', 'Vui lòng nhập tên người nhận');
       return;
     }
 
     if (!formData.phone.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập số điện thoại');
+      Alert.alert('Thông báo', 'Vui lòng nhập số điện thoại');
+      return;
+    }
+    // Chuẩn hóa về số điện thoại nội địa VN (0xxxxxxxxx) để phù hợp backend
+    const normalizedPhone = (() => {
+      let p = formData.phone.replace(/\s+/g, '');
+      p = p.replace(/[^0-9+]/g, '');
+      if (p.startsWith('+84')) {
+        p = '0' + p.slice(3);
+      }
+      if (/^\d{9}$/.test(p)) {
+        p = '0' + p;
+      }
+      return p.replace(/[^0-9]/g, '').slice(0, 11);
+    })();
+    if (!/^0\d{9,10}$/.test(normalizedPhone)) {
+      Alert.alert('Thông báo', 'Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại 10-11 chữ số bắt đầu bằng 0');
       return;
     }
 
     if (!formData.address.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập địa chỉ');
+      Alert.alert('Thông báo', 'Vui lòng nhập địa chỉ');
       return;
     }
 
@@ -54,22 +70,22 @@ const AddAddressScreen: React.FC = () => {
       
       const addressData = {
         name: formData.name.trim(),
-        phone: formData.phone.trim(),
+        phone: normalizedPhone,
         address: formData.address.trim(),
-        province: '', // Bỏ trống vì không còn chọn
-        district: '', // Bỏ trống vì không còn chọn
-        ward: '', // Bỏ trống vì không còn chọn
+        province: '', // Bỏ trống
+        district: '', // Bỏ trống
+        ward: '', // Bỏ trống
         isDefault: formData.isDefault
       };
 
-      await addAddress(token, addressData);
-      
+      const created = await addAddress(token, addressData);
+      // Optimistic: quay lại chọn địa chỉ với tham số để trigger refresh
       Alert.alert('Thành công', 'Đã thêm địa chỉ mới', [
         { text: 'OK', onPress: () => router.replace('/select-address?refresh=true') }
       ]);
     } catch (error: any) {
       console.error('Error adding address:', error);
-      Alert.alert('Lỗi', error.message || 'Không thể thêm địa chỉ. Vui lòng thử lại.');
+      Alert.alert('Thông báo', error.message || 'Không thể thêm địa chỉ. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -114,10 +130,17 @@ const AddAddressScreen: React.FC = () => {
                 borderColor: colors.border 
               }]}
               value={formData.phone}
-              onChangeText={(value) => handleInputChange('phone', value)}
+              onChangeText={(value) => {
+                // Chỉ cho phép nhập số và giới hạn độ dài
+                const numericText = value.replace(/[^0-9]/g, '');
+                if (numericText.length <= 11) {
+                  handleInputChange('phone', numericText);
+                }
+              }}
               placeholder="Nhập số điện thoại"
               placeholderTextColor={colors.textSecondary}
               keyboardType="phone-pad"
+              maxLength={11}
             />
           </View>
 

@@ -2,10 +2,11 @@ import { API_CONFIG } from '../constants/config';
 
 export interface Review {
   _id: string;
-  idProduct: string;
   idOrderDetail: string;
   rating: number;
   review?: string;
+  helpfulCount: number;
+  likedBy: string[];
   created_at: string;
   updated_at: string;
   idUser: {
@@ -103,6 +104,73 @@ export const deleteReview = async (token: string, reviewId: string): Promise<voi
     throw new Error(errorData.message || 'Không thể xóa đánh giá');
   }
 };
+
+// Like đánh giá
+export const likeReview = async (token: string, reviewId: string): Promise<{ review: Review, isLiked: boolean, helpfulCount: number }> => {
+  const response = await fetch(`${API_CONFIG.BASE_URL}/product-reviews/${reviewId}/like`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (response.ok) {
+    const result = await response.json();
+    return result.data;
+  } else {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Không thể like đánh giá');
+  }
+};
+
+// Unlike đánh giá
+export const unlikeReview = async (token: string, reviewId: string): Promise<{ review: Review, isLiked: boolean, helpfulCount: number }> => {
+  const response = await fetch(`${API_CONFIG.BASE_URL}/product-reviews/${reviewId}/like`, {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (response.ok) {
+    const result = await response.json();
+    return result.data;
+  } else {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Không thể unlike đánh giá');
+  }
+};
+
+// Kiểm tra trạng thái like
+export const checkLikeStatus = async (token: string, reviewId: string): Promise<{ isLiked: boolean, helpfulCount: number }> => {
+  const response = await fetch(`${API_CONFIG.BASE_URL}/product-reviews/${reviewId}/like-status`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (response.ok) {
+    const result = await response.json();
+    return result.data;
+  } else {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Không thể kiểm tra trạng thái like');
+  }
+};
+
+
+
+
+
+
+
+
+
+
 
 
 

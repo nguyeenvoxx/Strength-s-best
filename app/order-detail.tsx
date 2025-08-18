@@ -69,6 +69,7 @@ const OrderDetailScreen: React.FC = () => {
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [userReviews, setUserReviews] = useState<any[]>([]);
+  const [reviewedItems, setReviewedItems] = useState<Set<string>>(new Set());
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [selectedOrderDetailId, setSelectedOrderDetailId] = useState<string>('');
@@ -79,16 +80,25 @@ const OrderDetailScreen: React.FC = () => {
 
   useEffect(() => {
     if (token && order?.status === 'delivered') {
+      console.log('🔍 Order status is delivered, loading reviews...');
       loadUserReviews();
     }
   }, [token, order?.status]);
+
+  // Load reviews when order detail is loaded
+  useEffect(() => {
+    if (order && order.status === 'delivered') {
+      console.log('🔍 Order loaded and status is delivered, loading reviews...');
+      loadUserReviews();
+    }
+  }, [order]);
 
   const loadOrderDetail = async () => {
     try {
       setLoading(true);
       
       if (!token || !orderId) {
-        Alert.alert('Lỗi', 'Không tìm thấy thông tin đơn hàng');
+        Alert.alert('Thông báo', 'Không tìm thấy thông tin đơn hàng');
         router.back();
         return;
       }
@@ -126,7 +136,7 @@ const OrderDetailScreen: React.FC = () => {
         message: error?.message || 'Unknown error',
         stack: error?.stack || 'No stack trace'
       });
-      Alert.alert('Lỗi', 'Không thể tải thông tin đơn hàng');
+      Alert.alert('Thông báo', 'Không thể tải thông tin đơn hàng');
       router.back();
     } finally {
       setLoading(false);
@@ -135,8 +145,11 @@ const OrderDetailScreen: React.FC = () => {
 
   const loadUserReviews = async () => {
     try {
+      console.log('🔍 Loading user reviews...');
       const result = await getUserReviews(token!, 1, 100);
+      console.log('🔍 User reviews response:', result);
       setUserReviews(result.reviews);
+      console.log('🔍 Set user reviews:', result.reviews);
     } catch (error: any) {
       console.error('Error loading user reviews:', error);
     }
@@ -177,19 +190,52 @@ const OrderDetailScreen: React.FC = () => {
   };
 
   const handleReviewProduct = (product: any, orderDetailId: string) => {
+    const productId = product._id || product;
+    const key = `${productId}_${orderDetailId}`;
+    
+    // Kiểm tra xem đã đánh giá chưa
+    if (reviewedItems.has(key)) {
+      Alert.alert('Thông báo', 'Bạn đã đánh giá sản phẩm này rồi');
+      return;
+    }
+    
     setSelectedProduct(product);
     setSelectedOrderDetailId(orderDetailId);
     setReviewModalVisible(true);
   };
 
   const handleReviewSubmitted = () => {
+    console.log('🔍 Review submitted, updating reviewed items...');
+    
+    // Thêm vào state local để đánh dấu đã đánh giá
+    if (selectedProduct && selectedOrderDetailId) {
+      const productId = selectedProduct._id || selectedProduct;
+      const key = `${productId}_${selectedOrderDetailId}`;
+      
+      setReviewedItems(prev => {
+        const newSet = new Set(prev);
+        newSet.add(key);
+        console.log('🔍 Added to reviewed items:', key);
+        return newSet;
+      });
+    }
+    
     loadUserReviews();
   };
 
   const hasUserReviewed = (productId: string, orderDetailId: string) => {
-    return userReviews.some(review => 
-      review.idProduct === productId && review.idOrderDetail === orderDetailId
-    );
+    const key = `${productId}_${orderDetailId}`;
+    const hasReviewed = reviewedItems.has(key);
+    
+    console.log('🔍 Checking review status:', {
+      productId,
+      orderDetailId,
+      key,
+      hasReviewed,
+      reviewedItemsCount: reviewedItems.size
+    });
+    
+    return hasReviewed;
   };
 
   if (loading) {
@@ -300,8 +346,20 @@ const OrderDetailScreen: React.FC = () => {
           <Text style={[styles.orderInfo, { color: colors.textSecondary }]}> 
             Trạng thái thanh toán: {
               (() => {
-                const status = (order.payment?.status as string) || (order.paymentStatus as string) || 'pending';
-                if (status === 'success' || status === 'completed') return 'Đã thanh toán';
+                // Yêu cầu: nếu phương thức là thẻ tín dụng thì chắc chắn hiển thị Đã thanh toán
+                if (order.paymentMethod === 'card' || order.paymentMethod === 'credit_card') {
+                  return 'Đã thanh toán';
+                }
+                const raw = (order.payment?.status as string) || (order.paymentStatus as string) || 'pending';
+                const s = (raw || '').toLowerCase();
+                const status = ['success','completed','paid','succeeded','successed'].includes(s)
+                  ? 'success'
+                  : ['failed','failure','error'].includes(s)
+                  ? 'failed'
+                  : ['cancelled','canceled'].includes(s)
+                  ? 'cancelled'
+                  : 'pending';
+                if (status === 'success') return 'Đã thanh toán';
                 if (status === 'failed') return 'Thanh toán thất bại';
                 if (status === 'cancelled') return 'Đã hủy';
                 return 'Chờ thanh toán';
@@ -325,6 +383,12 @@ const OrderDetailScreen: React.FC = () => {
             const orderDetailId = (item as any)._id || `${order._id}_${index}`;
             const productId = product?._id || item.productId;
             const hasReviewed = hasUserReviewed(productId, orderDetailId);
+            console.log('🔍 Render review button:', {
+              productId,
+              orderDetailId,
+              hasReviewed,
+              orderStatus: order.status
+            });
             
             return (
               <View key={index} style={[styles.itemCard, { borderBottomColor: colors.border }]}>
@@ -348,12 +412,15 @@ const OrderDetailScreen: React.FC = () => {
                   {order.status === 'delivered' && (
                     <View style={styles.reviewContainer}>
                       {hasReviewed ? (
-                        <View style={styles.reviewedBadge}>
-                          <Ionicons name="checkmark-circle" size={16} color="#28a745" />
-                          <Text style={[styles.reviewedText, { color: '#28a745' }]}>
-                            Đã đánh giá
+                        <TouchableOpacity
+                          style={[styles.reviewedButton, { backgroundColor: colors.textSecondary }]}
+                          disabled={true}
+                        >
+                          <Ionicons name="checkmark-circle" size={16} color="#fff" />
+                          <Text style={styles.reviewedButtonText}>
+                            Bạn đã đánh giá
                           </Text>
-                        </View>
+                        </TouchableOpacity>
                       ) : (
                         <TouchableOpacity
                           style={[styles.reviewButton, { backgroundColor: colors.accent }]}
@@ -714,6 +781,20 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   reviewButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  reviewedButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    marginTop: 4,
+  },
+  reviewedButtonText: {
     color: '#fff',
     fontSize: 12,
     fontWeight: '600',

@@ -133,7 +133,8 @@ const RewardsScreen: React.FC = () => {
         fetchExchangeableVouchers(token);
       }
     } catch (err: any) {
-      Alert.alert('Lỗi', err.message || 'Không thể đổi voucher');
+      console.error('Error exchanging voucher:', err);
+      Alert.alert('Thông báo', err.message || 'Không thể đổi voucher');
     }
   };
 
@@ -149,7 +150,8 @@ const RewardsScreen: React.FC = () => {
       fetchUserVouchers();
       fetchAvailableVouchers();
     } catch (err: any) {
-      Alert.alert('Lỗi', err.message || 'Không thể nhận voucher');
+      console.error('Error exchanging voucher:', err);
+      Alert.alert('Thông báo', err.message || 'Không thể nhận voucher');
     }
   };
 

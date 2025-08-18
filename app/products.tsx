@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, Text, Image, FlatList, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { getPlatformContainerStyle } from '../utils/platformUtils';
 import { useProductStore } from '../store/useProductStore';
@@ -13,6 +14,7 @@ import { getProductImages } from '../utils/productUtils';
 import { useTheme } from '../store/ThemeContext';
 import { LightColors, DarkColors } from '../constants/Colors';
 import Pagination from '../components/Pagination';
+import { API_CONFIG } from '../constants/config';
 
 // Thêm interface cho Brand
 interface Brand {
@@ -24,6 +26,7 @@ interface Brand {
 const ProductListScreen: React.FC = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const [confirmedLargeQuantity, setConfirmedLargeQuantity] = useState<Set<string>>(new Set());
   const { products, isLoading, error, fetchProducts, currentPage, totalPages, totalProducts, setPage } = useProductStore();
   const { isAuthenticated, token } = useAuthStore();
   const { categories, isLoading: categoriesLoading, fetchCategories } = useCategoryStore();
@@ -51,15 +54,14 @@ const ProductListScreen: React.FC = () => {
   const categoryColor = colors.accent;
 
   // Load products, categories and brands when component mounts - không cần đăng nhập
-  useEffect(() => {
-    const loadData = async () => {
+  const loadData = useCallback(async () => {
       try {
         await fetchProducts({ page: 1, limit: 10 }); // Load 10 sản phẩm mỗi trang
         await fetchCategories(); // Load categories
         
-        // Fetch brands from API - sử dụng fallback nếu API không có dữ liệu
+        // Fetch brands from API - sử dụng BASE_URL động (tránh hardcode IP)
         try {
-          const response = await fetch('http://192.168.1.49:3000/api/v1/brands');
+          const response = await fetch(`${API_CONFIG.BASE_URL}/brands`);
           const data = await response.json();
           if (data.status === 'thành công' && data.data.brands) {
             setBrands(data.data.brands);
@@ -119,11 +121,20 @@ const ProductListScreen: React.FC = () => {
       } catch (error) {
         console.error('Error loading data:', error);
       }
-    };
-    
+  }, [fetchProducts, fetchCategories]);
+
+  useEffect(() => {
     // Luôn load data, không cần kiểm tra đăng nhập
     loadData();
-  }, [fetchProducts, fetchCategories]);
+  }, [loadData]);
+
+  // Revalidate khi quay lại màn hình
+  useFocusEffect(
+    React.useCallback(() => {
+      loadData();
+      return () => {};
+    }, [loadData])
+  );
 
   // Handle category filter from URL params
   useEffect(() => {
@@ -153,21 +164,76 @@ const ProductListScreen: React.FC = () => {
   // Add to cart function
   const addToCart = async (product: Product) => {
     if (!isAuthenticated) {
-      Alert.alert('Đăng nhập cần thiết', 'Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng', [
-        { text: 'Hủy', style: 'cancel' },
-        { text: 'Đăng nhập', onPress: () => router.push('/(auth)/sign-in') }
-      ]);
+      Alert.alert('Thông báo', 'Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng');
+      router.push('/(auth)/sign-in');
+      return;
+    }
+
+    // Kiểm tra trạng thái sản phẩm
+    if (product.status === 'inactive') {
+      Alert.alert('Thông báo', 'Sản phẩm này hiện đang tạm ngưng bán');
+      return;
+    }
+
+    // Kiểm tra số lượng tồn kho
+    const productStock = product.quantity || 0;
+    if (productStock <= 0) {
+      Alert.alert('Thông báo', 'Sản phẩm này đã hết hàng');
       return;
     }
 
     try {
+      const token = useAuthStore.getState().token;
+      if (!token) {
+        Alert.alert('Thông báo', 'Vui lòng đăng nhập để thêm vào giỏ hàng');
+        return;
+      }
 
-
-      await cartStore.addToCart(token!, product._id, 1);
-      Alert.alert('Thành công', 'Đã thêm sản phẩm vào giỏ hàng!');
-    } catch (error) {
-      console.error('Lỗi khi thêm vào giỏ hàng:', error);
-      Alert.alert('Lỗi', 'Không thể thêm sản phẩm vào giỏ hàng. Vui lòng thử lại.');
+      const result = await cartStore.addToCart(token, product._id, 1);
+      
+      // Xử lý kết quả từ API
+      if (result.success) {
+        // Kiểm tra nếu là số lượng lớn và chưa xác nhận
+        if (result.isLargeQuantity && !confirmedLargeQuantity.has(product._id)) {
+          Alert.alert(
+            'Xác nhận mua hàng',
+            'Bạn đang mua quá nhiều sản phẩm. Bạn có chắc chắn muốn mua không?',
+            [
+              { text: 'Hủy', style: 'cancel' },
+              { text: 'Mua', onPress: () => {
+                // Đánh dấu đã xác nhận cho sản phẩm này
+                setConfirmedLargeQuantity(prev => new Set(prev).add(product._id));
+                Alert.alert('Thành công', 'Đã thêm sản phẩm vào giỏ hàng');
+              }}
+            ]
+          );
+        } else {
+          Alert.alert('Thành công', 'Đã thêm sản phẩm vào giỏ hàng');
+        }
+      } else if (result.shouldAdjust) {
+        // Hiển thị thông báo tồn kho và tự động điều chỉnh
+        Alert.alert(
+          'Thông báo tồn kho',
+          result.message,
+          [
+            {
+              text: 'OK',
+              onPress: async () => {
+                try {
+                  // Tự động điều chỉnh về số lượng tối đa
+                  await cartStore.addToCart(token, product._id, result.availableQuantity!);
+                  // Không hiển thị thông báo khi đã đạt tối đa
+                } catch (error: any) {
+                  Alert.alert('Thông báo', 'Không thể thêm vào giỏ hàng');
+                }
+              }
+            }
+          ]
+        );
+      }
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Không thể thêm vào giỏ hàng';
+      Alert.alert('Thông báo', errorMessage);
     }
   };
 
@@ -297,6 +363,11 @@ const ProductListScreen: React.FC = () => {
       ? numericPrice.toLocaleString('vi-VN') + ' ₫'
       : '';
 
+    // Kiểm tra trạng thái sản phẩm
+    const isOutOfStock = (item.quantity || 0) <= 0;
+    const isSuspended = item.status === 'inactive';
+    const isActive = item.status === 'active';
+
     return (
       <TouchableOpacity
         style={styles.productItem}
@@ -315,6 +386,16 @@ const ProductListScreen: React.FC = () => {
         // Image loaded successfully
       }}
           />
+          {isOutOfStock && (
+            <View style={styles.outOfStockOverlay}>
+              <Text style={styles.outOfStockText}>Hết hàng</Text>
+            </View>
+          )}
+          {isSuspended && (
+            <View style={styles.suspendedOverlay}>
+              <Text style={styles.suspendedText}>Tạm ngưng</Text>
+            </View>
+          )}
         </View>
         <View style={styles.productInfo}>
           <Text style={styles.productName} numberOfLines={2}>{item.title}</Text>
@@ -322,9 +403,18 @@ const ProductListScreen: React.FC = () => {
             <Text style={styles.productPrice}>{displayPrice}</Text>
             <Text style={styles.originalPrice}>{displayOriginalPrice}</Text>
           </View>
-          <TouchableOpacity style={styles.addToCartButton} onPress={() => addToCart(item)}>
+          <TouchableOpacity 
+            style={[
+              styles.addToCartButton, 
+              (isOutOfStock || isSuspended) && styles.addToCartButtonDisabled
+            ]} 
+            onPress={() => addToCart(item)}
+            disabled={isOutOfStock || isSuspended}
+          >
             <Ionicons name="add" size={16} color="#fff" style={styles.addIcon} />
-            <Text style={styles.addToCartText}>Thêm vào giỏ hàng</Text>
+            <Text style={styles.addToCartText}>
+              {isOutOfStock ? 'Hết hàng' : isSuspended ? 'Tạm ngưng' : 'Thêm vào giỏ hàng'}
+            </Text>
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -480,11 +570,15 @@ const ProductListScreen: React.FC = () => {
           <FlatList
             data={displayProducts}
             renderItem={renderProduct}
-            keyExtractor={item => item.id}
+            keyExtractor={item => item._id || item.id}
             numColumns={2}
             scrollEnabled={false}
             contentContainerStyle={styles.productGrid}
             columnWrapperStyle={styles.productRow}
+            initialNumToRender={10}
+            maxToRenderPerBatch={10}
+            windowSize={7}
+            removeClippedSubviews
           />
         ) : (
           <View style={styles.emptyContainer}>
@@ -706,6 +800,44 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '600',
+  },
+  addToCartButtonDisabled: {
+    backgroundColor: '#ccc',
+    opacity: 0.7,
+  },
+  outOfStockOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  outOfStockText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#f00',
+  },
+  suspendedOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  suspendedText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#ff9800',
   },
 
   footer: {

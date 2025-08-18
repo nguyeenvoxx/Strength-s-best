@@ -52,12 +52,12 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
 
   const handleSubmit = async () => {
     if (rating === 0) {
-      Alert.alert('Lỗi', 'Vui lòng chọn số sao đánh giá');
+      Alert.alert('Thông báo', 'Vui lòng chọn số sao đánh giá');
       return;
     }
 
     if (!token) {
-      Alert.alert('Lỗi', 'Vui lòng đăng nhập để đánh giá');
+      Alert.alert('Thông báo', 'Vui lòng đăng nhập để đánh giá');
       return;
     }
 
@@ -99,7 +99,16 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
       onReviewSubmitted?.();
       
     } catch (error: any) {
-      Alert.alert('Lỗi', error.message || 'Không thể gửi đánh giá');
+      console.error('Error submitting review:', error);
+      
+      // Nếu lỗi là "đã đánh giá rồi", tự động cập nhật state
+      if (error.message && error.message.includes('đã đánh giá')) {
+        Alert.alert('Thông báo', 'Bạn đã đánh giá sản phẩm này rồi');
+        // Gọi callback để cập nhật state
+        onReviewSubmitted?.();
+      } else {
+        Alert.alert('Thông báo', error.message || 'Không thể gửi đánh giá');
+      }
     } finally {
       setSubmitting(false);
     }

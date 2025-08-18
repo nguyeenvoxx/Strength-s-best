@@ -7,6 +7,8 @@ interface UseDataSyncOptions {
   refreshInterval?: number; // milliseconds
   enableBackgroundSync?: boolean;
   cacheTime?: number; // milliseconds
+  revalidateOnFocus?: boolean; // bỏ qua cache khi app active
+  staleWhileRevalidate?: boolean; // trả cache ngay và revalidate nền
 }
 
 interface UseDataSyncReturn<T> {
@@ -25,7 +27,9 @@ export function useDataSync<T>(
     autoRefresh = true,
     refreshInterval = 30000, // 30 seconds
     enableBackgroundSync = true,
-    cacheTime = 60000 // 1 minute
+    cacheTime = 60000, // 1 minute
+    revalidateOnFocus = true,
+    staleWhileRevalidate = true
   } = options;
 
   const { token } = useAuthStore();
@@ -34,7 +38,7 @@ export function useDataSync<T>(
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastFetchRef = useRef<number>(0);
   const cacheRef = useRef<{ data: T; timestamp: number } | null>(null);
   const isLoadingRef = useRef<boolean>(false);
@@ -55,6 +59,22 @@ export function useDataSync<T>(
     if (!forceRefresh && cacheRef.current && cacheAge < cacheTime) {
       setData(cacheRef.current.data);
       setLastUpdated(new Date(cacheRef.current.timestamp));
+      // Revalidate in background if enabled
+      if (staleWhileRevalidate) {
+        (async () => {
+          try {
+            isLoadingRef.current = true;
+            const result = await fetchFunctionRef.current(token);
+            setData(result);
+            setLastUpdated(new Date());
+            cacheRef.current = { data: result, timestamp: Date.now() };
+          } catch (err) {
+            // ignore background revalidate errors
+          } finally {
+            isLoadingRef.current = false;
+          }
+        })();
+      }
       return;
     }
 
@@ -112,12 +132,15 @@ export function useDataSync<T>(
 
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
       if (nextAppState === 'active') {
-        const now = Date.now();
-        const timeSinceLastFetch = now - lastFetchRef.current;
-        
-        // Refresh if more than 1 minute has passed
-        if (timeSinceLastFetch > 60000) {
-          fetchData();
+        if (revalidateOnFocus) {
+          // Force refresh to đảm bảo dữ liệu mới nhất
+          fetchData(true);
+        } else {
+          const now = Date.now();
+          const timeSinceLastFetch = now - lastFetchRef.current;
+          if (timeSinceLastFetch > 60000) {
+            fetchData();
+          }
         }
       }
     };

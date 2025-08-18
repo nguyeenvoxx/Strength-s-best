@@ -3,10 +3,13 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Image, Saf
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
+import { useCartStore } from '../store/useCartStore';
+import { useFavoriteStore } from '../store/useFavoriteStore';
 import { getPlatformContainerStyle } from '../utils/platformUtils';
 import { useTheme } from '../store/ThemeContext';
 import { LightColors, DarkColors } from '../constants/Colors';
 import { getUserAddresses } from '../services/addressApi';
+import { getUserAvatarUrl } from '../utils/userUtils';
 
 interface Address {
   id: string;
@@ -19,10 +22,18 @@ interface Address {
 const ProfileScreen: React.FC = () => {
   const router = useRouter();
   const { user, logout, token } = useAuthStore();
+  const { items } = useCartStore();
+  const { favorites } = useFavoriteStore();
   const [addresses, setAddresses] = useState<any[]>([]);
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === 'dark';
   const colors = isDark ? DarkColors : LightColors;
+  
+  // Tính số lượng sản phẩm khác nhau trong giỏ hàng
+  const totalCartItems = items.length;
+  
+  // Tính số lượng sản phẩm yêu thích
+  const totalFavorites = favorites.length;
 
   React.useEffect(() => {
     const loadAddresses = async () => {
@@ -81,9 +92,9 @@ const ProfileScreen: React.FC = () => {
       {/* User Info */}
       <View style={[styles.userSection, { backgroundColor: colors.card }]}>
         <View style={styles.avatarContainer}>
-          {user?.avatarUrl ? (
+          {getUserAvatarUrl(user?.avatarUrl) ? (
             <Image
-              source={{ uri: user.avatarUrl }}
+              source={{ uri: getUserAvatarUrl(user?.avatarUrl)! }}
               style={{ width: 80, height: 80, borderRadius: 40 }}
             />
           ) : (
@@ -192,7 +203,42 @@ const ProfileScreen: React.FC = () => {
               <Ionicons name="gift-outline" size={24} color={colors.accent} />
               <Text style={[styles.menuItemText, { color: colors.text }]}>Quà tặng</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={isDark ? '#fff' : '#ccc'} />
+            <View style={styles.menuItemRight}>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>0</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={isDark ? '#fff' : '#ccc'} />
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.replace('/cart')}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="cart-outline" size={24} color={colors.accent} />
+              <Text style={[styles.menuItemText, { color: colors.text }]}>Giỏ hàng</Text>
+            </View>
+            <View style={styles.menuItemRight}>
+              {totalCartItems > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{totalCartItems > 99 ? '99+' : totalCartItems}</Text>
+                </View>
+              )}
+              <Ionicons name="chevron-forward" size={20} color={isDark ? '#fff' : '#ccc'} />
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.replace('/favorite')}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="heart-outline" size={24} color={colors.accent} />
+              <Text style={[styles.menuItemText, { color: colors.text }]}>Sản phẩm yêu thích</Text>
+            </View>
+            <View style={styles.menuItemRight}>
+              {totalFavorites > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{totalFavorites > 99 ? '99+' : totalFavorites}</Text>
+                </View>
+              )}
+              <Ionicons name="chevron-forward" size={20} color={isDark ? '#fff' : '#ccc'} />
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.menuItem} onPress={() => router.replace('/notifications')}>
@@ -339,6 +385,21 @@ const styles = StyleSheet.create({
     color: '#469B43',
     marginRight: 8,
     fontWeight: '500',
+  },
+  badge: {
+    backgroundColor: '#FF4444',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    marginRight: 8,
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   logoutContainer: {
     padding: 16,

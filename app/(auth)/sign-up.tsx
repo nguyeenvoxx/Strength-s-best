@@ -17,8 +17,9 @@ const SignUpScreen: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [address, setAddress] = useState('');
+  const [isProcessingSignup, setIsProcessingSignup] = useState(false);
   
-  const { signup, isLoading, error, clearError } = useAuthStore();
+  const { signup, checkEmailStatus, isLoading, error, clearError } = useAuthStore();
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -26,78 +27,110 @@ const SignUpScreen: React.FC = () => {
   };
 
   const validatePhone = (phone: string) => {
-    // Chấp nhận tất cả các đầu số phổ biến ở Việt Nam
-    // 03, 05, 07, 08, 09 (các nhà mạng chính)
-    const phoneRegex = /^(\+84\s?[35789]\d{8}|0[35789]\d{8})$/;
+    // Chuẩn: +84XXXXXXXXX (9 số) hoặc 0XXXXXXXXX (10 số, các đầu 3/5/7/8/9)
+    const phoneRegex = /^(\+84\d{9}|0[35789]\d{8})$/;
     return phoneRegex.test(phone);
   };
 
-  const formatPhone = (phone: string) => {
-    // Chuẩn hóa số điện thoại về format +84 9xxxxxxxx
-    let formatted = phone.replace(/\s/g, '');
-    if (formatted.startsWith('0')) {
-      formatted = '+84' + formatted.slice(1);
-    } else if (!formatted.startsWith('+84')) {
-      formatted = '+84' + formatted;
+  const formatPhone = (raw: string) => {
+    // Chuẩn hóa về E.164 VN: +84XXXXXXXXX (không khoảng trắng)
+    let p = raw.replace(/\s+/g, '');
+    // Nếu nhập số rời rạc, ép về 0xxxxxxxxx rồi chuẩn hóa
+    if (/^\d+$/.test(p)) {
+      if (!p.startsWith('0')) p = '0' + p;
+      return '+84' + p.slice(1).slice(0, 9);
     }
-    // Thêm khoảng trắng sau +84
-    if (formatted.startsWith('+84') && !formatted.startsWith('+84 ')) {
-      formatted = '+84 ' + formatted.slice(3);
-    }
-    return formatted;
+    return p;
   };
 
-  const handleSignUp = async (data: any) => {
+  const handleSignUp = async (data: any, skipEmailCheck = false) => {
     // Clear previous errors
     clearError();
 
     // Validate inputs
     if (!fullName || !email || !password || !confirmPassword) {
-      Alert.alert('Lỗi', 'Vui lòng điền đầy đủ các trường');
+      Alert.alert('Thông báo', 'Vui lòng điền đầy đủ các trường');
       return;
     }
     
     // Validate email format
     if (!validateEmail(email)) {
-      Alert.alert('Lỗi', 'Vui lòng nhập địa chỉ email hợp lệ (ví dụ: user@example.com)');
+      Alert.alert('Thông báo', 'Vui lòng nhập địa chỉ email hợp lệ (ví dụ: user@example.com)');
       return;
     }
     
     // Validate name (should not be just numbers)
     if (fullName.trim().length < 2) {
-      Alert.alert('Lỗi', 'Họ và tên phải có ít nhất 2 ký tự');
+      Alert.alert('Thông báo', 'Họ và tên phải có ít nhất 2 ký tự');
       return;
     }
     
     if (password !== confirmPassword) {
-      Alert.alert('Lỗi', 'Mật khẩu xác nhận không khớp');
+      Alert.alert('Thông báo', 'Mật khẩu xác nhận không khớp');
       return;
     }
     
     if (password.length < 8) {
-      Alert.alert('Lỗi', 'Mật khẩu phải có ít nhất 8 ký tự');
+      Alert.alert('Thông báo', 'Mật khẩu phải có ít nhất 8 ký tự');
       return;
     }
     
     if (!agree) {
-      Alert.alert('Lỗi', 'Vui lòng đồng ý với điều khoản và chính sách');
+      Alert.alert('Thông báo', 'Vui lòng đồng ý với điều khoản và chính sách');
       return;
     }
 
     if (!phone) {
-      Alert.alert('Lỗi', 'Vui lòng nhập số điện thoại');
+      Alert.alert('Thông báo', 'Vui lòng nhập số điện thoại');
       return;
     }
 
     if (!address) {
-      Alert.alert('Lỗi', 'Vui lòng nhập địa chỉ giao hàng');
+      Alert.alert('Thông báo', 'Vui lòng nhập địa chỉ giao hàng');
       return;
     }
 
     const formattedPhone = formatPhone(phone);
     if (!validatePhone(formattedPhone)) {
-      Alert.alert('Lỗi', 'Số điện thoại không hợp lệ. Vui lòng nhập đúng định dạng');
+      Alert.alert('Thông báo', 'Số điện thoại không hợp lệ. Vui lòng nhập đúng định dạng');
       return;
+    }
+
+    // Kiểm tra trạng thái email trước khi đăng ký (chỉ khi không skip)
+    if (!skipEmailCheck) {
+      try {
+        const emailStatus = await checkEmailStatus(data.email);
+        
+        if (!emailStatus.available) {
+          if (emailStatus.reason === 'already_registered') {
+            Alert.alert('Thông báo', 'Email đã được sử dụng, vui lòng chọn email khác');
+            return;
+          } else if (emailStatus.reason === 'pending_verification') {
+            // Thông báo cho user biết rằng tài khoản cũ sẽ bị xóa
+            Alert.alert(
+              'Thông báo', 
+              'Email đã được đăng ký nhưng chưa xác thực. Tài khoản cũ sẽ bị xóa và tạo tài khoản mới.',
+              [
+                {
+                  text: 'Hủy',
+                  style: 'cancel'
+                },
+                {
+                  text: 'Tiếp tục',
+                  onPress: () => {
+                    // Tiếp tục đăng ký (user cũ sẽ bị xóa)
+                    performSignup(formattedPhone);
+                  }
+                }
+              ]
+            );
+            return;
+          }
+        }
+      } catch (error: any) {
+        console.error('❌ Lỗi kiểm tra email:', error);
+        // Nếu không kiểm tra được, vẫn tiếp tục đăng ký
+      }
     }
 
     try {
@@ -108,11 +141,11 @@ const SignUpScreen: React.FC = () => {
         address: data.address
       });
 
-      await signup(data);
+      const response = await signup(data);
       
       console.log('✅ Đăng ký thành công, chuyển đến email verification');
       
-      // Sau khi đăng ký thành công, chuyển đến trang xác thực email
+      // Chuyển đến trang xác thực email
       router.replace({ 
         pathname: './email-verification', 
         params: { email: data.email } 
@@ -125,7 +158,7 @@ const SignUpScreen: React.FC = () => {
   };
 
   // Thay vì gọi handleSignUp trực tiếp, tạo hàm mới để truyền phone đã chuẩn hóa
-  const handleSignUpWithPhone = (phoneToSave: string) => {
+  const handleSignUpWithPhone = (phoneToSave: string, skipEmailCheck = false) => {
     handleSignUp({ 
       name: fullName.trim(), 
       email: email.trim().toLowerCase(), 
@@ -139,7 +172,46 @@ const SignUpScreen: React.FC = () => {
         district: '',
         ward: ''
       }
-    });
+    }, skipEmailCheck);
+  };
+
+  // Hàm thực hiện đăng ký mà không cần kiểm tra email (cho trường hợp xóa user cũ)
+  const performSignup = async (phoneToSave: string) => {
+    try {
+      console.log('🔍 Đang đăng ký lại với dữ liệu:', { 
+        name: fullName.trim(), 
+        email: email.trim().toLowerCase(), 
+        phone: phoneToSave,
+        address: address.trim()
+      });
+
+      const response = await signup({ 
+        name: fullName.trim(), 
+        email: email.trim().toLowerCase(), 
+        password,
+        phoneNumber: phoneToSave,
+        addressDetails: {
+          fullName: fullName.trim(),
+          phone: phoneToSave,
+          address: address.trim(),
+          province: '',
+          district: '',
+          ward: ''
+        }
+      });
+      
+      console.log('✅ Đăng ký lại thành công, chuyển đến email verification');
+      
+      // Chuyển đến trang xác thực email
+      router.replace({ 
+        pathname: './email-verification', 
+        params: { email: email.trim().toLowerCase() } 
+      });
+    } catch (error: any) {
+      console.error('❌ Lỗi đăng ký lại:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi đăng ký';
+      Alert.alert('Đăng ký thất bại', errorMessage);
+    }
   };
 
   return (
@@ -214,40 +286,15 @@ const SignUpScreen: React.FC = () => {
           placeholder="Số điện thoại (03, 05, 07, 08, 09xxxxxxxx)"
           value={phone}
           onChangeText={text => {
-            // Cho phép nhập số và dấu +
-            let formatted = text.replace(/[^0-9+]/g, '');
-            
-            // Nếu bắt đầu bằng 0, kiểm tra đầu số hợp lệ (03, 05, 07, 08, 09)
-            if (formatted.startsWith('0')) {
-              const secondDigit = formatted.charAt(1);
-              if (['3', '5', '7', '8', '9'].includes(secondDigit)) {
-                if (formatted.length > 10) formatted = formatted.slice(0, 10);
-              } else {
-                // Nếu đầu số không hợp lệ, chỉ giữ lại số 0
-                formatted = '0';
-              }
-            } 
-            // Nếu bắt đầu bằng +84, kiểm tra đầu số hợp lệ
-            else if (formatted.startsWith('+84')) {
-              const fifthDigit = formatted.charAt(4);
-              if (['3', '5', '7', '8', '9'].includes(fifthDigit)) {
-                if (formatted.length > 13) formatted = formatted.slice(0, 13);
-              } else {
-                // Nếu đầu số không hợp lệ, chỉ giữ lại +84
-                formatted = '+84';
-              }
+            // Chỉ cho phép nhập số và giới hạn độ dài
+            const numericText = text.replace(/[^0-9]/g, '');
+            if (numericText.length <= 11) {
+              setPhone(numericText);
+              setPhoneError('');
             }
-            // Nếu không có prefix, thêm 0
-            else if (formatted.length > 0 && !formatted.startsWith('0') && !formatted.startsWith('+')) {
-              formatted = '0' + formatted;
-              if (formatted.length > 10) formatted = formatted.slice(0, 10);
-            }
-            
-            setPhone(formatted);
-            setPhoneError('');
           }}
           keyboardType="phone-pad"
-          maxLength={13}
+          maxLength={11}
         />
         {phoneError ? <Text style={{color: 'red', marginBottom: 8}}>{phoneError}</Text> : null}
       </View>
@@ -278,18 +325,8 @@ const SignUpScreen: React.FC = () => {
       </View>
       <TouchableOpacity 
         style={[styles.signUpButton, isLoading && styles.buttonDisabled]} 
-        onPress={() => {
-          // Chuẩn hóa số điện thoại trước khi đăng ký
-          let phoneToSave = phone.trim();
-          if (phoneToSave.startsWith('0') && phoneToSave.length === 10) {
-            phoneToSave = '+84' + phoneToSave.slice(1);
-          } else if (!phoneToSave.startsWith('+84')) {
-            phoneToSave = '+84' + phoneToSave;
-          }
-          // Thêm khoảng trắng sau +84
-          if (phoneToSave.startsWith('+84') && !phoneToSave.startsWith('+84 ')) {
-            phoneToSave = '+84 ' + phoneToSave.slice(3);
-          }
+         onPress={() => {
+          let phoneToSave = formatPhone(phone.trim());
           handleSignUpWithPhone(phoneToSave);
         }}
         disabled={isLoading}

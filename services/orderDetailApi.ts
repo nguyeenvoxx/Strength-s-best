@@ -21,10 +21,10 @@ export interface OrderDetail {
   voucherDiscount?: number;
   items: OrderDetailItem[];
   shippingAddress: {
-    name: string;
+    name?: string;
     phone: string;
     address: string;
-    fullName: string;
+    fullName?: string;
   };
   payment?: {
     _id: string;

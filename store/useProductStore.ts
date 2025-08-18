@@ -64,7 +64,8 @@ export const useProductStore = create<ProductState>((set, get) => ({
     try {
       set({ isLoading: true, error: null });
       
-      const response = await getProducts(params);
+      const withDefaults: any = { limit: 20, page: 1, ...params };
+      const response = await getProducts(withDefaults);
       
       if (response.status === 'success' || response.status === 'thành công') {
         let transformedProducts = response.data.products.map(transformApiProductToProduct);
@@ -76,9 +77,9 @@ export const useProductStore = create<ProductState>((set, get) => ({
         }
         
         // Cập nhật thông tin phân trang
-        const currentPage = params.page || 1;
+        const currentPage = withDefaults.page || 1;
         const totalProducts = response.results || transformedProducts.length;
-        const limit = params.limit || 10;
+        const limit = withDefaults.limit || 10;
         const totalPages = Math.ceil(totalProducts / limit);
         
         set({

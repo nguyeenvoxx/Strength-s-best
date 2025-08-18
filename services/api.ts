@@ -7,6 +7,7 @@ const api = axios.create({
   timeout: API_CONFIG.TIMEOUT,
   headers: {
     'Content-Type': 'application/json',
+    'Accept-Encoding': 'gzip, deflate, br'
   },
 });
 
@@ -259,6 +260,24 @@ export const createReview = async (data: {
 
 export const deleteReview = async (id: string) => {
   const response = await api.delete(`/product-reviews/${id}`);
+  return response.data;
+};
+
+// Like đánh giá
+export const likeReview = async (reviewId: string) => {
+  const response = await api.post(`/product-reviews/${reviewId}/like`);
+  return response.data;
+};
+
+// Unlike đánh giá
+export const unlikeReview = async (reviewId: string) => {
+  const response = await api.delete(`/product-reviews/${reviewId}/like`);
+  return response.data;
+};
+
+// Kiểm tra trạng thái like
+export const checkLikeStatus = async (reviewId: string) => {
+  const response = await api.get(`/product-reviews/${reviewId}/like-status`);
   return response.data;
 };
 

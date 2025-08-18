@@ -37,8 +37,8 @@ const EditAddressScreen: React.FC = () => {
         });
         setAddressId(addressData._id || '');
       } catch (error) {
-        console.error('Lỗi khi parse địa chỉ:', error);
-        Alert.alert('Lỗi', 'Không thể tải thông tin địa chỉ');
+        console.error('Error loading address:', error);
+        Alert.alert('Thông báo', 'Không thể tải thông tin địa chỉ');
       }
     }
   }, [address]);
@@ -49,28 +49,33 @@ const EditAddressScreen: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!token) {
-      Alert.alert('Lỗi', 'Vui lòng đăng nhập lại');
+      Alert.alert('Thông báo', 'Vui lòng đăng nhập lại');
       return;
     }
 
     if (!addressId) {
-      Alert.alert('Lỗi', 'Không tìm thấy địa chỉ cần cập nhật');
+      Alert.alert('Thông báo', 'Không tìm thấy địa chỉ cần cập nhật');
       return;
     }
 
-    // Validation
     if (!formData.name.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập tên người nhận');
+      Alert.alert('Thông báo', 'Vui lòng nhập tên người nhận');
       return;
     }
 
     if (!formData.phone.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập số điện thoại');
+      Alert.alert('Thông báo', 'Vui lòng nhập số điện thoại');
+      return;
+    }
+    // Validate phone number
+    const normalizedPhone = formData.phone.replace(/\s+/g, '');
+    if (!/^0\d{9,10}$/.test(normalizedPhone)) {
+      Alert.alert('Thông báo', 'Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại 10-11 chữ số bắt đầu bằng 0');
       return;
     }
 
     if (!formData.address.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập địa chỉ');
+      Alert.alert('Thông báo', 'Vui lòng nhập địa chỉ');
       return;
     }
 
@@ -79,7 +84,7 @@ const EditAddressScreen: React.FC = () => {
       
       const addressData = {
         name: formData.name.trim(),
-        phone: formData.phone.trim(),
+        phone: normalizedPhone,
         address: formData.address.trim(),
         province: '', // Bỏ trống vì không còn chọn
         district: '', // Bỏ trống vì không còn chọn
@@ -88,13 +93,13 @@ const EditAddressScreen: React.FC = () => {
       };
 
       await updateAddress(token, addressId, addressData);
-      
+      // Sau khi cập nhật, điều hướng với query để AddressSelector refresh ngay
       Alert.alert('Thành công', 'Đã cập nhật địa chỉ', [
         { text: 'OK', onPress: () => router.replace('/select-address?refresh=true') }
       ]);
     } catch (error: any) {
       console.error('Error updating address:', error);
-      Alert.alert('Lỗi', error.message || 'Không thể cập nhật địa chỉ. Vui lòng thử lại.');
+      Alert.alert('Thông báo', error.message || 'Không thể cập nhật địa chỉ. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -139,10 +144,17 @@ const EditAddressScreen: React.FC = () => {
                 borderColor: colors.border 
               }]}
               value={formData.phone}
-              onChangeText={(value) => handleInputChange('phone', value)}
+              onChangeText={(value) => {
+                // Chỉ cho phép nhập số và giới hạn độ dài
+                const numericText = value.replace(/[^0-9]/g, '');
+                if (numericText.length <= 11) {
+                  handleInputChange('phone', numericText);
+                }
+              }}
               placeholder="Nhập số điện thoại"
               placeholderTextColor={colors.textSecondary}
               keyboardType="phone-pad"
+              maxLength={11}
             />
           </View>
 

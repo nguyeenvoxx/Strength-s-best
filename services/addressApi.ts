@@ -7,6 +7,7 @@ export interface Address {
   _id?: string;
   userId?: string;
   name: string;
+  fullName?: string;
   phone: string;
   address: string;
   province?: string; // Có thể rỗng

@@ -24,7 +24,7 @@ import { useProductStore } from '../store/useProductStore';
 import { getPlatformContainerStyle } from '../utils/platformUtils';
 import { useTheme } from '../store/ThemeContext';
 import { LightColors, DarkColors } from '../constants/Colors';
-import { getProductImages } from '../utils/productUtils';
+import { getProductImages, isValidImageUrl } from '../utils/productUtils';
 
 const { width } = Dimensions.get('window');
 const numColumns = 2;
@@ -405,9 +405,7 @@ const SearchScreen: React.FC = () => {
                 onPress={() => onProductPress(item._id)}
               >
                 <Image 
-                  source={{ uri: getProductImages(item)[0] !== 'https://via.placeholder.com/300x300?text=No+Image' 
-                    ? getProductImages(item)[0] 
-                    : 'https://via.placeholder.com/150x150?text=No+Image' }}
+                  source={{ uri: ((): string => { const u = getProductImages(item)[0]; return isValidImageUrl(u) ? u : 'https://via.placeholder.com/150x150?text=No+Image'; })() }}
                   style={styles.productImage}
                   resizeMode="cover"
                   defaultSource={require('../assets/images_sp/dau_ca_omega.png')}

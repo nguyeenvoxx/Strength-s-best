@@ -18,6 +18,7 @@ import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useNotificationStore } from '../../store/useNotificationStore';
 import { useUserStatsStore } from '../../store/useUserStatsStore';
+import { getUserAvatarUrl } from '../../utils/userUtils';
 
 interface User {
   _id: string;
@@ -123,8 +124,8 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
 
         {/* User Info */}
         <TouchableOpacity style={styles.userContainer} onPress={onUserPress}>
-          {isAuthenticated && user?.avatarUrl ? (
-            <Image source={{ uri: user.avatarUrl }} style={styles.avatar} />
+          {isAuthenticated && getUserAvatarUrl(user?.avatarUrl) ? (
+            <Image source={{ uri: getUserAvatarUrl(user?.avatarUrl)! }} style={styles.avatar} />
           ) : (
             <View style={[styles.avatarPlaceholder, { backgroundColor: isDark ? colors.menuBorder : '#F0F0F0' }] }>
               <Ionicons name="person" size={20} color={isDark ? '#fff' : '#666'} />
@@ -166,8 +167,8 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
                                   <View style={styles.menuItems}>
                     {/* User Info Section */}
                     <View style={[styles.userSection, { borderBottomColor: colors.menuBorder }]}>
-                      {isAuthenticated && user?.avatarUrl ? (
-                        <Image source={{ uri: user.avatarUrl }} style={styles.modalAvatar} />
+                      {isAuthenticated && getUserAvatarUrl(user?.avatarUrl) ? (
+                        <Image source={{ uri: getUserAvatarUrl(user?.avatarUrl)! }} style={styles.modalAvatar} />
                       ) : (
                         <View style={[styles.modalAvatarPlaceholder, { backgroundColor: isDark ? colors.menuBorder : '#F0F0F0' }] }>
                           <Ionicons name="person" size={24} color={isDark ? '#fff' : '#666'} />

@@ -47,12 +47,12 @@ const EmailVerificationScreen: React.FC = () => {
     const verificationCode = code.join('');
     
     if (verificationCode.length !== 4) {
-      Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ 4 chữ số');
+      Alert.alert('Thông báo', 'Vui lòng nhập đầy đủ 4 chữ số');
       return;
     }
 
     if (!email) {
-      Alert.alert('Lỗi', 'Không tìm thấy thông tin email');
+      Alert.alert('Thông báo', 'Không tìm thấy thông tin email');
       return;
     }
 
@@ -84,7 +84,7 @@ const EmailVerificationScreen: React.FC = () => {
 
   const handleResendCode = async () => {
     if (!email) {
-      Alert.alert('Lỗi', 'Không tìm thấy thông tin email');
+      Alert.alert('Thông báo', 'Không tìm thấy thông tin email');
       return;
     }
 
@@ -113,7 +113,7 @@ const EmailVerificationScreen: React.FC = () => {
     <View style={[styles.container, getPlatformContainerStyle()]}>
       <Text style={styles.title}>Xác thực email</Text>
       <Text style={styles.subtitle}>
-        Vui lòng nhập mã OTP 4 chữ số được gửi đến {email || 'email của bạn'}
+         Vui lòng nhập mã OTP 4 chữ số được gửi đến {typeof email === 'string' ? email.replace(/\s+/g,'') : 'email của bạn'}
       </Text>
       
       <View style={styles.codeContainer}>

@@ -71,7 +71,7 @@ const VerifyCardScreen: React.FC = () => {
     const verificationCode = code.join('');
     
     if (verificationCode.length !== 7) {
-      Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ mã xác minh 7 ký tự');
+      Alert.alert('Thông báo', 'Vui lòng nhập đầy đủ mã xác minh 7 ký tự');
       return;
     }
 
@@ -112,7 +112,7 @@ const VerifyCardScreen: React.FC = () => {
 
     } catch (error: any) {
       console.error('Error verifying card:', error);
-      Alert.alert('Lỗi', error.message || 'Không thể xác minh thẻ. Vui lòng thử lại.');
+      Alert.alert('Thông báo', error.message || 'Không thể xác minh thẻ. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -144,7 +144,7 @@ const VerifyCardScreen: React.FC = () => {
 
     } catch (error: any) {
       console.error('Error resending code:', error);
-      Alert.alert('Lỗi', error.message || 'Không thể gửi lại mã. Vui lòng thử lại.');
+      Alert.alert('Thông báo', error.message || 'Không thể gửi lại mã. Vui lòng thử lại.');
     } finally {
       setResendLoading(false);
     }

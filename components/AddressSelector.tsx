@@ -5,7 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Modal,
-  ScrollView,
+  FlatList,
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -77,8 +77,22 @@ const AddressSelector: React.FC<AddressSelectorProps> = ({ selectedAddress, onAd
     }
   }, [addresses, selectedAddress, onAddressSelect]);
 
+  const [tempSelectedAddress, setTempSelectedAddress] = useState<Address | null>(null);
+
   const handleAddressSelect = (address: Address) => {
-    onAddressSelect(address);
+    setTempSelectedAddress(address);
+  };
+
+  const handleConfirmSelection = () => {
+    if (tempSelectedAddress) {
+      onAddressSelect(tempSelectedAddress);
+    }
+    setShowModal(false);
+    setTempSelectedAddress(null);
+  };
+
+  const handleCancelSelection = () => {
+    setTempSelectedAddress(selectedAddress);
     setShowModal(false);
   };
 
@@ -88,9 +102,12 @@ const AddressSelector: React.FC<AddressSelectorProps> = ({ selectedAddress, onAd
   };
 
   const handleOpenModal = async () => {
+    console.log('🔍 Opening address modal...');
+    setTempSelectedAddress(selectedAddress);
     setShowModal(true);
     // Refresh addresses when modal opens
     await refreshAddresses();
+    console.log('🔍 Addresses after refresh:', addresses?.length || 0);
   };
 
   const handleEditAddress = (address: Address) => {
@@ -118,7 +135,7 @@ const AddressSelector: React.FC<AddressSelectorProps> = ({ selectedAddress, onAd
         <View style={styles.selectedAddress}>
           <View style={styles.addressInfo}>
             <Text style={[styles.name, { color: colors.text }]}>
-              {selectedAddress.name}
+              {selectedAddress.name || (selectedAddress as any)?.fullName || 'Người nhận'}
             </Text>
             <Text style={[styles.phone, { color: colors.textSecondary }]}>
               {selectedAddress.phone}
@@ -128,6 +145,15 @@ const AddressSelector: React.FC<AddressSelectorProps> = ({ selectedAddress, onAd
               {selectedAddress.ward && `, ${selectedAddress.ward}`}
               {selectedAddress.district && `, ${selectedAddress.district}`}
               {selectedAddress.province && `, ${selectedAddress.province}`}
+              {(selectedAddress as any).city && `, ${(selectedAddress as any).city}`}
+            </Text>
+            <Text style={[styles.fullAddress, { color: colors.textSecondary }]}>
+              {selectedAddress.address}
+              {selectedAddress.ward && `, ${selectedAddress.ward}`}
+              {selectedAddress.district && `, ${selectedAddress.district}`}
+              {selectedAddress.province && `, ${selectedAddress.province}`}
+              {(selectedAddress as any).city && `, ${(selectedAddress as any).city}`}
+              {', Việt Nam'}
             </Text>
           </View>
         </View>
@@ -161,75 +187,102 @@ const AddressSelector: React.FC<AddressSelectorProps> = ({ selectedAddress, onAd
               </TouchableOpacity>
             </View>
             
-            <ScrollView style={styles.addressList}>
-              {addressesLoading ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color={colors.accent} />
-                  <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-                    Đang tải địa chỉ...
-                  </Text>
-                </View>
-              ) : addresses && addresses.length === 0 ? (
-                <View style={styles.emptyAddresses}>
-                  <Ionicons name="location-outline" size={48} color={colors.textSecondary} />
-                  <Text style={[styles.emptyAddressesText, { color: colors.textSecondary }]}>
-                    Chưa có địa chỉ nào
-                  </Text>
-                  <Text style={[styles.emptyAddressesSubtext, { color: colors.textSecondary }]}>
-                    Hãy thêm địa chỉ để tiếp tục
-                  </Text>
-                </View>
-                             ) : addresses ? (
-                 addresses.map((address) => (
-                  <View key={address._id} style={[styles.addressItem, { borderBottomColor: colors.border }]}>
-                    <TouchableOpacity
-                      style={styles.addressSelectableArea}
-                      onPress={() => handleAddressSelect(address)}
-                    >
-                      <View style={styles.addressItemInfo}>
-                        <View style={styles.addressItemHeader}>
-                          <Text style={[styles.addressItemName, { color: colors.text }]}>
-                            {address.name}
-                          </Text>
-                          {address.isDefault && (
-                            <View style={[styles.defaultBadge, { backgroundColor: colors.accent }]}>
-                              <Text style={styles.defaultBadgeText}>Mặc định</Text>
-                            </View>
-                          )}
-                        </View>
-                        <Text style={[styles.addressItemPhone, { color: colors.textSecondary }]}>
-                          {address.phone}
+                        {addressesLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={colors.accent} />
+                <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+                  Đang tải địa chỉ...
+                </Text>
+              </View>
+            ) : !addresses || addresses.length === 0 ? (
+              <View style={styles.emptyAddresses}>
+                <Ionicons name="location-outline" size={48} color={colors.textSecondary} />
+                <Text style={[styles.emptyAddressesText, { color: colors.textSecondary }]}>
+                  Chưa có địa chỉ nào
+                </Text>
+                <Text style={[styles.emptyAddressesSubtext, { color: colors.textSecondary }]}>
+                  Hãy thêm địa chỉ để tiếp tục
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                data={addresses}
+                keyExtractor={(item) => item._id || Math.random().toString()}
+                renderItem={({ item: address }) => (
+                  <TouchableOpacity
+                    style={[styles.addressItem, { borderBottomColor: colors.border }]}
+                    onPress={() => handleAddressSelect(address)}
+                  >
+                    <View style={styles.addressInfo}>
+                      <View style={styles.addressItemHeader}>
+                        <Text style={[styles.addressItemName, { color: colors.text }]}>
+                          {address.name || (address as any)?.fullName || 'Người nhận'}
                         </Text>
-                        <Text style={[styles.addressItemAddress, { color: colors.textSecondary }]}>
-                          {address.address}
-                          {address.ward && `, ${address.ward}`}
-                          {address.district && `, ${address.district}`}
-                          {address.province && `, ${address.province}`}
-                        </Text>
-                      </View>
-                      <View style={styles.addressItemActions}>
-                        {selectedAddress?._id === address._id && (
-                          <Ionicons name="checkmark-circle" size={24} color={colors.accent} />
+                        {address.isDefault && (
+                          <View style={[styles.defaultBadge, { backgroundColor: colors.accent }]}>
+                            <Text style={styles.defaultBadgeText}>Mặc định</Text>
+                          </View>
                         )}
-                        <TouchableOpacity
-                          style={styles.editButton}
-                          onPress={() => handleEditAddress(address)}
-                        >
-                          <Ionicons name="create-outline" size={20} color={colors.textSecondary} />
-                        </TouchableOpacity>
                       </View>
-                    </TouchableOpacity>
-                                     </View>
-                 ))
-               ) : null}
-            </ScrollView>
+                      
+                      <Text style={[styles.addressItemPhone, { color: colors.textSecondary }]}>
+                        {address.phone}
+                      </Text>
+                      
+                      <Text style={[styles.addressItemAddress, { color: colors.textSecondary }]}>
+                        {address.address}
+                        {address.ward && `, ${address.ward}`}
+                        {address.district && `, ${address.district}`}
+                        {address.province && `, ${address.province}`}
+                        {(address as any).city && `, ${(address as any).city}`}
+                      </Text>
+                    </View>
+                    
+                    <View style={styles.addressActions}>
+                      {tempSelectedAddress?._id === address._id && (
+                        <View style={[styles.selectedBadge, { backgroundColor: colors.accent }]}>
+                          <Ionicons name="checkmark" size={16} color="#fff" />
+                        </View>
+                      )}
+                      <TouchableOpacity
+                        style={styles.editButton}
+                        onPress={() => handleEditAddress(address)}
+                      >
+                        <Ionicons name="create-outline" size={20} color={colors.textSecondary} />
+                      </TouchableOpacity>
+                    </View>
+                  </TouchableOpacity>
+                )}
+                style={styles.addressList}
+                showsVerticalScrollIndicator={false}
+              />
+            )}
 
-            <TouchableOpacity
-              style={[styles.addNewButton, { backgroundColor: colors.accent }]}
-              onPress={handleAddNewAddress}
-            >
-              <Text style={styles.addNewButtonText}>Thêm địa chỉ mới</Text>
-            </TouchableOpacity>
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={[styles.addNewButton, { backgroundColor: colors.accent }]}
+                onPress={handleAddNewAddress}
+              >
+                <Text style={styles.addNewButtonText}>Thêm địa chỉ mới</Text>
+              </TouchableOpacity>
+              
+              <View style={styles.confirmButtons}>
+                <TouchableOpacity
+                  style={[styles.cancelButton, { borderColor: colors.border }]}
+                  onPress={handleCancelSelection}
+                >
+                  <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>Hủy</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.confirmButton, { backgroundColor: colors.accent }]}
+                  onPress={handleConfirmSelection}
+                  disabled={!tempSelectedAddress}
+                >
+                  <Text style={styles.confirmButtonText}>Xác nhận</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         </View>
       </Modal>
@@ -261,9 +314,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  addressInfo: {
-    flex: 1,
-  },
   name: {
     fontSize: 16,
     fontWeight: '600',
@@ -276,6 +326,12 @@ const styles = StyleSheet.create({
   address: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  fullAddress: {
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 2,
+    fontStyle: 'italic',
   },
   addAddressButton: {
     flexDirection: 'row',
@@ -319,15 +375,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   addressItem: {
-    paddingVertical: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 15,
     borderBottomWidth: 1,
   },
-  addressSelectableArea: {
+  addressInfo: {
+    flex: 1,
+  },
+  addressActions: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
-  addressItemInfo: {
-    flex: 1,
+  selectedBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   addressItemHeader: {
     flexDirection: 'row',
@@ -344,11 +412,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 10,
     fontWeight: '600',
-  },
-  addressItemActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
   },
   editButton: {
     padding: 4,
@@ -387,17 +450,59 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  addressItemFullAddress: {
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 2,
+    fontStyle: 'italic',
+  },
   addNewButton: {
-    margin: 20,
+    backgroundColor: '#469B43',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
     borderRadius: 8,
-    padding: 16,
     alignItems: 'center',
+    marginBottom: 12,
   },
   addNewButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
+  modalFooter: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  confirmButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  confirmButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  confirmButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
 });
 
 export default AddressSelector;

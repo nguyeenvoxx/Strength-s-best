@@ -3,6 +3,11 @@ import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, Alert, Acti
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/useAuthStore';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import { loginWithGoogle } from '../../services/authApi';
+import { useEffect } from 'react';
+WebBrowser.maybeCompleteAuthSession();
 import { getPlatformContainerStyle } from '../../utils/platformUtils';
 
 const SignInScreen: React.FC = () => {
@@ -15,6 +20,32 @@ const SignInScreen: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   
   const { login, isLoading, error, clearError } = useAuthStore();
+  const setUser = useAuthStore((s) => s.setUser);
+  const setToken = useAuthStore((s) => s.setToken);
+
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    
+    expoClientId: '810299168391-q1qfqigv6vpofu48jhh0cuv34p6rg5c9.apps.googleusercontent.com' as any,
+    androidClientId: '810299168391-q1qfqigv6vpofu48jhh0cuv34p6rg5c9.apps.googleusercontent.com' as any,
+    responseType: 'id_token' as any,
+    scopes: ['openid', 'profile', 'email'],
+  } as any);
+
+  useEffect(() => {
+    const run = async () => {
+      if (response?.type === 'success') {
+        const idToken = (response as any)?.authentication?.idToken || (response as any)?.params?.id_token;
+        if (!idToken) return;
+        const res = await loginWithGoogle(idToken);
+        setUser(res.data.user);
+        setToken(res.token);
+        router.replace('/home');
+      }
+    };
+    console.log('Google response:', JSON.stringify(response, null, 2));
+
+    run();
+  }, [response]);
   
   const handleSignIn = async () => {
     // Clear previous errors
@@ -25,13 +56,13 @@ const SignInScreen: React.FC = () => {
     // Validate inputs
     if (!email) {
       setEmailError(true);
-      Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ email');
+      Alert.alert('Thông báo', 'Vui lòng nhập đầy đủ email');
       return;
     }
 
     if (!password) {
       setPassError(true);
-      Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ mật khẩu');
+      Alert.alert('Thông báo', 'Vui lòng nhập đầy đủ mật khẩu');
       return;
     }
 
@@ -41,6 +72,14 @@ const SignInScreen: React.FC = () => {
     } catch (error: any) {
       Alert.alert('Đăng nhập thất bại', error.response?.data?.message || 'Email hoặc mật khẩu không đúng');
     }
+  };
+
+  const handleGoogleSignIn = () => {
+    if (!request) {
+      console.log('Google request not ready');
+      return;
+    }
+    (promptAsync as any)({ useProxy: true, showInRecents: true });
   };
 
   return (
@@ -103,10 +142,10 @@ const SignInScreen: React.FC = () => {
       </TouchableOpacity>
       
       <View style={styles.socialButtons}>
-        <TouchableOpacity style={styles.socialButton}>
+        <TouchableOpacity style={styles.socialButton} onPress={handleGoogleSignIn}>
           <Image source={require('../../assets/images/google-icon.png')} style={styles.socialIcon} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.socialButton}>
+        <TouchableOpacity style={styles.socialButton} disabled>
           <Image source={require('../../assets/images/facebook-icon.png')} style={styles.socialIcon} />
         </TouchableOpacity>
       </View>      

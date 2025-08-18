@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import {
   StyleSheet,
@@ -8,6 +8,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  RefreshControl,
   FlatList,
   SafeAreaView,
   StatusBar,
@@ -19,6 +20,8 @@ import { Product } from '../types/product.type';
 import { useProductStore } from '../store/useProductStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useCategoryStore } from '../store/useCategoryStore';
+import { getNewsList } from '../services/newsApi';
+import { formatNewsDate } from '../utils/newsUtils';
 import { getShortDescription, calculateOriginalPrice, getFullImageUrl, getProductImages } from '../utils/productUtils';
 import { getPlatformContainerStyle } from '../utils/platformUtils';
 import DailyDealItem from '../modules/HomeScreen/DailyDealItem';
@@ -29,6 +32,7 @@ import HeaderSection from '../modules/HomeScreen/HeaderSection';
 import NewsCard from '../modules/HomeScreen/NewsCard';
 import { useTheme } from '../store/ThemeContext';
 import { LightColors, DarkColors } from '../constants/Colors';
+import { useFocusEffect } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 const CAROUSEL_WIDTH = width - 32;
@@ -37,12 +41,14 @@ interface NewsItem {
   image: any;
   title: string;
   date: string;
+  newsId?: string;
 }
 
 const HomeScreen: React.FC = () => {
   const router = useRouter();
   const [currentCarouselIndex, setCurrentCarouselIndex] = useState(0);
-  const [remainingTime, setRemainingTime] = useState('22:55:20');
+  const [remainingTime, setRemainingTime] = useState('00:00:00');
+  const [refreshing, setRefreshing] = useState(false);
   const { products, isLoading: loading, error, fetchProducts, clearError } = useProductStore();
   const { user, isAuthenticated } = useAuthStore();
   const { categories } = useCategoryStore();
@@ -59,15 +65,45 @@ const HomeScreen: React.FC = () => {
     router.replace('./products');
   };
 
+  // Tính toán thời gian còn lại đến nửa đêm
+  const calculateTimeToMidnight = () => {
+    const now = new Date();
+    const midnight = new Date();
+    midnight.setHours(24, 0, 0, 0); // Đặt thời gian đến 00:00:00 ngày hôm sau
+    
+    const diff = midnight.getTime() - now.getTime();
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  // Cập nhật countdown timer mỗi giây
+  useEffect(() => {
+    const updateTimer = () => {
+      setRemainingTime(calculateTimeToMidnight());
+    };
+    
+    // Cập nhật ngay lập tức
+    updateTimer();
+    
+    // Cập nhật mỗi giây
+    const interval = setInterval(updateTimer, 1000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
   // Load products using store - không cần đăng nhập
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
     try {
-      await fetchProducts({ limit: 100 });
+      // Giảm tải ban đầu: chỉ lấy 20 sản phẩm
+      await fetchProducts({ limit: 20 });
     } catch (error: any) {
       console.error('Error fetching products:', error);
       // Store will handle error state, no need to crash the app
     }
-  };
+  }, [fetchProducts]);
 
   const handleRetryLoadProducts = () => {
     clearError();
@@ -121,7 +157,7 @@ const HomeScreen: React.FC = () => {
 
     // Sử dụng utility function để xử lý hình ảnh
     const productImages = getProductImages(product);
-    const imageUrl = productImages.length > 0 ? productImages[0] : null;
+    const imageUrl = productImages.length > 0 ? productImages[0] : undefined;
 
     return {
       id: product._id || `product-${index}`,
@@ -170,6 +206,14 @@ const HomeScreen: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Refetch khi màn hình Home quay lại focus
+  useFocusEffect(
+    React.useCallback(() => {
+      loadProducts();
+      return () => {};
+    }, [loadProducts])
+  );
+
   // Log products changes only when they actually change
   useEffect(() => {
     if (products.length > 0) {
@@ -177,23 +221,40 @@ const HomeScreen: React.FC = () => {
     }
   }, [products]);
 
-  const newsItems: NewsItem[] = [
-    {
-      image: { uri: 'https://cdn2.tuoitre.vn/thumb_w/730/471584752817336320/2025/6/24/ban-sao-ban-sao-thuoc-hiem-17231781483331926815331-17507593761622147355194.jpg' },
-      title: 'Nhiều bệnh nhân nguy kịch tại TP.HCM được cứu sống nhờ điều phối thuốc cấp cứu kịp thời',
-      date: '10/06/2025'
-    },
-    {
-      image: { uri: 'https://cdn2.tuoitre.vn/thumb_w/730/471584752817336320/2025/6/23/23-6-hon-1000-nguoi-tham-gia-dong-dien-yoga-quoc-te-da-nang-2025-1-17506916493471544355776.jpg' },
-      title: 'Yoga và những bài tập giúp tăng cường sức khỏe của não',
-      date: '08/06/2025'
-    },
-    {
-      image: { uri: 'https://cdn2.tuoitre.vn/thumb_w/730/471584752817336320/2024/6/29/quochoi-1719624459812418575638.jpg' },
-      title: 'Quốc hội họp riêng nghe trình công tác nhân sự',
-      date: '05/06/2025'
+  const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
+  const [newsLoading, setNewsLoading] = useState(true);
+
+  // Load news from API
+  useEffect(() => {
+    loadNews();
+  }, []);
+
+  const loadNews = async () => {
+    try {
+      setNewsLoading(true);
+      const newsData = await getNewsList({ page: 1, limit: 3 });
+      const formattedNews = newsData.map(news => ({
+        image: { uri: news.image },
+        title: news.title,
+        date: formatNewsDate(news.createdAt),
+        newsId: news._id
+      }));
+      setNewsItems(formattedNews);
+    } catch (error) {
+      console.error('Error loading news:', error);
+      // Fallback to mock data if API fails
+      setNewsItems([
+        {
+          image: { uri: 'https://via.placeholder.com/400x250/4CAF50/FFFFFF?text=Tin+tức' },
+          title: 'Tin tức mới nhất về sức khỏe',
+          date: new Date().toLocaleDateString('vi-VN'),
+          newsId: '1'
+        }
+      ]);
+    } finally {
+      setNewsLoading(false);
     }
-  ];
+  };
 
   if (loading) {
     return (
@@ -227,6 +288,16 @@ const HomeScreen: React.FC = () => {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={async () => {
+              setRefreshing(true);
+              try { await loadProducts(); } finally { setRefreshing(false); }
+            }}
+            tintColor={colors.accent}
+          />
+        }
       >
         <TouchableOpacity
           style={styles.searchBarButton}
@@ -308,6 +379,10 @@ const HomeScreen: React.FC = () => {
                 />
               )}
               contentContainerStyle={styles.productList}
+              initialNumToRender={6}
+              maxToRenderPerBatch={6}
+              windowSize={5}
+              removeClippedSubviews
             />
           </View>
         )}
@@ -363,16 +438,21 @@ const HomeScreen: React.FC = () => {
               />
             )}
             contentContainerStyle={styles.productList}
+            initialNumToRender={6}
+            maxToRenderPerBatch={6}
+            windowSize={5}
+            removeClippedSubviews
           />
         </View>
 
         {products.length > 2 && (
           <View style={styles.newArrivalsCard}>
-            <Image
-              source={getProductImages(products[2])[0] || require('../assets/images_sp/dau_ca_omega.png')}
+             <Image
+              source={require('../assets/images/hot_sale.png')}
               style={styles.newArrivalsImage}
               resizeMode="cover"
             />
+           
             <View style={styles.newArrivalsContent}>
               <View style={{ flex: 1, marginRight: 10 }}>
                 <Text style={[styles.newArrivalsTitle, { color: colors.text }]}>Hàng mới về</Text>
@@ -387,19 +467,33 @@ const HomeScreen: React.FC = () => {
         )}
 
         <View>
-          <View style={styles.newsHeader}>
+          <TouchableOpacity 
+            style={styles.newsHeader}
+            onPress={() => router.push('/news')}
+          >
             <Text style={[styles.newsHeaderTitle, { color: colors.text }]}>Bảng tin tức</Text>
             <Ionicons name="chevron-forward" size={18} color={colors.text} />
-          </View>
+          </TouchableOpacity>
         </View>
 
-        {newsItems.map((item, index) => (
-          <NewsCard
-            key={`news-${index}`}
-            image={item.image}
-            title={item.title}
-            date={item.date}
-          />))}
+        {newsLoading ? (
+          <View style={styles.newsLoadingContainer}>
+            <ActivityIndicator size="small" color={colors.accent} />
+            <Text style={[styles.newsLoadingText, { color: colors.textSecondary }]}>
+              Đang tải tin tức...
+            </Text>
+          </View>
+        ) : (
+          newsItems.map((item, index) => (
+            <NewsCard
+              key={`news-${index}`}
+              image={item.image}
+              title={item.title}
+              date={item.date}
+              newsId={item.newsId}
+            />
+          ))
+        )}
 
         <View style={styles.bottomSpace} />
       </ScrollView>
@@ -785,6 +879,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 20,
+  },
+  newsLoadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  newsLoadingText: {
+    marginTop: 8,
+    fontSize: 14,
   },
 });
 

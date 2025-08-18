@@ -52,16 +52,8 @@ const SelectAddressScreen: React.FC = () => {
         console.log('🔍 SelectAddress - Selected address:', defaultAddress._id);
       }
     } catch (error: any) {
-      console.error('🔍 SelectAddress - Error loading addresses:', error);
-      console.error('🔍 SelectAddress - Error message:', error?.message);
-      
-      // Không hiển thị alert nếu là lỗi token để tránh spam user
-      if (!error?.message?.includes('Token')) {
-        Alert.alert('Lỗi', 'Không thể tải danh sách địa chỉ');
-      }
-      
-      // Set empty array nếu có lỗi
-      setAddresses([]);
+      console.error('Error loading addresses:', error);
+      Alert.alert('Thông báo', 'Không thể tải danh sách địa chỉ');
     } finally {
       setLoading(false);
     }
@@ -88,7 +80,7 @@ const SelectAddressScreen: React.FC = () => {
   const handleConfirmAddress = async () => {
     console.log('🔍 SelectAddress - Confirming address, selectedAddressId:', selectedAddressId);
     if (!selectedAddressId) {
-      Alert.alert('Thông báo', 'Vui lòng chọn một địa chỉ nhận hàng');
+      Alert.alert('Thông báo', 'Không tìm thấy địa chỉ đã chọn');
       return;
     }
     const selectedAddress = addresses.find(addr => addr._id === selectedAddressId);
@@ -106,7 +98,7 @@ const SelectAddressScreen: React.FC = () => {
   const handleSetDefault = async (addressId: string) => {
     try {
       if (!token) {
-        Alert.alert('Lỗi', 'Vui lòng đăng nhập lại');
+        Alert.alert('Thông báo', 'Vui lòng đăng nhập lại');
         return;
       }
       await setDefaultAddress(token, addressId);
@@ -130,15 +122,15 @@ const SelectAddressScreen: React.FC = () => {
           onPress: async () => {
             try {
               if (!token) {
-                Alert.alert('Lỗi', 'Vui lòng đăng nhập lại');
+                Alert.alert('Thông báo', 'Vui lòng đăng nhập lại');
                 return;
               }
               await deleteAddress(token, addressId);
               await loadAddresses(); // Reload addresses after deletion
               Alert.alert('Thành công', 'Đã xóa địa chỉ');
-            } catch (error) {
-              console.error('Lỗi khi xóa địa chỉ:', error);
-              Alert.alert('Lỗi', 'Không thể xóa địa chỉ');
+            } catch (error: any) {
+              console.error('Error deleting address:', error);
+              Alert.alert('Thông báo', 'Không thể xóa địa chỉ');
             }
           }
         }

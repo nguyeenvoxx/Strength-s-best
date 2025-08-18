@@ -1,4 +1,8 @@
 import { create } from 'zustand';
+import { getUserOrders } from '../services/orderApi';
+import { getUserReviews } from '../services/reviewApi';
+import { API_CONFIG } from '../constants/config';
+import { useAuthStore } from './useAuthStore';
 
 interface UserStats {
   orderCount: number;
@@ -17,9 +21,9 @@ interface UserStatsStore {
 
 export const useUserStatsStore = create<UserStatsStore>((set, get) => ({
   stats: {
-    orderCount: 1, // 1 đơn hàng
-    favoriteCount: 0, // 0 yêu thích
-    reviewCount: 2, // 2 đánh giá
+    orderCount: 0,
+    favoriteCount: 0,
+    reviewCount: 0,
   },
   isLoading: false,
   error: null,
@@ -27,25 +31,44 @@ export const useUserStatsStore = create<UserStatsStore>((set, get) => ({
   fetchUserStats: async (token: string) => {
     set({ isLoading: true, error: null });
     try {
-      // TODO: Thay thế bằng API calls thực tế
-      // const [ordersResponse, favoritesResponse, reviewsResponse] = await Promise.all([
-      //   api.get('/orders/count', { headers: { Authorization: `Bearer ${token}` } }),
-      //   api.get('/favorites/count', { headers: { Authorization: `Bearer ${token}` } }),
-      //   api.get('/reviews/count', { headers: { Authorization: `Bearer ${token}` } }),
-      // ]);
+      // Lấy dữ liệu thực tế từ API
+      const [ordersResponse, favoritesResponse, reviewsResponse] = await Promise.all([
+        getUserOrders(token),
+        fetch(`${API_CONFIG.BASE_URL}/favorites`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        }),
+        getUserReviews(token, 1, 100)
+      ]);
+
+      // Xử lý dữ liệu đơn hàng
+      const orderCount = ordersResponse.length;
+
+      // Xử lý dữ liệu yêu thích
+      let favoriteCount = 0;
+      if (favoritesResponse.ok) {
+        const favoritesData = await favoritesResponse.json();
+        favoriteCount = favoritesData.data?.favorites?.length || 0;
+      }
+
+      // Xử lý dữ liệu đánh giá
+      const reviewCount = reviewsResponse.reviews?.length || 0;
       
-      // Sử dụng số liệu thực tế của user hiện tại
-      const mockStats = {
-        orderCount: 1, // 1 đơn hàng
-        favoriteCount: 0, // 0 yêu thích
-        reviewCount: 2, // 2 đánh giá
+      const realStats = {
+        orderCount,
+        favoriteCount,
+        reviewCount,
       };
       
       set({ 
-        stats: mockStats, 
+        stats: realStats, 
         isLoading: false 
       });
     } catch (error: any) {
+      console.error('Error fetching user stats:', error);
       set({ 
         error: error.message || 'Không thể tải thống kê', 
         isLoading: false 
@@ -54,10 +77,11 @@ export const useUserStatsStore = create<UserStatsStore>((set, get) => ({
   },
 
   refreshStats: () => {
-    // Giữ nguyên số liệu thực tế của user
-    const currentStats = get().stats;
-    // Không thay đổi số liệu khi refresh
-    set({ stats: currentStats });
+    // Refresh stats bằng cách gọi lại API
+    const token = useAuthStore?.getState()?.token;
+    if (token) {
+      get().fetchUserStats(token);
+    }
   },
 
   clearError: () => {

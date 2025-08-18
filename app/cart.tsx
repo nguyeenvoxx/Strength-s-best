@@ -11,9 +11,11 @@ import {
   Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCartStore } from '../store/useCartStore';
 import { useAuthStore } from '../store/useAuthStore';
+import { useSelectedItemsStore } from '../store/useSelectedItemsStore';
 import { formatPrice, getProductImageUrl } from '../utils/productUtils';
 import { useTheme } from '../store/ThemeContext';
 import { LightColors, DarkColors } from '../constants/Colors';
@@ -34,8 +36,41 @@ const CartScreen: React.FC = () => {
 
   const { cart, items, loading, error, fetchCart, addToCart, removeFromCart, deleteFromCart, clearCart } = useCartStore();
   const { isAuthenticated, token } = useAuthStore();
+  const { setSelectedItemIds } = useSelectedItemsStore();
 
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedMap, setSelectedMap] = useState<Record<string, boolean>>({});
+  const [confirmedLargeQuantity, setConfirmedLargeQuantity] = useState<Set<string>>(new Set());
+
+  // Khi danh sách items thay đổi, chỉ thêm các item mới vào selectedMap (không reset)
+  useEffect(() => {
+    console.log('🔍 Items changed, current items:', items?.map((it: any) => it._id));
+    console.log('🔍 Current selectedMap before update:', selectedMap);
+    
+    if (!items || items.length === 0) {
+      setSelectedMap({});
+      return;
+    }
+    
+    setSelectedMap(prev => {
+      const next = { ...prev };
+      // Chỉ thêm các item mới chưa có trong selectedMap
+      (items || []).forEach((it: any) => {
+        if (!(it._id in next)) {
+          next[it._id] = true; // Mặc định chọn item mới
+        }
+      });
+      // Xóa các item không còn tồn tại trong items
+      Object.keys(next).forEach(id => {
+        if (!items.find((it: any) => it._id === id)) {
+          delete next[id];
+        }
+      });
+      
+      console.log('🔍 Updated selectedMap:', next);
+      return next;
+    });
+  }, [items]);
 
   // Load cart data
   useEffect(() => {
@@ -44,28 +79,142 @@ const CartScreen: React.FC = () => {
     }
   }, [isAuthenticated, token]);
 
+  // Revalidate khi quay lại màn hình giỏ hàng
+  useFocusEffect(
+    React.useCallback(() => {
+      if (isAuthenticated && token) loadCartData();
+      return () => {};
+    }, [isAuthenticated, token])
+  );
+
   const loadCartData = async () => {
     try {
+      console.log('🔄 Loading cart data...');
       await fetchCart(token!);
+      console.log('✅ Cart data loaded successfully');
     } catch (error) {
-      console.error('Error loading cart:', error);
+      console.error('❌ Error loading cart:', error);
+      // Không throw error để tránh crash app
     }
   };
 
 
 
   const handleIncrease = async (productId: string) => {
-    if (!isAuthenticated) {
-      Alert.alert('Đăng nhập cần thiết', 'Vui lòng đăng nhập để sử dụng giỏ hàng');
-      router.push('/(auth)/sign-in');
-      return;
-    }
-
     try {
-      await addToCart(token!, productId, 1);
-    } catch (error) {
-      console.error('Error increasing quantity:', error);
-      Alert.alert('Lỗi', 'Không thể tăng số lượng sản phẩm');
+      console.log('🔄 Starting handleIncrease for productId:', productId);
+      const token = useAuthStore.getState().token;
+      if (!token) {
+        Alert.alert('Thông báo', 'Vui lòng đăng nhập để thực hiện thao tác này');
+        return;
+      }
+
+      const item = items.find(item => item.productId._id === productId);
+      if (!item) {
+        console.log('❌ Item not found in cart');
+        return;
+      }
+      
+      console.log('📦 Current item quantity:', item.quantity);
+      console.log('📦 Product stock:', (item.productId as any)?.quantity);
+
+      const newQuantity = item.quantity + 1;
+      const productStock = (item.productId as any)?.quantity || 0;
+
+      // Kiểm tra số lượng tồn kho
+      if (newQuantity > productStock) {
+        Alert.alert('Thông báo', `Chỉ còn ${productStock} sản phẩm trong kho`);
+        return;
+      }
+
+      // Kiểm tra số lượng lớn (>15) trước khi thêm
+      if (newQuantity > 15 && !confirmedLargeQuantity.has(productId)) {
+        Alert.alert(
+          'Xác nhận mua hàng',
+          'Bạn đang mua quá nhiều sản phẩm. Bạn có chắc chắn muốn mua không?',
+          [
+            { text: 'Hủy', style: 'cancel' },
+            { text: 'Mua', onPress: async () => {
+              try {
+                // Đánh dấu đã xác nhận cho sản phẩm này
+                setConfirmedLargeQuantity(prev => new Set(prev).add(productId));
+                
+                const result = await addToCart(token, productId, 1);
+                if (result.success) {
+                  // Không cần loadCartData vì cart đã được cập nhật từ response
+                } else if (result.shouldAdjust) {
+                  // Hiển thị thông báo tồn kho và tự động điều chỉnh
+                  Alert.alert(
+                    'Thông báo tồn kho',
+                    result.message,
+                    [
+                      {
+                        text: 'OK',
+                        onPress: async () => {
+                          try {
+                            // Tự động điều chỉnh về số lượng tối đa
+                            await addToCart(token, productId, result.availableQuantity!);
+                            // Không cần loadCartData vì cart đã được cập nhật từ response
+                            // Không hiển thị thông báo khi đã đạt tối đa
+                          } catch (error: any) {
+                            Alert.alert('Thông báo', 'Không thể cập nhật số lượng sản phẩm');
+                          }
+                        }
+                      }
+                    ]
+                  );
+                }
+              } catch (error: any) {
+                const errorMessage = error.response?.data?.message || 'Không thể tăng số lượng sản phẩm';
+                Alert.alert('Thông báo', errorMessage);
+              }
+            }}
+          ]
+        );
+        return;
+      }
+
+      // Thêm bình thường nếu không vượt quá 15
+      console.log('📤 Calling addToCart with quantity 1');
+      console.log('📤 Product ID:', productId);
+      console.log('📤 Token:', token ? 'Present' : 'Missing');
+      const result = await addToCart(token, productId, 1);
+      console.log('📥 AddToCart result:', result);
+      console.log('📥 Result type:', typeof result);
+      console.log('📥 Result keys:', result ? Object.keys(result) : 'null/undefined');
+      
+      // Xử lý kết quả từ API
+      if (result.success) {
+        console.log('✅ AddToCart successful, cart data already updated');
+        // Không cần loadCartData vì cart đã được cập nhật từ response
+      } else if (result.shouldAdjust) {
+        // Hiển thị thông báo tồn kho và tự động điều chỉnh
+        Alert.alert(
+          'Thông báo tồn kho',
+          result.message,
+          [
+            {
+              text: 'OK',
+              onPress: async () => {
+                try {
+                  // Tự động điều chỉnh về số lượng tối đa
+                  await addToCart(token, productId, result.availableQuantity!);
+                  // Không cần loadCartData vì cart đã được cập nhật từ response
+                  // Không hiển thị thông báo khi đã đạt tối đa
+                } catch (error: any) {
+                  Alert.alert('Thông báo', 'Không thể cập nhật số lượng sản phẩm');
+                }
+              }
+            }
+          ]
+        );
+      }
+    } catch (error: any) {
+      console.log('❌ Error in handleIncrease:', error);
+      console.log('❌ Error response:', error.response);
+      console.log('❌ Error message:', error.message);
+      const errorMessage = error.response?.data?.message || 'Không thể tăng số lượng sản phẩm';
+      Alert.alert('Thông báo', errorMessage);
     }
   };
 
@@ -76,14 +225,14 @@ const CartScreen: React.FC = () => {
       return;
     }
 
-
-
     try {
+      console.log('🔄 Starting handleDecrease for productId:', productId);
       await removeFromCart(token!, productId);
-      
-    } catch (error) {
-      console.error('❌ Error decreasing quantity:', error);
-      Alert.alert('Lỗi', 'Không thể giảm số lượng sản phẩm');
+      console.log('✅ RemoveFromCart successful, cart data already updated');
+      // Không cần loadCartData vì cart đã được cập nhật từ response
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Không thể giảm số lượng sản phẩm';
+      Alert.alert('Thông báo', errorMessage);
     }
   };
 
@@ -100,11 +249,13 @@ const CartScreen: React.FC = () => {
           style: 'destructive',
           onPress: async () => {
             try {
+              console.log('🔄 Starting handleDelete for productId:', productId);
               await deleteFromCart(token!, productId);
-      
-            } catch (error) {
-              console.error('❌ Error removing item:', error);
-              Alert.alert('Lỗi', 'Không thể xóa sản phẩm');
+              console.log('✅ DeleteFromCart successful, cart data already updated');
+              // Không cần loadCartData vì cart đã được cập nhật từ response
+            } catch (error: any) {
+              const errorMessage = error.response?.data?.message || 'Không thể xóa sản phẩm';
+              Alert.alert('Thông báo', errorMessage);
             }
           }
         }
@@ -126,16 +277,19 @@ const CartScreen: React.FC = () => {
           text: 'Xóa tất cả',
           style: 'destructive',
           onPress: async () => {
-            try {
-              setIsLoading(true);
-              await clearCart(token!);
-              // Hiển thị thông báo thành công
-              Alert.alert(
-                'Thành công',
-                'Đã xóa tất cả sản phẩm khỏi giỏ hàng',
-                [{ text: 'OK' }]
-              );
-            } catch (error) {
+                          try {
+                setIsLoading(true);
+                console.log('🔄 Starting handleClearCart');
+                await clearCart(token!);
+                console.log('✅ ClearCart successful, cart data already updated');
+                // Không cần loadCartData vì cart đã được cập nhật từ response
+                // Hiển thị thông báo thành công
+                Alert.alert(
+                  'Thành công',
+                  'Đã xóa tất cả sản phẩm khỏi giỏ hàng',
+                  [{ text: 'OK' }]
+                );
+              } catch (error) {
               console.error('Error clearing cart:', error);
               Alert.alert(
                 'Lỗi', 
@@ -163,12 +317,32 @@ const CartScreen: React.FC = () => {
       return;
     }
 
+    // Lọc các item được tick chọn
+    const selectedIds = Object.keys(selectedMap).filter(id => selectedMap[id]);
+    console.log('🔍 Cart Debug:', {
+      selectedMap,
+      selectedIds,
+      selectedIdsString: selectedIds.join(','),
+      totalItems: items?.length,
+      allItemIds: items?.map((it: any) => it._id)
+    });
+    
+    if (selectedIds.length === 0) {
+      Alert.alert('Chọn sản phẩm', 'Vui lòng chọn ít nhất một sản phẩm để thanh toán');
+      return;
+    }
+
+    // Lưu selected items vào global store
+    setSelectedItemIds(selectedIds);
+    console.log('🔍 Saved selected items to store:', selectedIds);
+    
     // Navigate to checkout
-    router.replace('./checkout');
+    router.push('./checkout' as any);
   };
 
   const calculateSubtotal = () => {
     return items.reduce((total, item) => {
+      if (!selectedMap[item._id]) return total;
       const product = item.productId as any;
       const originalPrice = product?.priceProduct || 0;
       const discountPercent = product?.discount || 0;
@@ -177,33 +351,45 @@ const CartScreen: React.FC = () => {
     }, 0);
   };
 
-    const renderCartItem = ({ item }: { item: any }) => {
+  const renderCartItem = ({ item }: { item: any }) => {
     const product = item.productId as any;
     const originalPrice = product?.priceProduct || 0;
     const discountPercent = product?.discount || 0;
     const finalPrice = originalPrice * (1 - discountPercent / 100);
     
+    // Kiểm tra trạng thái sản phẩm
+    const productStock = product?.quantity || 0;
+    const isOutOfStock = productStock <= 0;
+    const isAtMaxStock = false; // Không disable nút tăng, để logic backend xử lý
+    const isSuspended = product?.status === 'inactive';
+    
+    const checked = !!selectedMap[item._id];
     return (
-      <View style={[styles.cartItem, { backgroundColor: colors.card }]}>
+      <View style={[styles.cartItem, { backgroundColor: colors.card }]}> 
+        <TouchableOpacity
+          style={styles.checkbox}
+          onPress={() => {
+            const newValue = !checked;
+            console.log('🔍 Toggle checkbox for item:', item._id, 'from', checked, 'to', newValue);
+            setSelectedMap(prev => ({ ...prev, [item._id]: newValue }));
+          }}
+        >
+          <Ionicons name={checked ? 'checkbox' : 'square-outline'} size={22} color={checked ? colors.accent : colors.textSecondary} />
+        </TouchableOpacity>
         <Image
           source={{ uri: getProductImageUrl(product?.image) }}
           style={styles.productImage}
           resizeMode="cover"
           defaultSource={require('../assets/images_sp/dau_ca_omega.png')}
-                      onError={(error) => {
-              // Image load error handled silently
-            }}
-            onLoad={() => {
-              // Image loaded successfully
-            }}
+          onError={() => {}}
         />
         
         <View style={styles.itemDetails}>
           <Text style={[styles.itemTitle, { color: colors.text }]} numberOfLines={2}>
             {product?.nameProduct || 'Sản phẩm'}
           </Text>
-          
-          {/* Price Display */}
+
+          {/* Price row */}
           <View style={styles.priceContainer}>
             {discountPercent > 0 ? (
               <>
@@ -223,34 +409,53 @@ const CartScreen: React.FC = () => {
               </Text>
             )}
           </View>
-        </View>
 
-        <View style={styles.quantityContainer}>
-          <TouchableOpacity
-            style={[styles.quantityButton, { backgroundColor: colors.border }]}
-            onPress={() => handleDecrease(item.productId._id)}
-          >
-            <Ionicons name="remove" size={16} color={colors.text} />
-          </TouchableOpacity>
-          
-          <Text style={[styles.quantityText, { color: colors.text }]}>
-            {item.quantity}
-          </Text>
-          
-          <TouchableOpacity
-            style={[styles.quantityButton, { backgroundColor: colors.border }]}
-            onPress={() => handleIncrease(item.productId._id)}
-          >
-            <Ionicons name="add" size={16} color={colors.text} />
-          </TouchableOpacity>
-        </View>
+          {/* Stock status */}
+          {isOutOfStock && (
+            <Text style={[styles.stockStatus, { color: '#c62828' }]}>
+              ⚠️ Sản phẩm đã hết hàng
+            </Text>
+          )}
+          {isSuspended && (
+            <Text style={[styles.stockStatus, { color: '#ff9800' }]}>
+              ⏸️ Sản phẩm tạm ngưng
+            </Text>
+          )}
 
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => handleDelete(item.productId._id)}
-        >
-          <Ionicons name="trash-outline" size={20} color="#ff4757" />
-        </TouchableOpacity>
+          {/* Quantity row under text */}
+          <View style={styles.quantityRow}>
+            <View style={styles.quantityContainer}>
+              <TouchableOpacity
+                style={[styles.quantityButton, { backgroundColor: colors.border }]}
+                onPress={() => handleDecrease(item.productId._id)}
+              >
+                <Ionicons name="remove" size={16} color={colors.text} />
+              </TouchableOpacity>
+              <Text style={[styles.quantityText, { color: colors.text }]}>
+                {item.quantity}
+              </Text>
+              <TouchableOpacity
+                style={[
+                  styles.quantityButton, 
+                  { 
+                    backgroundColor: isSuspended ? '#ccc' : colors.border,
+                    opacity: isSuspended ? 0.5 : 1
+                  }
+                ]}
+                onPress={() => handleIncrease(item.productId._id)}
+                disabled={isSuspended}
+              >
+                <Ionicons name="add" size={16} color={isSuspended ? '#999' : colors.text} />
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={() => handleDelete(item.productId._id)}
+            >
+              <Ionicons name="trash-outline" size={20} color="#ff4757" />
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
     );
   };
@@ -379,15 +584,15 @@ const CartScreen: React.FC = () => {
       {items && items.length > 0 && (
         <View style={[styles.checkoutContainer, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
           <TouchableOpacity
-            style={[styles.checkoutButton, { backgroundColor: colors.accent }]}
+            style={[styles.checkoutButton, { backgroundColor: Object.keys(selectedMap).filter(id => selectedMap[id]).length > 0 ? colors.accent : colors.textSecondary }]}
             onPress={handleCheckout}
-            disabled={isLoading}
+            disabled={isLoading || Object.keys(selectedMap).filter(id => selectedMap[id]).length === 0}
           >
             {isLoading ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.checkoutButtonText}>
-                Thanh toán ({items.length} sản phẩm)
+                Thanh toán ({Object.keys(selectedMap).filter(id => selectedMap[id]).length} sản phẩm)
               </Text>
             )}
           </TouchableOpacity>
@@ -442,32 +647,46 @@ const styles = StyleSheet.create({
   cartItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 15,
-    marginHorizontal: 15,
-    marginVertical: 5,
-    borderRadius: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    marginHorizontal: 12,
+    marginVertical: 8,
+    borderRadius: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  checkbox: {
+    marginRight: 10,
   },
   productImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
+    width: 72,
+    height: 72,
+    borderRadius: 10,
     marginRight: 12,
   },
   itemDetails: {
     flex: 1,
+    justifyContent: 'center',
+  },
+
+  quantityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
   },
   itemTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   priceContainer: {
-    marginBottom: 8,
+    marginBottom: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   priceRow: {
     flexDirection: 'row',
@@ -478,7 +697,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#4CAF50',
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: 5,
     marginLeft: 8,
   },
   discountText: {
@@ -487,13 +706,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   originalPrice: {
-    fontSize: 14,
+    fontSize: 12,
     textDecorationLine: 'line-through',
-    marginBottom: 4,
+    marginBottom: 0,
+    marginLeft: 8,
   },
   itemPrice: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 16,
+    fontWeight: '700',
   },
   itemTotal: {
     fontSize: 14,
@@ -502,20 +722,21 @@ const styles = StyleSheet.create({
   quantityContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginLeft: 10,
   },
   quantityButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: '#f0f0f0',
     justifyContent: 'center',
     alignItems: 'center',
   },
   quantityText: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginHorizontal: 12,
-    minWidth: 30,
+    fontSize: 15,
+    fontWeight: '700',
+    marginHorizontal: 10,
+    minWidth: 26,
     textAlign: 'center',
   },
   deleteButton: {
@@ -771,6 +992,11 @@ const styles = StyleSheet.create({
   totalValue: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  stockStatus: {
+    fontSize: 12,
+    marginTop: 4,
+    fontWeight: '500',
   },
 
 });

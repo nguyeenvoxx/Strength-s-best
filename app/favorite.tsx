@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { getPlatformContainerStyle } from '../utils/platformUtils';
+
 import { useFavoriteStore } from '../store/useFavoriteStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useTheme } from '../store/ThemeContext';
@@ -35,8 +35,9 @@ const FavoriteScreen: React.FC = () => {
   };
 
   const handleRemoveFavorite = async (favoriteId: string, productName: string) => {
-    if (!token) {
-      Alert.alert('Lỗi', 'Bạn cần đăng nhập để thực hiện thao tác này');
+    if (!isAuthenticated) {
+      Alert.alert('Thông báo', 'Bạn cần đăng nhập để thực hiện thao tác này');
+      router.push('/(auth)/sign-in');
       return;
     }
 
@@ -51,10 +52,10 @@ const FavoriteScreen: React.FC = () => {
           onPress: async () => {
             try {
               setIsRemoving(favoriteId);
-              await removeFromFavorites(favoriteId, token);
+              await removeFromFavorites(favoriteId, token!);
               Alert.alert('Thành công', 'Đã xóa khỏi danh sách yêu thích');
             } catch (err: any) {
-              Alert.alert('Lỗi', err.message || 'Không thể xóa khỏi danh sách yêu thích');
+              Alert.alert('Thông báo', err.message || 'Không thể xóa khỏi danh sách yêu thích');
             } finally {
               setIsRemoving(null);
             }
@@ -135,7 +136,7 @@ const FavoriteScreen: React.FC = () => {
                   />
                   <View style={styles.productInfo}>
                     <Text numberOfLines={2} style={[styles.productTitle, { color: colors.text }]}>
-                      {product.title}
+                      {product.title || 'Sản phẩm'}
                     </Text>
                     <Text style={[styles.productPrice, { color: colors.accent }]}>
                       {formatPrice(product.priceProduct)}
@@ -154,7 +155,7 @@ const FavoriteScreen: React.FC = () => {
                       styles.removeIcon,
                       isRemoving === product.favoriteId && styles.removingIcon
                     ]}
-                    onPress={() => handleRemoveFavorite(product.favoriteId!, product.title)}
+                    onPress={() => handleRemoveFavorite(product.favoriteId || product._id, product.title)}
                     disabled={isRemoving === product.favoriteId}
                   >
                     {isRemoving === product.favoriteId ? (

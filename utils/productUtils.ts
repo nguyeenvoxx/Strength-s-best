@@ -1,4 +1,5 @@
 import { ApiProduct } from '../services/api';
+import { API_CONFIG } from '../constants/config';
 import { Product, ProductSection } from '../types/product.type';
 
 // Chuyển đổi từ ApiProduct sang Product interface của frontend
@@ -168,21 +169,34 @@ export const getProductImageUrl = (imagePath: string | null | undefined): string
   if (!imagePath) {
     return 'https://via.placeholder.com/300x300?text=No+Image';
   }
-  
-  // Nếu là URL đầy đủ
-  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-    return imagePath;
+
+  const raw = String(imagePath).trim().replace(/\\/g, '/');
+  // Data URI (base64)
+  if (raw.startsWith('data:image')) {
+    return raw;
   }
-  
-  // Nếu là tên file, sử dụng static file serving
-  if (imagePath.includes('.jpg') || imagePath.includes('.png') || imagePath.includes('.jpeg')) {
-    const baseUrl = 'http://192.168.1.49:3000'; // Thay bằng URL backend thực tế
-    const fullUrl = `${baseUrl}/uploads/products/${imagePath}`;
-    return fullUrl;
+  // URL đầy đủ
+  if (raw.startsWith('http://') || raw.startsWith('https://')) {
+    return encodeURI(raw);
   }
-  
-  // Fallback
-  return 'https://via.placeholder.com/300x300?text=Product+Image';
+
+  // Lấy origin từ BASE_URL (bỏ phần /api/v1)
+  const origin = API_CONFIG.BASE_URL
+    .replace(/\/?api\/?v\d+\/?$/, '')
+    .replace(/\/$/, '');
+
+  // Nếu backend trả về path bắt đầu bằng '/'
+  if (raw.startsWith('/')) {
+    return encodeURI(`${origin}${raw}`);
+  }
+
+  // Nếu là tên file (không có '/'), gắn vào uploads/products
+  if (/\.(jpg|jpeg|png|gif|webp)$/i.test(raw) && !raw.includes('/')) {
+    return encodeURI(`${origin}/uploads/products/${raw}`);
+  }
+
+  // Mặc định: nối origin với path tương đối
+  return encodeURI(`${origin}/${raw}`);
 };
 
 // Function để lấy danh sách hình ảnh sản phẩm

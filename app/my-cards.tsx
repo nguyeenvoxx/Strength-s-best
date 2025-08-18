@@ -9,11 +9,12 @@ import {
   ActivityIndicator
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
 import { useTheme } from '../store/ThemeContext';
 import { LightColors, DarkColors } from '../constants/Colors';
-import { getUserCards, setDefaultCard, deleteCard, Card } from '../services/cardApi';
+import { getUserCards, setDefaultCard, deleteCard, Card, syncStripePaymentMethods } from '../services/cardApi';
 
 const MyCardsScreen: React.FC = () => {
   const router = useRouter();
@@ -30,16 +31,33 @@ const MyCardsScreen: React.FC = () => {
     loadCards();
   }, []);
 
+  // Support optimistic refresh when trở về từ add-card/verify-card
+  useFocusEffect(
+    React.useCallback(() => {
+      loadCards();
+    }, [])
+  );
+
   const loadCards = async () => {
     try {
       setLoading(true);
   
       const cards = await getUserCards(token!);
-      
-      setCards(cards);
+      // Nếu chưa có thẻ nào, thử đồng bộ từ Stripe (fallback khi webhook chưa tới)
+      if (!cards || cards.length === 0) {
+        try {
+          await syncStripePaymentMethods(token!);
+          const synced = await getUserCards(token!);
+          setCards(synced);
+        } catch (e) {
+          setCards(cards || []);
+        }
+      } else {
+        setCards(cards);
+      }
     } catch (error: any) {
-      console.error('❌ Error loading cards:', error);
-      Alert.alert('Lỗi', 'Không thể tải danh sách thẻ');
+      console.error('Error loading cards:', error);
+      Alert.alert('Thông báo', 'Không thể tải danh sách thẻ');
     } finally {
       setLoading(false);
     }
@@ -58,7 +76,7 @@ const MyCardsScreen: React.FC = () => {
       Alert.alert('Thành công', 'Đã đặt thẻ làm mặc định');
     } catch (error: any) {
       console.error('Error setting default card:', error);
-      Alert.alert('Lỗi', error.message || 'Không thể đặt thẻ mặc định');
+      Alert.alert('Thông báo', error.message || 'Không thể đặt thẻ mặc định');
     }
   };
 
@@ -78,7 +96,7 @@ const MyCardsScreen: React.FC = () => {
               Alert.alert('Thành công', 'Đã xóa thẻ');
             } catch (error: any) {
               console.error('Error deleting card:', error);
-              Alert.alert('Lỗi', error.message || 'Không thể xóa thẻ');
+              Alert.alert('Thông báo', error.message || 'Không thể xóa thẻ');
             }
           }
         }
@@ -199,7 +217,7 @@ const MyCardsScreen: React.FC = () => {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Thẻ của tôi</Text>
-        <TouchableOpacity onPress={() => router.push('/add-card')} style={styles.addButton}>
+        <TouchableOpacity onPress={async () => { setLoading(true); try { await syncStripePaymentMethods(token!); await loadCards(); } finally { setLoading(false); } }} style={styles.addButton}>
           <Ionicons name="add" size={24} color={colors.accent} />
         </TouchableOpacity>
       </View>

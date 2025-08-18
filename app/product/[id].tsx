@@ -10,6 +10,7 @@ import {
   Alert,
   ActivityIndicator,
   FlatList,
+  TextInput,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,7 +20,7 @@ import { useFavoriteStore } from '../../store/useFavoriteStore';
 import { useCartStore } from '../../store/useCartStore';
 import { getProductImages, formatPrice, getShortDescription } from '../../utils/productUtils';
 import { useTheme } from '../../store/ThemeContext';
-import { getReviewsByProduct } from '../../services/api';
+import { getReviewsByProduct, likeReview, unlikeReview, checkLikeStatus } from '../../services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -63,10 +64,15 @@ const ProductScreen = () => {
   const [favoriteId, setFavoriteId] = useState<string | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [showCartModal, setShowCartModal] = useState(false);
+  const [confirmedLargeQuantity, setConfirmedLargeQuantity] = useState(false);
   const [reviews, setReviews] = useState<any[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
+  const [likedReviews, setLikedReviews] = useState<Set<string>>(new Set());
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // Tính toán giới hạn tối đa cho quantity - chỉ giới hạn theo tồn kho
+  const maxQuantity = currentProduct ? (currentProduct.quantity || 0) : 0;
 
   // Tính rating trung bình từ reviews
   const averageRating = reviews.length > 0 
@@ -80,9 +86,9 @@ const ProductScreen = () => {
         await fetchProductById(id as string);
         await fetchRelatedProducts(id as string);
         await loadReviews();
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error loading product:', error);
-        Alert.alert('Lỗi', 'Không thể tải thông tin sản phẩm');
+        Alert.alert('Thông báo', 'Không thể tải thông tin sản phẩm');
       }
     }
   };
@@ -95,6 +101,25 @@ const ProductScreen = () => {
       setReviewsLoading(true);
       const response = await getReviewsByProduct(id as string, 1, 10);
       setReviews(response.data.reviews || []);
+      
+      // Load like status cho từng review
+      if (isAuthenticated) {
+        const token = useAuthStore.getState().token;
+        if (token) {
+          const likedSet = new Set<string>();
+          for (const review of response.data.reviews || []) {
+            try {
+              const likeStatus = await checkLikeStatus(review._id);
+              if (likeStatus.data.isLiked) {
+                likedSet.add(review._id);
+              }
+            } catch (error) {
+              console.error('Error checking like status:', error);
+            }
+          }
+          setLikedReviews(likedSet);
+        }
+      }
     } catch (error) {
       console.error('Error loading reviews:', error);
     } finally {
@@ -102,8 +127,59 @@ const ProductScreen = () => {
     }
   };
 
+  // Handle like/unlike review
+  const handleLikeReview = async (reviewId: string) => {
+    if (!isAuthenticated) {
+      Alert.alert('Thông báo', 'Vui lòng đăng nhập để like đánh giá');
+      return;
+    }
+
+    try {
+      const isCurrentlyLiked = likedReviews.has(reviewId);
+      
+      if (isCurrentlyLiked) {
+        // Unlike
+        await unlikeReview(reviewId);
+        setLikedReviews(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(reviewId);
+          return newSet;
+        });
+        
+        // Update review helpfulCount
+        setReviews(prev => prev.map(review => 
+          review._id === reviewId 
+            ? { ...review, helpfulCount: Math.max(0, review.helpfulCount - 1) }
+            : review
+        ));
+      } else {
+        // Like
+        await likeReview(reviewId);
+        setLikedReviews(prev => new Set([...prev, reviewId]));
+        
+        // Update review helpfulCount
+        setReviews(prev => prev.map(review => 
+          review._id === reviewId 
+            ? { ...review, helpfulCount: review.helpfulCount + 1 }
+            : review
+        ));
+      }
+    } catch (error: any) {
+      console.error('Error handling like:', error);
+      Alert.alert('Thông báo', error.message || 'Không thể thực hiện thao tác');
+    }
+  };
+
   useEffect(() => {
     loadProduct();
+  }, [id]);
+
+  // Reset quantity về 1 khi sản phẩm thay đổi
+  useEffect(() => {
+    setQuantity(1);
+    setSelectedImageIndex(0);
+    setShowCartModal(false);
+    setShowAllReviews(false);
   }, [id]);
 
   // Nếu có yêu cầu cuộn tới phần reviews (sau khi người dùng gửi đánh giá)
@@ -132,6 +208,13 @@ const ProductScreen = () => {
     }
   }, [currentProduct, isAuthenticated]);
 
+  // Format ngày đánh giá an toàn
+  const formatReviewDate = (r: any): string => {
+    const raw = r?.createdAt || r?.created_at || r?.updatedAt || r?.updated_at;
+    const d = raw ? new Date(raw) : null;
+    return d && !isNaN(d.getTime()) ? d.toLocaleDateString('vi-VN') : '';
+  };
+
   const handleLoginPress = () => {
     Alert.alert(
       'Đăng nhập cần thiết',
@@ -154,7 +237,7 @@ const ProductScreen = () => {
     try {
       const token = useAuthStore.getState().token;
       if (!token) {
-        Alert.alert('Lỗi', 'Token không hợp lệ');
+        Alert.alert('Thông báo', 'Token không hợp lệ');
         return;
       }
 
@@ -168,33 +251,114 @@ const ProductScreen = () => {
         setIsFavorite(true);
         Alert.alert('Thành công', 'Đã thêm vào danh sách yêu thích');
       }
-    } catch (error) {
-      console.error('Error handling favorites:', error);
-      Alert.alert('Lỗi', 'Không thể thực hiện thao tác');
+    } catch (error: any) {
+      console.error('Error adding to favorites:', error);
+      Alert.alert('Thông báo', 'Không thể thực hiện thao tác');
     }
   };
 
   const handleAddToCart = async () => {
     if (!currentProduct) return;
 
+    // Kiểm tra số lượng tồn kho
+    const productStock = currentProduct.quantity || 0;
+    if (productStock <= 0) {
+      Alert.alert('Thông báo', 'Sản phẩm này đã hết hàng');
+      return;
+    }
+
+    // Kiểm tra trạng thái sản phẩm
+    if (currentProduct.status === 'inactive') {
+      Alert.alert('Thông báo', 'Sản phẩm này hiện đang tạm ngưng bán');
+      return;
+    }
+
     try {
       const token = useAuthStore.getState().token;
       if (!token) {
-        Alert.alert('Lỗi', 'Vui lòng đăng nhập để thêm vào giỏ hàng');
+        Alert.alert('Thông báo', 'Vui lòng đăng nhập để thêm vào giỏ hàng');
         return;
       }
 
-      await addToCart(token, currentProduct._id, quantity);
-      Alert.alert('Thành công', 'Đã thêm vào giỏ hàng');
-      setShowCartModal(false);
-    } catch (error) {
-      console.error('Error adding to cart:', error);
-      Alert.alert('Lỗi', 'Không thể thêm vào giỏ hàng');
+      const result = await addToCart(token, currentProduct._id, quantity);
+      
+      // Xử lý kết quả từ API
+      if (result.success) {
+        // Kiểm tra nếu là số lượng lớn
+        if (result.isLargeQuantity) {
+          Alert.alert(
+            'Xác nhận mua hàng',
+            'Bạn đang mua quá nhiều sản phẩm. Bạn có chắc chắn muốn mua không?',
+            [
+              { text: 'Hủy', style: 'cancel' },
+              { text: 'Mua', onPress: () => {
+                Alert.alert('Thành công', 'Đã thêm sản phẩm vào giỏ hàng');
+                setShowCartModal(false);
+              }}
+            ]
+          );
+        } else {
+          Alert.alert('Thành công', 'Đã thêm sản phẩm vào giỏ hàng');
+          setShowCartModal(false);
+        }
+      } else if (result.shouldAdjust) {
+        // Hiển thị thông báo tồn kho và tự động điều chỉnh
+        Alert.alert(
+          'Thông báo tồn kho',
+          result.message,
+          [
+            {
+              text: 'OK',
+              onPress: async () => {
+                try {
+                  // Tự động điều chỉnh về số lượng tối đa
+                  setQuantity(result.availableQuantity || 0);
+                  await addToCart(token, currentProduct._id, result.availableQuantity || 0);
+                  // Không hiển thị thông báo khi đã đạt tối đa
+                  setShowCartModal(false);
+                } catch (error: any) {
+                  Alert.alert('Thông báo', 'Không thể thêm vào giỏ hàng');
+                }
+              }
+            }
+          ]
+        );
+      }
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Không thể thêm vào giỏ hàng';
+      Alert.alert('Thông báo', errorMessage);
     }
   };
 
   const handleIncreaseQuantity = () => {
-    setQuantity(prev => prev + 1);
+    if (!currentProduct) return;
+
+    const newQuantity = quantity + 1;
+    
+    // Kiểm tra số lượng tồn kho
+    const productStock = currentProduct.quantity || 0;
+    if (newQuantity > productStock) {
+      Alert.alert('Thông báo', `Chỉ còn ${productStock} sản phẩm trong kho`);
+      return;
+    }
+
+    // Hiển thị thông báo xác nhận khi đạt 15 sản phẩm (chỉ 1 lần)
+    if (newQuantity === 15 && !confirmedLargeQuantity) {
+      Alert.alert(
+        'Xác nhận mua hàng',
+        'Bạn đang mua quá nhiều sản phẩm cho một sản phẩm. Bạn có chắc chắn muốn mua không?',
+        [
+          { text: 'Hủy', style: 'cancel' },
+          { text: 'Mua', onPress: () => {
+            setConfirmedLargeQuantity(true);
+            setQuantity(newQuantity);
+          }}
+        ]
+      );
+      return;
+    }
+
+    setQuantity(newQuantity);
   };
 
   const handleDecreaseQuantity = () => {
@@ -206,25 +370,86 @@ const ProductScreen = () => {
   const handleQuantityChange = (text: string) => {
     const num = parseInt(text);
     if (!isNaN(num) && num > 0) {
+      if (!currentProduct) return;
+
+      // Kiểm tra số lượng tồn kho
+      const productStock = currentProduct.quantity || 0;
+      if (num > productStock) {
+        // Tự động điều chỉnh về số lượng tồn kho
+        setQuantity(productStock);
+        Alert.alert('Thông báo', `Chỉ còn ${productStock} sản phẩm trong kho. Số lượng đã được điều chỉnh.`);
+        return;
+      }
+
+      // Hiển thị thông báo xác nhận khi đạt 15 sản phẩm (chỉ 1 lần)
+      if (num === 15 && !confirmedLargeQuantity) {
+        Alert.alert(
+          'Xác nhận mua hàng',
+          'Bạn đang mua quá nhiều sản phẩm cho một sản phẩm. Bạn có chắc chắn muốn mua không?',
+          [
+            { text: 'Hủy', style: 'cancel' },
+            { text: 'Mua', onPress: () => {
+              setConfirmedLargeQuantity(true);
+              setQuantity(num);
+            }}
+          ]
+        );
+        return;
+      }
+
       setQuantity(num);
+    } else if (text === '') {
+      // Cho phép xóa để nhập lại
+      setQuantity(1);
+    }
+  };
+
+  const handleQuantityBlur = () => {
+    // Đảm bảo số lượng không vượt quá tồn kho khi người dùng nhập xong
+    if (!currentProduct) return;
+
+    const productStock = currentProduct.quantity || 0;
+
+    if (quantity > productStock) {
+      setQuantity(productStock);
+      Alert.alert('Thông báo', `Số lượng đã được điều chỉnh về ${productStock} theo tồn kho.`);
     }
   };
 
   const handleBuyNow = async () => {
     if (!currentProduct) return;
 
+    // Kiểm tra số lượng tồn kho
+    const productStock = currentProduct.quantity || 0;
+    if (productStock <= 0) {
+      Alert.alert('Thông báo', 'Sản phẩm này đã hết hàng');
+      return;
+    }
+
+    // Kiểm tra trạng thái sản phẩm
+    if (currentProduct.status === 'inactive') {
+      Alert.alert('Thông báo', 'Sản phẩm này hiện đang tạm ngưng bán');
+      return;
+    }
+
+    // Kiểm tra số lượng
+    if (quantity > productStock) {
+      Alert.alert('Thông báo', `Chỉ còn ${productStock} sản phẩm trong kho`);
+      return;
+    }
+
     try {
       const token = useAuthStore.getState().token;
       if (!token) {
-        Alert.alert('Lỗi', 'Vui lòng đăng nhập để mua hàng');
+        Alert.alert('Thông báo', 'Vui lòng đăng nhập để mua hàng');
         return;
       }
 
       await addToCart(token, currentProduct._id, quantity);
       router.push('/checkout');
-    } catch (error) {
-      console.error('Error buying now:', error);
-      Alert.alert('Lỗi', 'Không thể thực hiện mua hàng');
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Không thể mua sản phẩm này';
+      Alert.alert('Thông báo', errorMessage);
     }
   };
 
@@ -495,7 +720,7 @@ const ProductScreen = () => {
                       </View>
                       <View style={styles.reviewerDetails}>
                         <Text style={[styles.reviewerName, { color: colors.text }]}>
-                          {review.idUser?.name || 'Khách hàng'}
+                          {review.idUser?.name || review.userName || review.name || 'Khách hàng'}
                         </Text>
                         <View style={styles.ratingContainer}>
                           {[1, 2, 3, 4, 5].map((star) => (
@@ -508,36 +733,88 @@ const ProductScreen = () => {
                             />
                           ))}
                           <Text style={[styles.reviewDate, { color: colors.textSecondary }]}>
-                            {new Date(review.createdAt).toLocaleDateString('vi-VN')}
+                            {formatReviewDate(review)}
                           </Text>
                         </View>
                       </View>
                     </View>
                   </View>
                   
-                  {/* Review Content */}
-                  {review.review && (
-                    <View style={styles.reviewContent}>
-                      {review.productClassification && (
-                        <View style={[styles.reviewCategoryContainer, { backgroundColor: colors.background }]}>
-                          <Text style={[styles.reviewCategory, { color: colors.textSecondary }]}>
-                            Phân loại: <Text style={[styles.reviewCategoryItalic, { color: colors.text }]}>
-                              {review.productClassification}
-                            </Text>
-                          </Text>
-                        </View>
-                      )}
-                      <Text style={[styles.reviewText, { color: colors.text }]}>
-                        {review.review}
-                      </Text>
-                    </View>
-                  )}
+                   {/* Review Content - căn trái */}
+                   <View style={styles.reviewContent}>
+                     {review.productClassification && (
+                       <View style={[styles.reviewCategoryContainer, { backgroundColor: colors.background }]}>
+                         <Text style={[styles.reviewCategory, { color: colors.textSecondary }]}>
+                           Phân loại: <Text style={[styles.reviewCategoryItalic, { color: colors.text }]}>
+                             {review.productClassification}
+                           </Text>
+                         </Text>
+                       </View>
+                     )}
+                     {review.review && review.review.trim() !== '' ? (
+                       <Text style={[styles.reviewText, { color: colors.text }]}>
+                         {review.review}
+                       </Text>
+                     ) : (
+                       <Text style={[styles.reviewText, { color: colors.textSecondary, fontStyle: 'italic' }]}>
+                         Không có nội dung đánh giá
+                       </Text>
+                     )}
+                   </View>
+
+                   {/* Admin Reply: hỗ trợ mảng adminReplies và các field cũ */}
+                   {(
+                     (Array.isArray(review.adminReplies) && review.adminReplies.length > 0) ||
+                     review.adminReply || review.reply || review.response || review.adminResponse
+                   ) && (
+                     <View style={[styles.adminReplyContainer, { borderColor: colors.border, backgroundColor: colors.background }]}>
+                       <Text style={[styles.adminReplyTitle, { color: colors.accent }]}>Phản hồi của Admin</Text>
+                       {Array.isArray(review.adminReplies) && review.adminReplies.length > 0 ? (
+                         review.adminReplies.map((rep: any, idx: number) => (
+                           <View key={idx} style={{ marginTop: idx === 0 ? 0 : 8 }}>
+                             <Text style={[styles.adminReplyText, { color: colors.text }]}>
+                               {rep.content}
+                             </Text>
+                             {rep.createdAt && (
+                               <Text style={[styles.adminReplyDate, { color: colors.textSecondary }]}>
+                                 {new Date(rep.createdAt).toLocaleDateString('vi-VN')}
+                               </Text>
+                             )}
+                           </View>
+                         ))
+                       ) : (
+                         <>
+                           <Text style={[styles.adminReplyText, { color: colors.text }]}>
+                             {review.adminReply || review.reply || review.response || review.adminResponse}
+                           </Text>
+                           {formatReviewDate(review.adminReplyAt ? { createdAt: review.adminReplyAt } : review) ? (
+                             <Text style={[styles.adminReplyDate, { color: colors.textSecondary }]}>
+                               {formatReviewDate(review.adminReplyAt ? { createdAt: review.adminReplyAt } : review)}
+                             </Text>
+                           ) : null}
+                         </>
+                       )}
+                     </View>
+                   )}
                   
                   {/* Review Actions */}
                   <View style={styles.reviewActions}>
-                    <TouchableOpacity style={styles.helpfulButton}>
-                      <Ionicons name="thumbs-up-outline" size={16} color={colors.textSecondary} />
-                      <Text style={[styles.helpfulText, { color: colors.textSecondary }]}>
+                    <TouchableOpacity 
+                      style={[
+                        styles.helpfulButton,
+                        likedReviews.has(review._id) && { backgroundColor: 'rgba(70, 155, 67, 0.1)' }
+                      ]}
+                      onPress={() => handleLikeReview(review._id)}
+                    >
+                      <Ionicons 
+                        name={likedReviews.has(review._id) ? "thumbs-up" : "thumbs-up-outline"} 
+                        size={16} 
+                        color={likedReviews.has(review._id) ? colors.accent : colors.textSecondary} 
+                      />
+                      <Text style={[
+                        styles.helpfulText, 
+                        { color: likedReviews.has(review._id) ? colors.accent : colors.textSecondary }
+                      ]}>
                         Hữu ích ({review.helpfulCount || 0})
                       </Text>
                     </TouchableOpacity>
@@ -595,31 +872,66 @@ const ProductScreen = () => {
 
       {/* Bottom Actions */}
       <View style={[styles.bottomActions, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
-        <View style={styles.quantityContainer}>
-          <TouchableOpacity onPress={handleDecreaseQuantity} style={styles.quantityButton}>
-            <Ionicons name="remove" size={20} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={[styles.quantityText, { color: colors.text }]}>
-            {quantity}
-          </Text>
-          <TouchableOpacity onPress={handleIncreaseQuantity} style={styles.quantityButton}>
-            <Ionicons name="add" size={20} color={colors.text} />
-          </TouchableOpacity>
-        </View>
-        
-        <TouchableOpacity
-          style={[styles.addToCartButton, { backgroundColor: colors.accent }]}
-          onPress={handleAddToCart}
-        >
-          <Text style={styles.addToCartText}>Thêm vào giỏ</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.buyNowButton, { backgroundColor: colors.accent }]}
-          onPress={handleBuyNow}
-        >
-          <Text style={styles.buyNowText}>Mua ngay</Text>
-        </TouchableOpacity>
+        {currentProduct && (currentProduct.quantity || 0) > 0 && currentProduct.status === 'active' ? (
+          <>
+            <View style={styles.quantityContainer}>
+              <TouchableOpacity onPress={handleDecreaseQuantity} style={styles.quantityButton}>
+                <Ionicons name="remove" size={20} color={colors.text} />
+              </TouchableOpacity>
+              <TextInput
+                style={[styles.quantityInput, { color: colors.text }]}
+                value={quantity.toString()}
+                onChangeText={handleQuantityChange}
+                onBlur={handleQuantityBlur}
+                keyboardType="numeric"
+                maxLength={2}
+                textAlign="center"
+              />
+              <TouchableOpacity 
+                onPress={handleIncreaseQuantity} 
+                style={[
+                  styles.quantityButton,
+                  (quantity >= maxQuantity) && styles.quantityButtonDisabled
+                ]}
+                disabled={quantity >= maxQuantity}
+              >
+                <Ionicons 
+                  name="add" 
+                  size={20} 
+                  color={quantity >= maxQuantity ? colors.textSecondary : colors.text} 
+                />
+              </TouchableOpacity>
+            </View>
+            
+            <TouchableOpacity
+              style={[styles.addToCartButton, { backgroundColor: colors.accent }]}
+              onPress={handleAddToCart}
+            >
+              <Text style={styles.addToCartText}>Thêm vào giỏ</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.buyNowButton, { backgroundColor: colors.accent }]}
+              onPress={handleBuyNow}
+            >
+              <Text style={styles.buyNowText}>Mua ngay</Text>
+            </TouchableOpacity>
+          </>
+        ) : currentProduct && currentProduct.status === 'inactive' ? (
+          <View style={[styles.suspendedContainer, { backgroundColor: '#f5f5f5' }]}>
+            <Ionicons name="pause-circle" size={24} color="#ff9800" />
+            <Text style={[styles.suspendedText, { color: '#ff9800' }]}>
+              Tạm ngưng
+            </Text>
+          </View>
+        ) : (
+          <View style={[styles.outOfStockContainer, { backgroundColor: '#f5f5f5' }]}>
+            <Ionicons name="alert-circle" size={24} color="#c62828" />
+            <Text style={[styles.outOfStockText, { color: '#c62828' }]}>
+              Hết hàng
+            </Text>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -836,10 +1148,15 @@ const styles = StyleSheet.create({
   quantityButton: {
     padding: 5,
   },
-  quantityText: {
+  quantityButtonDisabled: {
+    opacity: 0.5,
+  },
+  quantityInput: {
     fontSize: 18,
     fontWeight: 'bold',
     marginHorizontal: 15,
+    width: 40,
+    textAlign: 'center',
   },
   addToCartButton: {
     flex: 1,
@@ -930,16 +1247,17 @@ const styles = StyleSheet.create({
     paddingVertical: 30,
   },
   reviewItem: {
-    marginBottom: 16,
-    paddingBottom: 16,
+    marginBottom: 20,
+    paddingBottom: 20,
     borderBottomWidth: 1,
-    paddingHorizontal: 16,
+    width: '100%',
   },
   reviewHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    marginBottom: 12,
+    width: '100%',
   },
   reviewerInfo: {
     flexDirection: 'row',
@@ -968,6 +1286,7 @@ const styles = StyleSheet.create({
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
   },
   starIcon: {
     marginRight: 2,
@@ -982,17 +1301,39 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   reviewContent: {
-    marginLeft: 52, // Align with reviewer name
     marginTop: 12,
+    width: '100%',
   },
   reviewText: {
     fontSize: 14,
     lineHeight: 20,
+    textAlign: 'left',
   },
   reviewActions: {
-    marginLeft: 52,
-    marginTop: 8,
-    alignItems: 'flex-start',
+    marginTop: 12,
+  },
+  adminReplyContainer: {
+    width: '100%',
+    marginTop: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderRadius: 8,
+  },
+  adminReplyTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 4,
+    textAlign: 'left',
+  },
+  adminReplyText: {
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'left',
+  },
+  adminReplyDate: {
+    fontSize: 12,
+    marginTop: 6,
+    textAlign: 'left',
   },
   helpfulButton: {
     flexDirection: 'row',
@@ -1001,6 +1342,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 16,
     backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    alignSelf: 'flex-start',
   },
   helpfulText: {
     fontSize: 12,
@@ -1016,6 +1358,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 6,
     marginBottom: 8,
+    width: '100%',
   },
   reviewCategoryItalic: {
     fontStyle: 'italic',
@@ -1025,11 +1368,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
-    marginHorizontal: 16,
     marginTop: 10,
     borderWidth: 1,
     borderRadius: 8,
     backgroundColor: 'rgba(70, 155, 67, 0.05)',
+    width: '100%',
   },
   showMoreReviewsText: {
     fontSize: 14,
@@ -1076,12 +1419,42 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   reviewsContent: {
-    alignItems: 'center',
+    paddingHorizontal: 16,
     paddingVertical: 20,
+    width: '100%',
   },
   noReviewsText: {
     fontSize: 16,
     textAlign: 'center',
+  },
+  outOfStockContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 15,
+    borderRadius: 10,
+    marginHorizontal: 16,
+    marginTop: 10,
+  },
+  outOfStockText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
+  suspendedContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 15,
+    borderRadius: 10,
+    marginHorizontal: 0,
+    marginTop: 10,
+    width: '100%',
+  },
+  suspendedText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 8,
   },
 });
 

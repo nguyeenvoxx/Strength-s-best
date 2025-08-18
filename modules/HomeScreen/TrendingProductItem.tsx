@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { isValidImageUrl } from '../../utils/productUtils';
 
 interface TrendingProductItemProps {
     image: any;
@@ -18,10 +19,14 @@ const TrendingProductItem: React.FC<TrendingProductItemProps> = ({
     discount,
     onPress,
 }) => {
-    // Xử lý image source
-    const imageSource = typeof image === 'string' 
-        ? { uri: image } 
-        : image;
+    // Fallback khi ảnh lỗi decode
+    const [failed, setFailed] = useState(false);
+    const imageSource = useMemo(() => {
+        if (failed) return require('../../assets/images_sp/dau_ca_omega.png');
+        if (typeof image === 'string' && isValidImageUrl(image)) return { uri: image } as const;
+        if (typeof image === 'string') return { uri: image } as const;
+        return image;
+    }, [image, failed]);
 
     return (
         <TouchableOpacity 
@@ -45,6 +50,7 @@ const TrendingProductItem: React.FC<TrendingProductItemProps> = ({
                 defaultSource={require('../../assets/images_sp/dau_ca_omega.png')}
                 onError={(error) => {
                   console.log('🔍 TrendingProductItem Image load error:', error.nativeEvent.error);
+                  setFailed(true);
                 }}
                 onLoad={() => {
                   console.log('🔍 TrendingProductItem Image loaded successfully');

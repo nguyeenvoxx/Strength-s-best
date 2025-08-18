@@ -30,6 +30,7 @@ interface AuthActions {
   signup: (userData: SignupRequest) => Promise<void>;
   verifyEmail: (email: string, verifyCode: string) => Promise<void>;
   resendVerificationCode: (email: string) => Promise<void>;
+  checkEmailStatus: (email: string) => Promise<any>;
   logout: () => void;
   clearError: () => void;
   setUser: (user: User) => void;
@@ -75,13 +76,24 @@ export const useAuthStore = create<AuthStore>()(
           set({ isLoading: true, error: null });
           const response = await authService.signup(userData);
           
-          set({
-            user: response.data.user,
-            token: response.token,
-            isAuthenticated: true,
-            isLoading: false,
-            error: null,
-          });
+          // Kiểm tra nếu có token (đăng ký thành công)
+          if (response.token) {
+            set({
+              user: response.data.user,
+              token: response.token,
+              isAuthenticated: true,
+              isLoading: false,
+              error: null,
+            });
+          } else {
+            // Trường hợp khác
+            set({
+              isLoading: false,
+              error: null,
+            });
+          }
+          
+          return response; // Trả về response để frontend có thể xử lý
         } catch (error: any) {
           const errorMessage = error.response?.data?.message || error.message || 'Đăng ký thất bại';
           set({ 
@@ -127,6 +139,27 @@ export const useAuthStore = create<AuthStore>()(
           });
         } catch (error: any) {
           const errorMessage = error.response?.data?.message || error.message || 'Gửi lại mã xác thực thất bại';
+          set({ 
+            error: errorMessage, 
+            isLoading: false
+          });
+          throw error;
+        }
+      },
+
+      checkEmailStatus: async (email: string) => {
+        try {
+          set({ isLoading: true, error: null });
+          const response = await authService.checkEmailStatus({ email });
+          
+          set({
+            isLoading: false,
+            error: null,
+          });
+          
+          return response;
+        } catch (error: any) {
+          const errorMessage = error.response?.data?.message || error.message || 'Kiểm tra email thất bại';
           set({ 
             error: errorMessage, 
             isLoading: false

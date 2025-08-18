@@ -15,7 +15,7 @@ export const createOrderFromCart = async (items: any[], shippingInfo: any, vouch
     console.log('🔍 Creating order from cart:', { itemsCount: items.length, shippingInfo });
 
     const res = await axios.post(
-      `${API_CONFIG.BASE_URL}/api/v1/payments/create-order`,
+      `${API_CONFIG.BASE_URL}/payments/create-order`,
       { 
         items, 
         shippingInfo, 
@@ -48,7 +48,7 @@ export const createVnpayPayment = async (amount: number, orderId: string, orderI
     console.log('🔍 Creating VNPay payment:', { amount, orderId });
 
     const res = await axios.post(
-      `${API_CONFIG.BASE_URL}/api/v1/payments/vnpay`,
+      `${API_CONFIG.BASE_URL}/payments/vnpay`,
       { 
         amount, 
         orderId, 
@@ -81,7 +81,7 @@ export const createMomoPayment = async (amount: number, orderId: string, orderIn
     console.log('🔍 Creating MoMo payment:', { amount, orderId });
 
     const res = await axios.post(
-      `${API_CONFIG.BASE_URL}/api/v1/payments/momo`,
+      `${API_CONFIG.BASE_URL}/payments/momo`,
       { 
         amount, 
         orderId, 
@@ -114,7 +114,7 @@ export const createPaymentFromCart = async (typePayment: 'vnpay' | 'momo' | 'cod
     console.log('🔍 Creating payment from cart:', { typePayment, itemsCount: items.length });
 
     const res = await axios.post(
-      `${API_CONFIG.BASE_URL}/api/v1/payments/from-cart`,
+      `${API_CONFIG.BASE_URL}/payments/from-cart`,
       { 
         typePayment, 
         items, 
@@ -148,7 +148,7 @@ export const getPaymentInfo = async (paymentId: string) => {
     console.log('🔍 Getting payment info:', paymentId);
 
     const res = await axios.get(
-      `${API_CONFIG.BASE_URL}/api/v1/payments/detail/${paymentId}`,
+      `${API_CONFIG.BASE_URL}/payments/detail/${paymentId}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -176,7 +176,7 @@ export const getMyPayments = async () => {
     console.log('🔍 Getting my payments');
 
     const res = await axios.get(
-      `${API_CONFIG.BASE_URL}/api/v1/payments/my-payments`,
+      `${API_CONFIG.BASE_URL}/payments/my-payments`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -204,7 +204,7 @@ export const clearCartItems = async () => {
     console.log('🔍 Clearing cart items');
 
     const res = await axios.delete(
-      `${API_CONFIG.BASE_URL}/api/v1/carts/clear`,
+      `${API_CONFIG.BASE_URL}/carts/clear`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -232,8 +232,8 @@ export const createPaymentVerification = async (orderId: string, cardId: string)
     console.log('🔍 Creating payment verification:', { orderId, cardId });
 
     const res = await axios.post(
-      `${API_CONFIG.BASE_URL}/api/v1/payments/create-verification`,
-      { orderId, cardId },
+      `${API_CONFIG.BASE_URL}/payments/create-verification`,
+      { orderId, cardId, method: 'card' },
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -262,7 +262,7 @@ export const resendPaymentVerification = async (orderId: string, cardId: string)
     console.log('🔍 Resending payment verification:', { orderId, cardId });
 
     const res = await axios.post(
-      `${API_CONFIG.BASE_URL}/api/v1/payments/resend-code`,
+      `${API_CONFIG.BASE_URL}/payments/resend-code`,
       { orderId, cardId },
       {
         headers: {
@@ -292,8 +292,8 @@ export const verifyCardPayment = async (orderId: string, cardId: string, verific
     console.log('🔍 Verifying card payment:', { orderId, cardId, amount });
 
     const res = await axios.post(
-      `${API_CONFIG.BASE_URL}/api/v1/payments/verify`,
-      { orderId, cardId, verificationCode, amount },
+      `${API_CONFIG.BASE_URL}/payments/verify`,
+      { orderId, cardId, verificationCode, amount, method: 'card' },
       {
         headers: {
           Authorization: `Bearer ${token}`,

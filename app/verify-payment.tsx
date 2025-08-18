@@ -16,6 +16,7 @@ import { useTheme } from '../store/ThemeContext';
 import { LightColors, DarkColors } from '../constants/Colors';
 import { formatPrice } from '../utils/productUtils';
 import { API_CONFIG } from '../constants/config';
+import { useNotificationStore } from '../store/useNotificationStore';
 
 const VerifyPaymentScreen: React.FC = () => {
   const router = useRouter();
@@ -25,6 +26,7 @@ const VerifyPaymentScreen: React.FC = () => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const colors = isDark ? DarkColors : LightColors;
+  const { create: createNotification } = useNotificationStore();
 
   const [code, setCode] = useState(['', '', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
@@ -68,7 +70,7 @@ const VerifyPaymentScreen: React.FC = () => {
     const verificationCode = code.join('');
     
     if (verificationCode.length !== 7) {
-      Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ mã xác minh 7 ký tự');
+      Alert.alert('Thông báo', 'Vui lòng nhập đầy đủ mã xác minh 7 ký tự');
       return;
     }
 
@@ -85,7 +87,8 @@ const VerifyPaymentScreen: React.FC = () => {
           orderId,
           cardId,
           verificationCode,
-          amount: parseFloat(amount as string)
+          amount: parseFloat(amount as string),
+          method: 'card'
         })
       });
 
@@ -99,20 +102,56 @@ const VerifyPaymentScreen: React.FC = () => {
       // Xóa giỏ hàng sau khi thanh toán thành công
       await clearCart(token!);
 
+      // Sau khi xác minh thẻ thành công: đảm bảo order-detail phản ánh đã thanh toán (luồng riêng cho thẻ)
+      try {
+        await fetch(`${API_CONFIG.BASE_URL}/orders/${orderId}/mark-paid`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ method: 'card' })
+        });
+      } catch (e) {
+        // Nếu backend chưa có endpoint này, bỏ qua không chặn luồng
+      }
+
+      // Thông báo: thanh toán thành công
+      try {
+        await createNotification(token!, {
+          title: 'Thanh toán thành công',
+          message: `Đơn hàng #${orderId} đã được thanh toán.`,
+          type: 'order',
+          relatedId: String(orderId),
+          relatedModel: 'Order',
+          icon: 'checkmark-circle'
+        });
+      } catch (e) {}
+
       // Hiển thị thành công và chuyển đến trang success
       router.replace({
         pathname: '/payment-success',
         params: {
           orderId: orderId,
-          amount: amount,
-          paymentMethod: 'card',
-          cardNumber: maskedCardNumber
+          paymentId: result?.data?.paymentId || '',
+          method: 'card'
         }
       });
 
     } catch (error: any) {
       console.error('Error verifying payment:', error);
-      Alert.alert('Lỗi', error.message || 'Không thể xác minh thanh toán. Vui lòng thử lại.');
+      Alert.alert('Thông báo', error.message || 'Không thể xác minh thanh toán. Vui lòng thử lại.');
+      // Thông báo: thanh toán thất bại
+      try {
+        await createNotification(token!, {
+          title: 'Thanh toán thất bại',
+          message: `Đơn hàng #${orderId}: mã xác minh không hợp lệ hoặc hết hạn.`,
+          type: 'order',
+          relatedId: String(orderId),
+          relatedModel: 'Order',
+          icon: 'close'
+        });
+      } catch (e) {}
     } finally {
       setLoading(false);
     }
@@ -144,7 +183,7 @@ const VerifyPaymentScreen: React.FC = () => {
 
     } catch (error: any) {
       console.error('Error resending code:', error);
-      Alert.alert('Lỗi', error.message || 'Không thể gửi lại mã. Vui lòng thử lại.');
+      Alert.alert('Thông báo', error.message || 'Không thể gửi lại mã. Vui lòng thử lại.');
     } finally {
       setResendLoading(false);
     }

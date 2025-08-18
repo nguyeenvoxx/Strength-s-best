@@ -18,19 +18,23 @@ import { useCartStore } from '../store/useCartStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useVoucherStore } from '../store/useVoucherStore';
 import { formatPrice, getProductImageUrl } from '../utils/productUtils';
+import { STRIPE_CONFIG, API_CONFIG } from '../constants/config';
+import { initPaymentSheet, presentPaymentSheet } from '@stripe/stripe-react-native';
 import { useTheme } from '../store/ThemeContext';
+import { useNotificationStore } from '../store/useNotificationStore';
 import { createOrder, CreateOrderRequest } from '../services/orderApi';
 import AddressSelector from '../components/AddressSelector';
 import { Address, getUserAddresses } from '../services/addressApi';
 import { Card, getUserCards, deleteCard, setDefaultCard } from '../services/cardApi';
-import { API_CONFIG } from '../constants/config';
 import { userVoucherApi, ApiUserVoucher } from '../services/api';
 import { useSimpleDataSync } from '../hooks/useSimpleDataSync';
 import PullToRefresh from '../components/PullToRefresh';
 import UpdateStatusBar from '../components/UpdateStatusBar';
+import { useSelectedItemsStore } from '../store/useSelectedItemsStore';
 
 const CheckoutScreen: React.FC = () => {
   const router = useRouter();
+  const params = (router as any).params || {};
   const { theme } = useTheme();
   const colors = theme === 'dark' ? {
     background: '#1a1a1a',
@@ -51,11 +55,14 @@ const CheckoutScreen: React.FC = () => {
   const { cart, items, loading, fetchCart, clearCart } = useCartStore();
   const { isAuthenticated, token } = useAuthStore();
   const { vouchers, selectedVoucher, fetchVouchers, selectVoucher } = useVoucherStore();
+  const { create: createNotification } = useNotificationStore();
+  const { selectedItemIds, clearSelectedItems } = useSelectedItemsStore();
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('cod');
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [showVoucherModal, setShowVoucherModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [useSavedCard, setUseSavedCard] = useState(false);
 
   const [showCardManagementModal, setShowCardManagementModal] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
@@ -234,8 +241,24 @@ const CheckoutScreen: React.FC = () => {
     }
   };
 
+  const selectedIdsParam = (params?.selected as string) || '';
+  
+  const effectiveSelectedIds = (selectedItemIds && selectedItemIds.length > 0)
+    ? selectedItemIds
+    : (selectedIdsParam ? selectedIdsParam.split(',') : (items || []).map((it: any) => it._id));
+  const selectedIdSet = new Set(effectiveSelectedIds);
+  console.log('🔍 Checkout Debug:', {
+    selectedIdsParam,
+    selectedItemIds,
+    effectiveSelectedIds,
+    selectedIdSet: Array.from(selectedIdSet),
+    totalItems: items?.length,
+    items: items?.map((it: any) => ({ id: it._id, name: it.productId?.nameProduct }))
+  });
+
   const calculateSubtotal = () => {
-    return (items || []).reduce((total, item) => {
+    return (items || []).reduce((total, item: any) => {
+      if (!selectedIdSet.has(item._id)) return total;
       const product = item.productId as any;
       const originalPrice = product?.priceProduct || 0;
       const discountPercent = product?.discount || 0;
@@ -257,6 +280,19 @@ const CheckoutScreen: React.FC = () => {
     return calculateSubtotal() * (selectedUserVoucher.discount / 100);
   };
 
+  // Phí giao hàng và tổng cộng (để dùng thống nhất cho UI, tạo đơn và thanh toán)
+  const getShippingFee = () => {
+    const baseShipping = 25000;
+    const hasFreeShip = !!selectedUserVoucher && /free\s*ship|freeship|miễn\s*phí\s*ship/i.test(
+      selectedUserVoucher.description || selectedUserVoucher.code || ''
+    );
+    return hasFreeShip ? 0 : baseShipping;
+  };
+
+  const calculateGrandTotal = () => {
+    return calculateTotal() + getShippingFee();
+  };
+
   const handleVoucherSelect = (voucher: any) => {
     selectVoucher(voucher);
     setShowVoucherModal(false);
@@ -270,23 +306,16 @@ const CheckoutScreen: React.FC = () => {
   const handlePaymentMethodSelect = (method: string) => {
     setSelectedPaymentMethod(method);
     setShowPaymentModal(false);
-    
-    // Nếu chọn thẻ tín dụng, hiển thị modal chọn thẻ
-    if (method === 'card') {
-      // Nếu chưa có thẻ nào được chọn và có thẻ trong danh sách, tự động chọn thẻ đầu tiên
-      if (!selectedCard && userCards.length > 0) {
-        const defaultCard = userCards.find(card => card.isDefault);
-        setSelectedCard(defaultCard || userCards[0]);
-      }
-      // Nếu không có thẻ nào, hiển thị modal để người dùng có thể thêm thẻ
-      if (userCards.length === 0) {
-        setShowCardManagementModal(true);
-      }
-    }
   };
 
   const handleCardSelect = (card: any) => {
     setSelectedCard(card);
+    // Optimistic update: đưa card vừa chọn lên đầu danh sách cục bộ để UI phản hồi nhanh
+    setUserCards(prev => {
+      if (!prev) return prev;
+      const others = prev.filter(c => c._id !== card._id);
+      return [card, ...others];
+    });
     setShowCardManagementModal(false);
   };
 
@@ -314,9 +343,8 @@ const CheckoutScreen: React.FC = () => {
               }
               
               Alert.alert('Thành công', 'Đã xóa thẻ thành công');
-            } catch (error) {
-              console.error('Error deleting card:', error);
-              Alert.alert('Lỗi', 'Không thể xóa thẻ. Vui lòng thử lại.');
+            } catch (error: any) {
+              Alert.alert('Thông báo', 'Không thể xóa thẻ. Vui lòng thử lại.');
             }
           }
         }
@@ -326,63 +354,41 @@ const CheckoutScreen: React.FC = () => {
 
   const handlePayment = async () => {
     if (!token) {
-      Alert.alert('Lỗi', 'Vui lòng đăng nhập lại');
+      Alert.alert('Thông báo', 'Vui lòng đăng nhập lại');
+      return;
+    }
+
+    if (!selectedAddress) {
+      Alert.alert('Thông báo', 'Vui lòng chọn/nhập đầy đủ địa chỉ giao hàng');
+      return;
+    }
+
+    if (!selectedAddress.name || !selectedAddress.phone || !selectedAddress.address) {
+      Alert.alert('Thông báo', 'Vui lòng điền đầy đủ thông tin địa chỉ giao hàng (tên, số điện thoại, địa chỉ)');
       return;
     }
 
     setIsProcessing(true);
     try {
-      // Tạo đơn hàng
-      const orderItems = (items || []).map(item => ({
+      // Tạo đơn hàng - chỉ lấy các item được chọn
+      const orderItems = (items || []).filter((item: any) => selectedIdSet.has(item._id)).map(item => ({
         productId: item.productId._id,
         quantity: item.quantity,
         price: (item.productId.priceProduct * (1 - (item.productId.discount || 0) / 100))
       }));
 
-      if (!selectedAddress) {
-        Alert.alert('Lỗi', 'Vui lòng chọn địa chỉ giao hàng');
+      // Validate phone number
+      const normalizedPhone = selectedAddress.phone.replace(/\s+/g, '');
+      if (!/^0\d{9,10}$/.test(normalizedPhone)) {
+        Alert.alert('Thông báo', 'Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại 10-11 chữ số bắt đầu bằng 0');
         setIsProcessing(false);
         return;
       }
 
-      // Kiểm tra thông tin địa chỉ
-      if (!selectedAddress.name || !selectedAddress.phone || !selectedAddress.address) {
-        Alert.alert('Lỗi', 'Vui lòng điền đầy đủ thông tin địa chỉ giao hàng (tên, số điện thoại, địa chỉ)');
+      if (selectedPaymentMethod === 'card' && !selectedCard) {
+        Alert.alert('Thông báo', 'Vui lòng chọn thẻ thanh toán');
         setIsProcessing(false);
         return;
-      }
-
-      // Kiểm tra định dạng số điện thoại
-      const phoneRegex = /^[0-9]{10,11}$/;
-      if (!phoneRegex.test(selectedAddress.phone)) {
-        Alert.alert('Lỗi', 'Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại 10-11 chữ số');
-        setIsProcessing(false);
-        return;
-      }
-
-      // Kiểm tra nếu thanh toán bằng thẻ thì phải có thẻ được chọn
-      if (selectedPaymentMethod === 'card') {
-        if (userCards.length === 0) {
-          Alert.alert(
-            'Chưa có thẻ thanh toán', 
-            'Bạn cần thêm ít nhất một thẻ để thanh toán online. Vui lòng thêm thẻ mới.',
-            [
-              { text: 'Hủy', style: 'cancel' },
-              { 
-                text: 'Thêm thẻ', 
-                onPress: () => router.replace('/add-card' as any) 
-              }
-            ]
-          );
-          setIsProcessing(false);
-          return;
-        }
-        
-        if (!selectedCard) {
-          Alert.alert('Lỗi', 'Vui lòng chọn thẻ thanh toán');
-          setIsProcessing(false);
-          return;
-        }
       }
 
       const orderData: CreateOrderRequest = {
@@ -393,7 +399,7 @@ const CheckoutScreen: React.FC = () => {
         voucherDiscount: selectedUserVoucher ? calculateDiscount() : 0,
         shippingAddress: {
           name: selectedAddress.name,
-          phone: selectedAddress.phone,
+          phone: normalizedPhone,
           address: selectedAddress.address,
           province: selectedAddress.province || '',
           district: selectedAddress.district || '',
@@ -402,7 +408,7 @@ const CheckoutScreen: React.FC = () => {
       };
 
 
-      const createdOrder = await createOrder(token, orderData);
+       const createdOrder = await createOrder(token, orderData);
       
 
       // Nếu thanh toán bằng thẻ, gửi mã OTP và chuyển đến trang xác minh
@@ -417,19 +423,31 @@ const CheckoutScreen: React.FC = () => {
             },
             body: JSON.stringify({
               orderId: createdOrder._id,
-              cardId: selectedCard!._id
+              cardId: selectedCard!._id,
+              method: 'card'
             })
           });
 
           if (verifyResponse.ok) {
+            // Tạo thông báo: đã tạo đơn và gửi mã xác minh
+            try {
+              await createNotification(token!, {
+                title: 'Xác minh thanh toán',
+                message: `Đơn hàng #${createdOrder._id} đã tạo. Vui lòng xác minh thanh toán thẻ.`,
+                type: 'order',
+                relatedId: createdOrder._id,
+                relatedModel: 'Order',
+                icon: 'card'
+              });
+            } catch (e) {}
             setIsProcessing(false);
-            router.replace({
+              router.replace({
               pathname: '/verify-payment' as any,
               params: {
                 orderId: createdOrder._id,
                 cardId: selectedCard!._id,
-                amount: calculateTotal(),
-                maskedCardNumber: selectedCard!.cardNumber
+                  amount: calculateTotal(),
+                  maskedCardNumber: selectedCard!.maskedCardNumber || selectedCard!.cardNumber
               }
             });
             return;
@@ -439,6 +457,17 @@ const CheckoutScreen: React.FC = () => {
         }
         
         // Fallback: vẫn chuyển đến trang xác minh ngay cả khi gửi OTP thất bại
+        // Tạo thông báo fallback
+        try {
+          await createNotification(token!, {
+            title: 'Xác minh thanh toán',
+            message: `Đơn hàng #${createdOrder._id} đã tạo. Vui lòng xác minh thanh toán thẻ.`,
+            type: 'order',
+            relatedId: createdOrder._id,
+            relatedModel: 'Order',
+            icon: 'card'
+          });
+        } catch (e) {}
         setIsProcessing(false);
         router.replace({
           pathname: '/verify-payment' as any,
@@ -446,7 +475,7 @@ const CheckoutScreen: React.FC = () => {
             orderId: createdOrder._id,
             cardId: selectedCard!._id,
             amount: calculateTotal(),
-            maskedCardNumber: selectedCard!.cardNumber
+            maskedCardNumber: selectedCard!.maskedCardNumber || selectedCard!.cardNumber
           }
         });
         return;
@@ -454,6 +483,18 @@ const CheckoutScreen: React.FC = () => {
 
       // Xóa giỏ hàng sau khi tạo đơn hàng thành công (COD)
       await clearCart(token);
+
+      // Tạo thông báo đặt hàng thành công (COD)
+      try {
+        await createNotification(token!, {
+          title: 'Đặt hàng thành công',
+          message: `Đơn hàng #${createdOrder._id} đã được tạo. Hình thức: COD.`,
+          type: 'order',
+          relatedId: createdOrder._id,
+          relatedModel: 'Order',
+          icon: 'bag'
+        });
+      } catch (e) {}
 
       setIsProcessing(false);
       Alert.alert(
@@ -473,6 +514,67 @@ const CheckoutScreen: React.FC = () => {
         'Lỗi thanh toán',
         'Có lỗi xảy ra trong quá trình thanh toán. Vui lòng thử lại.'
       );
+    }
+  };
+
+  // Thêm thẻ bằng Stripe PaymentSheet (SetupIntent) chỉ để lưu phương thức, không thanh toán
+  const addCardViaPaymentSheet = async () => {
+    if (!token) return;
+    try {
+      // 1) Tạo customer session (customerId + ephemeralKey)
+      const sessionRes = await fetch(`${API_CONFIG.BASE_URL}/payments/stripe/customer-session`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!sessionRes.ok) {
+        const ed = await sessionRes.json().catch(() => ({}));
+        throw new Error(ed.message || 'Không thể tạo phiên Stripe');
+      }
+      const session = await sessionRes.json();
+
+      // 2) Tạo SetupIntent để lưu phương thức thanh toán
+      const setupRes = await fetch(`${API_CONFIG.BASE_URL}/payments/stripe/create-setup-intent`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!setupRes.ok) {
+        const ed = await setupRes.json().catch(() => ({}));
+        throw new Error(ed.message || 'Không thể tạo SetupIntent');
+      }
+      const setup = await setupRes.json();
+
+      // 3) Khởi tạo và mở PaymentSheet (Test Mode)
+      const init = await initPaymentSheet({
+        setupIntentClientSecret: setup.data.clientSecret,
+        merchantDisplayName: 'Strength Best',
+        defaultBillingDetails: { name: selectedAddress?.name },
+        customerId: session.data.customerId,
+        customerEphemeralKeySecret: session.data.ephemeralKey,
+      });
+      if (init.error) throw new Error(init.error.message);
+
+      const presentResult = await presentPaymentSheet();
+      if (presentResult.error) throw new Error(presentResult.error.message);
+
+      // Đồng bộ thẻ thủ công sau khi thêm thẻ (SetupIntent)
+      try {
+        await fetch(`${API_CONFIG.BASE_URL}/payments/stripe/sync-payment-methods`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        await refreshCards();
+      } catch (e) {}
+
+      // 4) Sau khi thêm thẻ xong, refresh danh sách thẻ và chọn thẻ mặc định/đầu tiên
+      await refreshCards();
+      const latestCards = await getUserCards(token);
+      setUserCards(latestCards);
+      const defaultCard = latestCards.find(c => c.isDefault) || latestCards[0];
+      if (defaultCard) setSelectedCard(defaultCard);
+
+      Alert.alert('Thành công', 'Đã thêm thẻ. Vui lòng nhấn Thanh toán để tiếp tục.');
+    } catch (e: any) {
+      Alert.alert('Thông báo', e.message || 'Không thể thêm thẻ');
     }
   };
 
@@ -626,6 +728,8 @@ const CheckoutScreen: React.FC = () => {
           error={null}
         />
 
+        
+
         {/* Address Section - Di chuyển lên đầu */}
         <AddressSelector
           selectedAddress={selectedAddress}
@@ -634,16 +738,29 @@ const CheckoutScreen: React.FC = () => {
 
         {/* Order Items */}
         <View style={[styles.section, { backgroundColor: colors.card }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Sản phẩm đặt hàng ({items.length})
-          </Text>
-          <FlatList
-            data={items}
-            renderItem={renderOrderItem}
-            keyExtractor={(item) => item._id}
-            scrollEnabled={false}
-            showsVerticalScrollIndicator={false}
-          />
+          {(() => {
+            const filteredItems = (items || []).filter((it: any) => selectedIdSet.has(it._id));
+            console.log('🔍 Rendering order items:', {
+              totalItems: items?.length,
+              selectedIdSet: Array.from(selectedIdSet),
+              filteredItemsCount: filteredItems.length,
+              filteredItems: filteredItems.map((it: any) => ({ id: it._id, name: it.productId?.nameProduct }))
+            });
+            return (
+              <>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                  Sản phẩm đặt hàng ({filteredItems.length})
+                </Text>
+                <FlatList
+                  data={filteredItems}
+                  renderItem={renderOrderItem}
+                  keyExtractor={(item) => item._id}
+                  scrollEnabled={false}
+                  showsVerticalScrollIndicator={false}
+                />
+              </>
+            );
+          })()}
         </View>
 
         {/* Voucher Section */}
@@ -677,16 +794,12 @@ const CheckoutScreen: React.FC = () => {
 
         {/* Payment Method Section */}
         <View style={[styles.section, { backgroundColor: colors.card }]}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Hình thức thanh toán
-            </Text>
-            <TouchableOpacity onPress={() => setShowPaymentModal(true)}>
-              <Text style={[styles.selectText, { color: colors.accent }]}>
-                Thay đổi
-              </Text>
-            </TouchableOpacity>
-          </View>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Hình thức thanh toán</Text>
+              <TouchableOpacity onPress={() => setShowPaymentModal(true)}>
+                <Text style={[styles.selectText, { color: colors.accent }]}>Thay đổi</Text>
+              </TouchableOpacity>
+            </View>
           
           <View style={styles.selectedPayment}>
             <Ionicons 
@@ -700,79 +813,10 @@ const CheckoutScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Card Information - Only show when card payment is selected */}
-        {selectedPaymentMethod === 'card' && (
-          <View style={[styles.section, { backgroundColor: colors.card }]}>
-            {showCardAddedMessage && (
-              <View style={[styles.cardAddedMessage, { backgroundColor: colors.accent + '20' }]}>
-                <Ionicons name="checkmark-circle" size={20} color={colors.accent} />
-                <Text style={[styles.cardAddedMessageText, { color: colors.accent }]}>
-                  {autoSelectedCard ? 'Đã tự động chọn thẻ thanh toán!' : 
-                   cardVerified ? 'Thẻ đã được xác minh và sẵn sàng sử dụng!' : 
-                   'Thẻ mới đã được thêm thành công!'}
-                </Text>
-              </View>
-            )}
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Thông tin thẻ
-              </Text>
-              <TouchableOpacity onPress={() => setShowCardManagementModal(true)}>
-                <Text style={[styles.selectText, { color: colors.accent }]}>
-                  Quản lý thẻ
-                </Text>
-              </TouchableOpacity>
-            </View>
-            
-            {selectedCard ? (
-              <View style={styles.selectedCard}>
-                <View style={styles.cardInfo}>
-                  <Ionicons name="card" size={24} color={colors.accent} />
-                  <View style={styles.cardDetails}>
-                    <Text style={[styles.cardNumber, { color: colors.text }]}>
-                      {selectedCard.maskedCardNumber}
-                    </Text>
-                    <Text style={[styles.cardHolder, { color: colors.textSecondary }]}>
-                      {selectedCard.cardHolder}
-                    </Text>
-                  </View>
-                  <Text style={[styles.cardType, { color: colors.accent }]}>
-                    {selectedCard.cardType.toUpperCase()}
-                  </Text>
-                </View>
-              </View>
-            ) : (
-              <View style={styles.noCardSelected}>
-                <Ionicons name="card-outline" size={48} color={colors.textSecondary} />
-                <Text style={[styles.noCardText, { color: colors.textSecondary }]}>
-                  Chưa chọn thẻ thanh toán
-                </Text>
-                <TouchableOpacity 
-                  style={[styles.addCardButton, { backgroundColor: colors.accent }]}
-                  onPress={() => {
-                    setShouldRefreshCards(true);
-                    setReturnedFromMyCards(true);
-                    router.push('/add-card' as any);
-                  }}
-                >
-                  <Text style={styles.addCardButtonText}>Thêm thẻ mới</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.addCardButton, { backgroundColor: colors.textSecondary, marginTop: 10 }]}
-                  onPress={() => {
-                    setReturnedFromMyCards(true);
-                    router.push('/my-cards' as any);
-                  }}
-                >
-                  <Text style={[styles.addCardButtonText, { color: colors.text }]}>Xem thẻ của tôi</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        )}
+        {/* Card UI đã loại bỏ khỏi Checkout theo yêu cầu. Người dùng sẽ chọn/nhập thẻ trực tiếp trong PaymentSheet. */}
 
         {/* Order Summary */}
-        <View style={[styles.section, { backgroundColor: colors.card }]}>
+          <View style={[styles.section, { backgroundColor: colors.card }]}> 
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             Tổng đơn hàng
           </Text>
@@ -797,22 +841,116 @@ const CheckoutScreen: React.FC = () => {
             </View>
           )}
 
-          <View style={[styles.totalRow, { borderTopColor: colors.border }]}>
-            <Text style={[styles.totalLabel, { color: colors.text }]}>
-              Tổng cộng
-            </Text>
-            <Text style={[styles.totalValue, { color: colors.accent }]}>
-              {formatPrice(calculateTotal())}
-            </Text>
-          </View>
+          {/* Shipping fee + FreeShip voucher */}
+          {(() => {
+            const shippingFee = getShippingFee();
+            const hasFreeShip = shippingFee === 0;
+            return (
+              <>
+                <View style={styles.summaryRow}>
+                  <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Phí giao hàng</Text>
+                  <Text style={[styles.summaryValue, { color: hasFreeShip ? colors.accent : colors.text }]}>
+                    {hasFreeShip ? '-Miễn phí' : formatPrice(shippingFee)}
+                  </Text>
+                </View>
+                <View style={[styles.totalRow, { borderTopColor: colors.border }]}> 
+                  <Text style={[styles.totalLabel, { color: colors.text }]}>Tổng cộng</Text> 
+                  <Text style={[styles.totalValue, { color: colors.accent }]}>
+                    {formatPrice(calculateGrandTotal())}
+                  </Text>
+                </View>
+              </>
+            );
+          })()}
         </View>
       </PullToRefresh>
 
-      {/* Payment Button */}
+        {/* Payment Button */}
       <View style={[styles.paymentContainer, { backgroundColor: colors.card }]}>
         <TouchableOpacity
           style={[styles.paymentButton, { backgroundColor: colors.accent }]}
-          onPress={handlePayment}
+          onPress={async () => {
+            if (selectedPaymentMethod === 'card') {
+              // Kiểm tra địa chỉ giao hàng trước khi thanh toán
+              if (!selectedAddress || !selectedAddress.name || !selectedAddress.phone || !selectedAddress.address) {
+                Alert.alert('Lỗi', 'Vui lòng chọn/nhập đầy đủ địa chỉ giao hàng');
+                return;
+              }
+              try {
+                // 1) Tạo customer session (customerId + ephemeralKey)
+                const sessionRes = await fetch(`${API_CONFIG.BASE_URL}/payments/stripe/customer-session`, {
+                  method: 'POST', headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!sessionRes.ok) throw new Error('Không thể tạo phiên Stripe');
+                const session = await sessionRes.json();
+
+                // 2) Tạo PaymentIntent để hiển thị PaymentSheet (có thể chọn thẻ đã lưu hoặc thêm thẻ mới) và thanh toán ngay
+                const resp = await fetch(`${API_CONFIG.BASE_URL}/payments/stripe/create-payment-intent`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                  body: JSON.stringify({ amount: Math.round(calculateGrandTotal()), orderId: (cart as any)?._id || 'temp' })
+                });
+                if (!resp.ok) throw new Error('Không thể tạo PaymentIntent');
+                const data = await resp.json();
+
+                // 3) Khởi tạo và mở PaymentSheet (PaymentIntent)
+                const init = await initPaymentSheet({
+                  paymentIntentClientSecret: data.data.clientSecret,
+                  merchantDisplayName: 'Strength Best',
+                  customerId: session.data.customerId,
+                  customerEphemeralKeySecret: session.data.ephemeralKey,
+                });
+                if (init.error) throw new Error(init.error.message);
+
+                const present = await presentPaymentSheet();
+                if (present.error) throw new Error(present.error.message);
+
+                // Đồng bộ thẻ thủ công sau khi thanh toán qua PaymentSheet
+                try {
+                  await fetch(`${API_CONFIG.BASE_URL}/payments/stripe/sync-payment-methods`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                  });
+                  await refreshCards();
+                } catch (e) {}
+
+                // 4) Sau khi người dùng thanh toán thành công trong PaymentSheet → tạo đơn hàng và xác nhận ở backend
+                const createdOrder = await createOrder(token!, {
+                  items: (items || []).filter((item: any) => selectedIdSet.has(item._id)).map(item => ({
+                    productId: item.productId._id,
+                    quantity: item.quantity,
+                    price: (item.productId.priceProduct * (1 - (item.productId.discount || 0) / 100))
+                  })),
+                  totalAmount: calculateGrandTotal(),
+                  paymentMethod: 'card',
+                  userVoucherId: selectedUserVoucher?._id,
+                  voucherDiscount: selectedUserVoucher ? calculateDiscount() : 0,
+                  shippingAddress: {
+                    name: selectedAddress!.name,
+                    phone: selectedAddress!.phone,
+                    address: selectedAddress!.address,
+                    province: selectedAddress!.province || '',
+                    district: selectedAddress!.district || '',
+                    ward: selectedAddress!.ward || ''
+                  }
+                } as any);
+
+                await fetch(`${API_CONFIG.BASE_URL}/payments/stripe/confirm`, {
+                  method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                  body: JSON.stringify({ orderId: createdOrder._id, paymentIntentId: data.data.paymentIntentId, amount: Math.round(calculateGrandTotal()) })
+                });
+
+                await clearCart(token!);
+                clearSelectedItems();
+                Alert.alert('Thành công', 'Thanh toán thành công!', [{ text: 'OK', onPress: () => router.replace('/purchased-orders') }]);
+              } catch (err: any) {
+                Alert.alert('Thanh toán', err.message || 'Thanh toán thất bại');
+              }
+              return;
+            } else {
+              await handlePayment();
+            }
+          }}
           disabled={isProcessing}
         >
           {isProcessing ? (
@@ -823,7 +961,7 @@ const CheckoutScreen: React.FC = () => {
                 Thanh toán ngay
               </Text>
               <Text style={styles.paymentAmount}>
-                {formatPrice(calculateTotal())}
+                {formatPrice(calculateGrandTotal())}
               </Text>
             </>
           )}
@@ -940,120 +1078,7 @@ const CheckoutScreen: React.FC = () => {
         </View>
       </Modal>
 
-      {/* Card Management Modal */}
-      <Modal
-        visible={showCardManagementModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowCardManagementModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>
-                Quản lý thẻ thanh toán
-              </Text>
-              <TouchableOpacity onPress={() => {
-                setShowCardManagementModal(false);
-                setCardVerified(false);
-                setAutoSelectedCard(false);
-              }}>
-                <Ionicons name="close" size={24} color={colors.text} />
-              </TouchableOpacity>
-            </View>
-            
-            {cardsLoading ? (
-              <View style={styles.cardLoadingContainer}>
-                <ActivityIndicator size="large" color={colors.accent} />
-                <Text style={[styles.cardLoadingText, { color: colors.textSecondary }]}>
-                  Đang tải danh sách thẻ...
-                </Text>
-              </View>
-            ) : (
-              <>
-                {userCards.length > 0 ? (
-                  <>
-                    <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-                      Chọn thẻ để thanh toán
-                    </Text>
-                    
-                    {userCards.map((card) => (
-                      <TouchableOpacity
-                        key={card._id}
-                        style={[
-                          styles.cardItem,
-                          selectedCard?._id === card._id && { backgroundColor: colors.accent + '20' }
-                        ]}
-                        onPress={() => {
-                          setSelectedCard(card);
-                          setShowCardManagementModal(false);
-                          setCardVerified(false);
-                          setAutoSelectedCard(false);
-                        }}
-                      >
-                        <View style={styles.cardItemInfo}>
-                          <Ionicons name="card" size={24} color={colors.accent} />
-                          <View style={styles.cardItemDetails}>
-                            <Text style={[styles.cardItemNumber, { color: colors.text }]}>
-                              {card.maskedCardNumber}
-                            </Text>
-                            <Text style={[styles.cardItemHolder, { color: colors.textSecondary }]}>
-                              {card.cardHolder}
-                            </Text>
-                          </View>
-                          <Text style={[styles.cardItemType, { color: colors.accent }]}>
-                            {card.cardType.toUpperCase()}
-                          </Text>
-                        </View>
-                        
-                        <View style={styles.cardItemActions}>
-                          {card.isDefault && (
-                            <View style={[styles.defaultBadge, { backgroundColor: colors.accent }]}>
-                              <Text style={styles.defaultBadgeText}>Mặc định</Text>
-                            </View>
-                          )}
-                          {selectedCard?._id === card._id && (
-                            <Ionicons name="checkmark-circle" size={20} color={colors.accent} />
-                          )}
-                          
-                          <TouchableOpacity
-                            style={styles.cardActionButton}
-                            onPress={() => handleDeleteCard(card._id)}
-                          >
-                            <Ionicons name="trash-outline" size={18} color="#ff4444" />
-                          </TouchableOpacity>
-                        </View>
-                      </TouchableOpacity>
-                    ))}
-                  </>
-                ) : (
-                  <View style={styles.emptyCards}>
-                    <Ionicons name="card-outline" size={64} color={colors.textSecondary} />
-                    <Text style={[styles.emptyCardsText, { color: colors.textSecondary }]}>
-                      Chưa có thẻ thanh toán nào
-                    </Text>
-                  </View>
-                )}
-                
-                <TouchableOpacity
-                  style={[styles.addNewCardButton, { backgroundColor: colors.accent }]}
-                  onPress={() => {
-                    setShowCardManagementModal(false);
-                    setCardVerified(false);
-                    setAutoSelectedCard(false);
-                    setShouldRefreshCards(true);
-                    setReturnedFromMyCards(true);
-                    router.push('/add-card' as any);
-                  }}
-                >
-                  <Ionicons name="add" size={20} color="#fff" />
-                  <Text style={styles.addNewCardButtonText}>Thêm thẻ mới</Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        </View>
-      </Modal>
+      {/* Đã loại bỏ modal Quản lý thẻ trong Checkout */}
     </View>
   );
 };

@@ -1,3 +1,0 @@
-Test token from new signup: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4NjgyZDc0NTE3ZjlmNDljYmRjMDk4ZSIsImlhdCI6MTc1MTY1Nzg0NSwiZXhwIjoxNzU5NDMzODQ1fQ.j_T5pSBuPF4RkCt5MCUUXGY-qSMeshMRugJZqBkAGeI
-User: testuser1751657844669@example.com
-Generated at: 2025-07-04T19:37:25.342Z

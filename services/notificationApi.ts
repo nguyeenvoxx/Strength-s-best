@@ -138,3 +138,32 @@ export const deleteNotification = async (token: string, notificationId: string):
 
   return response.json();
 };
+
+// Tạo thông báo mới
+export const createNotification = async (
+  token: string,
+  payload: {
+    title: string;
+    message: string;
+    type: 'order' | 'promotion' | 'system' | 'news' | 'voucher' | 'product' | 'review';
+    relatedId?: string;
+    relatedModel?: string;
+    icon?: string;
+  }
+): Promise<any> => {
+  const response = await fetch(`${API_CONFIG.BASE_URL}/notifications`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Không thể tạo thông báo');
+  }
+
+  return response.json();
+};

@@ -42,7 +42,13 @@ interface CartStore {
   
   // Actions
   fetchCart: (token: string) => Promise<void>;
-  addToCart: (token: string, productId: string, quantity: number) => Promise<void>;
+  addToCart: (token: string, productId: string, quantity: number) => Promise<{
+    success: boolean;
+    isLargeQuantity?: boolean;
+    shouldAdjust?: boolean;
+    availableQuantity?: number;
+    message?: string;
+  }>;
   removeFromCart: (token: string, productId: string) => Promise<void>;
   deleteFromCart: (token: string, productId: string) => Promise<void>;
   clearCart: (token: string) => Promise<void>;
@@ -132,11 +138,40 @@ export const useCartStore = create<CartStore>((set, get) => ({
         const responseData = await response.json();
         console.log('Add to Cart Response Data:', responseData);
         
-        // Refresh cart after adding
-        await get().fetchCart(token);
+        // Cập nhật cart data từ response thay vì gọi fetchCart
+        if (responseData.data?.cart) {
+          set({ 
+            cart: responseData.data.cart,
+            items: responseData.data.cart.items || [],
+            loading: false 
+          });
+          console.log('✅ Cart updated from response');
+        }
+        
+        // Trả về thông tin về số lượng lớn
+        return {
+          success: true,
+          isLargeQuantity: responseData.data?.isLargeQuantity || false
+        };
       } else {
         const errorData = await response.json();
         console.log('Add to Cart Error Data:', errorData);
+        
+        // Kiểm tra nếu là lỗi tồn kho cần điều chỉnh
+        if (errorData.data?.shouldAdjust) {
+          set({ 
+            error: null,
+            loading: false 
+          });
+          return {
+            success: false,
+            shouldAdjust: true,
+            availableQuantity: errorData.data.availableQuantity,
+            message: errorData.message
+          };
+        }
+        
+        // Nếu không phải lỗi tồn kho, thì là lỗi thật sự
         set({ 
           error: errorData.message || 'Không thể thêm vào giỏ hàng',
           loading: false 
@@ -180,9 +215,17 @@ export const useCartStore = create<CartStore>((set, get) => ({
         const responseData = await response.json();
         console.log('Remove from Cart Response Data:', responseData);
         
-        // Refresh cart after removing
-        await get().fetchCart(token);
-        set({ loading: false });
+        // Cập nhật cart data từ response thay vì gọi fetchCart
+        if (responseData.data?.cart) {
+          set({ 
+            cart: responseData.data.cart,
+            items: responseData.data.cart.items || [],
+            loading: false 
+          });
+          console.log('✅ Cart updated from remove response');
+        } else {
+          set({ loading: false });
+        }
       } else {
         const errorData = await response.json();
         console.log('Remove from Cart Error Data:', errorData);
@@ -229,9 +272,17 @@ export const useCartStore = create<CartStore>((set, get) => ({
         const responseData = await response.json();
         console.log('Delete from Cart Response Data:', responseData);
         
-        // Refresh cart after deleting
-        await get().fetchCart(token);
-        set({ loading: false });
+        // Cập nhật cart data từ response thay vì gọi fetchCart
+        if (responseData.data?.cart) {
+          set({ 
+            cart: responseData.data.cart,
+            items: responseData.data.cart.items || [],
+            loading: false 
+          });
+          console.log('✅ Cart updated from delete response');
+        } else {
+          set({ loading: false });
+        }
       } else {
         const errorData = await response.json();
         console.log('Delete from Cart Error Data:', errorData);

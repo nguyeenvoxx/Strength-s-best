@@ -5,7 +5,8 @@ import {
   markNotificationAsRead, 
   markAllNotificationsAsRead, 
   deleteNotification as deleteNotificationApi,
-  Notification 
+  Notification,
+  createNotification
 } from '../services/notificationApi';
 
 interface NotificationStore {
@@ -19,6 +20,10 @@ interface NotificationStore {
   markAsRead: (token: string, id: string) => Promise<void>;
   markAllAsRead: (token: string) => Promise<void>;
   deleteNotification: (token: string, id: string) => Promise<void>;
+  create: (
+    token: string,
+    payload: { title: string; message: string; type: Notification['type']; relatedId?: string; relatedModel?: string; icon?: string }
+  ) => Promise<void>;
   clearError: () => void;
 }
 
@@ -103,6 +108,17 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
       set({ notifications: updatedNotifications, unreadCount });
     } catch (error: any) {
       set({ error: error.message || 'Không thể xóa thông báo' });
+    }
+  },
+
+  create: async (token: string, payload) => {
+    try {
+      await createNotification(token, payload);
+      // Refresh để thấy ngay
+      const response = await getNotifications(token, 1, 20);
+      set({ notifications: response.data.notifications, unreadCount: response.data.unreadCount });
+    } catch (error: any) {
+      set({ error: error.message || 'Không thể tạo thông báo' });
     }
   },
 

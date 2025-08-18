@@ -37,7 +37,7 @@ const QRPaymentScreen: React.FC = () => {
         },
         {
           text: 'Tiếp tục mua sắm',
-          onPress: () => router.push('/(tabs)/home')
+          onPress: () => router.push('/home')
         }
       ]
     );
@@ -54,7 +54,7 @@ const QRPaymentScreen: React.FC = () => {
         },
         {
           text: 'Về trang chủ',
-          onPress: () => router.push('/(tabs)/home')
+          onPress: () => router.push('/home')
         }
       ]
     );
@@ -127,7 +127,7 @@ const QRPaymentScreen: React.FC = () => {
             
             <TouchableOpacity 
               style={[styles.button, styles.secondaryButton]} 
-              onPress={() => router.push('/(tabs)/home')}
+              onPress={() => router.push('/home')}
             >
               <Text style={styles.secondaryButtonText}>Tiếp tục mua sắm</Text>
             </TouchableOpacity>
@@ -157,7 +157,7 @@ const QRPaymentScreen: React.FC = () => {
             
             <TouchableOpacity 
               style={[styles.button, styles.secondaryButton]} 
-              onPress={() => router.push('/(tabs)/home')}
+              onPress={() => router.push('/home')}
             >
               <Text style={styles.secondaryButtonText}>Về trang chủ</Text>
             </TouchableOpacity>

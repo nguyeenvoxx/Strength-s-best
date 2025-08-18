@@ -2,8 +2,8 @@ const { getDefaultConfig } = require('expo/metro-config');
 
 const config = getDefaultConfig(__dirname);
 
-// Cấu hình để cho phép kết nối network
-config.resolver.resolverMainFields = ['react-native', 'browser', 'main'];
+// Ưu tiên field main để dùng bản build sẵn của lib thay vì src TS trong node_modules
+config.resolver.resolverMainFields = ['main', 'module', 'react-native', 'browser'];
 config.resolver.platforms = ['ios', 'android', 'native', 'web'];
 
 // Cấu hình network

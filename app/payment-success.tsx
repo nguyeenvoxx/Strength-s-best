@@ -41,7 +41,7 @@ const PaymentSuccessScreen: React.FC = () => {
   }, [token]);
 
   const handleContinueShopping = () => {
-    router.push('/(tabs)/home' as any);
+    router.replace('/home');
   };
 
   const handleViewOrders = () => {
@@ -50,6 +50,8 @@ const PaymentSuccessScreen: React.FC = () => {
 
   const getPaymentMethodText = () => {
     switch (method) {
+      case 'card':
+        return 'Thẻ tín dụng';
       case 'vnpay':
         return 'VNPay';
       case 'momo':
@@ -63,6 +65,8 @@ const PaymentSuccessScreen: React.FC = () => {
 
   const getPaymentMethodIcon = () => {
     switch (method) {
+      case 'card':
+        return 'card-outline';
       case 'vnpay':
         return 'card-outline';
       case 'momo':

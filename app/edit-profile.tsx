@@ -15,13 +15,14 @@ const EditProfileScreen: React.FC = () => {
   const token = useAuthStore((state) => state.token);
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
-  // Hàm format số điện thoại về dạng +84 123456789
+  // Chuẩn hóa số điện thoại về E.164 VN: +84XXXXXXXXX (9 số)
   function formatPhone(raw: string | undefined): string {
     if (!raw) return '';
-    if (/^\+84\s\d{9}$/.test(raw)) return raw; // Đúng định dạng
-    if (/^0\d{9}$/.test(raw)) return ' ' + raw.slice(1); // 0xxxxxxxxx => +84 xxxxxxxxx
-    if (/^\+84\d{9}$/.test(raw)) return ' ' + raw.slice(3); // +849xxxxxxxx => +84 9xxxxxxxx
-    return raw;
+    const p = raw.replace(/\s+/g, '');
+    if (/^\+84\d{9}$/.test(p)) return p;
+    if (/^0\d{9}$/.test(p)) return '+84' + p.slice(1);
+    if (/^\d{9}$/.test(p)) return '+84' + p; // nhập thiếu số 0 đầu
+    return p;
   }
   const [phone, setPhone] = useState(user?.phoneNumber || '');
   const [phoneError, setPhoneError] = useState('');
@@ -39,10 +40,10 @@ const EditProfileScreen: React.FC = () => {
 
   const handleSave = async () => {
 
-    let phoneToSave = phone.trim();
+    let phoneToSave = formatPhone(phone.trim());
    
     if (!user || !user._id || !token) {
-      Alert.alert('Lỗi', 'Không tìm thấy thông tin người dùng');
+      Alert.alert('Thông báo', 'Không tìm thấy thông tin người dùng');
       return;
     }
     
@@ -221,10 +222,17 @@ const EditProfileScreen: React.FC = () => {
         <TextInput
           style={[styles.input, { color: colors.text, borderBottomColor: colors.border }]}
           value={phone}
-          onChangeText={setPhone}
+          onChangeText={(text) => {
+            // Chỉ cho phép nhập số và giới hạn độ dài
+            const numericText = text.replace(/[^0-9]/g, '');
+            if (numericText.length <= 11) {
+              setPhone(numericText);
+            }
+          }}
           placeholder="Nhập số điện thoại của bạn"
           keyboardType="phone-pad"
           placeholderTextColor={colors.textSecondary}
+          maxLength={11}
         />
 
 

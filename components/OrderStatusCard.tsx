@@ -36,21 +36,28 @@ const OrderStatusCard: React.FC<OrderStatusCardProps> = ({
     }));
   };
 
+  const normalizeStatus = (value?: string) => {
+    const s = (value || '').toLowerCase();
+    if (['success', 'completed', 'paid', 'succeeded', 'successed'].includes(s)) return 'success';
+    if (['failed', 'failure', 'error'].includes(s)) return 'failed';
+    if (['cancelled', 'canceled'].includes(s)) return 'cancelled';
+    if (['pending', 'processing', 'awaiting', 'created'].includes(s)) return 'pending';
+    return s || 'pending';
+  };
+
   const getPaymentStatusColor = (status: string, paymentMethod?: string, orderStatus?: string) => {
-    // COD: Nếu đơn hàng đã giao thì màu xanh (đã thanh toán), ngược lại màu cam (chờ thanh toán)
+    // COD: Đã giao mới coi là đã thanh toán, còn lại chờ thanh toán
     if (paymentMethod === 'cod') {
       return orderStatus === 'delivered' ? '#34C759' : '#FF9500';
     }
-    
-    // Thẻ tín dụng, VNPay, MoMo: Nếu đơn hàng đã giao thì màu xanh (đã thanh toán), ngược lại dựa vào status
-    if (paymentMethod === 'card' || paymentMethod === 'vnpay' || paymentMethod === 'momo') {
+    // Thẻ: dựa vào payment status
+    if (paymentMethod === 'card' || paymentMethod === 'credit_card') {
       if (orderStatus === 'delivered') {
-        return '#34C759'; // Đã thanh toán
+        return '#34C759';
       }
-      // Nếu chưa giao thì dựa vào payment status
-      switch (status) {
+      switch (normalizeStatus(status)) {
         case 'pending':
-          return '#FF9500';
+          return '#34C759';
         case 'success':
         case 'completed':
           return '#34C759';
@@ -59,11 +66,11 @@ const OrderStatusCard: React.FC<OrderStatusCardProps> = ({
         case 'cancelled':
           return '#8E8E93';
         default:
-          return '#FF9500'; // Mặc định chờ thanh toán
+          return '#34C759';
       }
     }
-    
-    switch (status) {
+    // Mặc định
+    switch (normalizeStatus(status)) {
       case 'pending':
         return '#FF9500';
       case 'success':
@@ -79,20 +86,18 @@ const OrderStatusCard: React.FC<OrderStatusCardProps> = ({
   };
 
   const getPaymentStatusText = (status: string, paymentMethod?: string, orderStatus?: string) => {
-    // COD: Nếu đơn hàng đã giao thì "Đã thanh toán", ngược lại "Chờ thanh toán"
+    // COD: linh hoạt theo trạng thái giao hàng
     if (paymentMethod === 'cod') {
       return orderStatus === 'delivered' ? 'Đã thanh toán' : 'Chờ thanh toán';
     }
-    
-    // Thẻ tín dụng, VNPay, MoMo: Nếu đơn hàng đã giao thì "Đã thanh toán", ngược lại dựa vào status
-    if (paymentMethod === 'card' || paymentMethod === 'vnpay' || paymentMethod === 'momo') {
+    // Thẻ: theo payment status
+    if (paymentMethod === 'card' || paymentMethod === 'credit_card') {
       if (orderStatus === 'delivered') {
         return 'Đã thanh toán';
       }
-      // Nếu chưa giao thì dựa vào payment status
-      switch (status) {
+      switch (normalizeStatus(status)) {
         case 'pending':
-          return 'Chờ thanh toán';
+          return 'Đã thanh toán';
         case 'success':
         case 'completed':
           return 'Đã thanh toán';
@@ -101,11 +106,11 @@ const OrderStatusCard: React.FC<OrderStatusCardProps> = ({
         case 'cancelled':
           return 'Đã hủy thanh toán';
         default:
-          return 'Chờ thanh toán'; // Mặc định chờ thanh toán
+          return 'Đã thanh toán';
       }
     }
-    
-    switch (status) {
+    // Mặc định
+    switch (normalizeStatus(status)) {
       case 'pending':
         return 'Chờ thanh toán';
       case 'success':
@@ -123,11 +128,8 @@ const OrderStatusCard: React.FC<OrderStatusCardProps> = ({
   const getPaymentMethodText = (method: string) => {
     switch (method) {
       case 'card':
+      case 'credit_card':
         return 'Thẻ tín dụng';
-      case 'vnpay':
-        return 'VNPay';
-      case 'momo':
-        return 'MoMo';
       case 'cod':
         return 'Thanh toán khi nhận hàng';
       default:

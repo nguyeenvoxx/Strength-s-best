@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
+import { requestResetPassword } from '../../services/authApi';
 import { Ionicons } from '@expo/vector-icons';
 
 const ForgotPasswordScreen: React.FC = () => {
@@ -12,15 +13,23 @@ const ForgotPasswordScreen: React.FC = () => {
     return emailRegex.test(email);
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!Email) {
       Alert.alert('Thông báo', 'Vui lòng nhập địa chỉ email của bạn')
     } else {
       if (!validateEmail(Email)) {
-        Alert.alert('Lỗi', 'Vui lòng nhập địa chỉ email hợp lệ (ví dụ: user@example.com)');
+        Alert.alert('Thông báo', 'Vui lòng nhập địa chỉ email hợp lệ (ví dụ: user@example.com)');
         return;
       }
-      router.replace('./email-verification')
+      try {
+        // Gửi yêu cầu backend gửi mã OTP đổi mật khẩu về email
+        await requestResetPassword(Email.trim().toLowerCase());
+        Alert.alert('Đã gửi mã', 'Mã xác thực đổi mật khẩu đã được gửi về email của bạn. Vui lòng kiểm tra hộp thư.', [
+          { text: 'OK', onPress: () => router.replace({ pathname: './reset-password', params: { email: Email.trim().toLowerCase() } }) }
+        ]);
+      } catch (error: any) {
+        Alert.alert('Lỗi', error.response?.data?.message || 'Không thể gửi mã đổi mật khẩu. Vui lòng thử lại.');
+      }
     }
   }
 

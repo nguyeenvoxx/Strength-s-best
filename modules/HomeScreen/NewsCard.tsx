@@ -1,21 +1,44 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
+import NewsImage from '../../components/NewsImage';
 
 interface NewsCardProps {
   image: any;
   title: string;
   date: string;
+  newsId?: string;
 }
 
-const NewsCard: React.FC<NewsCardProps> = ({ image, title, date }) => (
-  <View style={styles.newsCard}>
-    <Image source={image} style={styles.newsImage} />
-    <View style={styles.newsContent}>
-      <Text style={styles.newsTitle}>{title}</Text>
-      <Text style={styles.newsDate}>{date}</Text>
-    </View>
-  </View>
-);
+const NewsCard: React.FC<NewsCardProps> = ({ image, title, date, newsId }) => {
+  const router = useRouter();
+
+  const handlePress = () => {
+    if (newsId) {
+      router.push({
+        pathname: '/news-detail',
+        params: { newsId }
+      } as any);
+    } else {
+      // Fallback to news list if no specific news ID
+      router.push('/news');
+    }
+  };
+
+  return (
+    <TouchableOpacity style={styles.newsCard} onPress={handlePress}>
+      <NewsImage 
+        imagePath={image.uri} 
+        style={styles.newsImage}
+        fallbackText="Tin tức"
+      />
+      <View style={styles.newsContent}>
+        <Text style={styles.newsTitle}>{title}</Text>
+        <Text style={styles.newsDate}>{date}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+};
 
 const styles = StyleSheet.create({
   newsCard: {

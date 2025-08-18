@@ -23,17 +23,17 @@ const ChangePasswordScreen: React.FC = () => {
 
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
-      Alert.alert('Lỗi', 'Vui lòng điền đầy đủ thông tin');
+      Alert.alert('Thông báo', 'Vui lòng điền đầy đủ thông tin');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert('Lỗi', 'Mật khẩu mới và xác nhận mật khẩu không khớp');
+      Alert.alert('Thông báo', 'Mật khẩu mới và xác nhận mật khẩu không khớp');
       return;
     }
 
     if (newPassword.length < 6) {
-      Alert.alert('Lỗi', 'Mật khẩu mới phải có ít nhất 6 ký tự');
+      Alert.alert('Thông báo', 'Mật khẩu mới phải có ít nhất 6 ký tự');
       return;
     }
 
@@ -41,7 +41,7 @@ const ChangePasswordScreen: React.FC = () => {
 
     try {
       if (!token) {
-        Alert.alert('Lỗi', 'Không tìm thấy token xác thực');
+        Alert.alert('Thông báo', 'Không tìm thấy token xác thực');
         return;
       }
       await changePassword(token, currentPassword, newPassword);

@@ -27,18 +27,18 @@ const SignUpScreen: React.FC = () => {
   };
 
   const validatePhone = (phone: string) => {
-    // Chuẩn: +84XXXXXXXXX (9 số) hoặc 0XXXXXXXXX (10 số, các đầu 3/5/7/8/9)
-    const phoneRegex = /^(\+84\d{9}|0[35789]\d{8})$/;
+    // Chuẩn: 0XXXXXXXXX (10 số, các đầu 3/5/7/8/9)
+    const phoneRegex = /^0[35789]\d{8}$/;
     return phoneRegex.test(phone);
   };
 
   const formatPhone = (raw: string) => {
-    // Chuẩn hóa về E.164 VN: +84XXXXXXXXX (không khoảng trắng)
+    // Chuẩn hóa về format VN: 0XXXXXXXXX (không khoảng trắng)
     let p = raw.replace(/\s+/g, '');
-    // Nếu nhập số rời rạc, ép về 0xxxxxxxxx rồi chuẩn hóa
+    // Nếu nhập số rời rạc, ép về 0xxxxxxxxx
     if (/^\d+$/.test(p)) {
       if (!p.startsWith('0')) p = '0' + p;
-      return '+84' + p.slice(1).slice(0, 9);
+      return p.slice(0, 10);
     }
     return p;
   };
@@ -424,7 +424,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   signUpButton: {
-    backgroundColor: '#000',
+    backgroundColor: '#28a745',
     paddingVertical: 15,
     paddingHorizontal: 40,
     borderRadius: 5,

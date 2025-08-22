@@ -26,6 +26,7 @@ interface ReviewModalProps {
     image?: string;
   };
   orderDetailId: string;
+  hasReviewed?: boolean;
   onReviewSubmitted?: () => void;
 }
 
@@ -34,6 +35,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
   onClose,
   product,
   orderDetailId,
+  hasReviewed = false,
   onReviewSubmitted
 }) => {
   const router = useRouter();
@@ -138,6 +140,11 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
       onClose();
     }
   };
+
+  // Nếu đã đánh giá rồi, không hiển thị modal
+  if (hasReviewed) {
+    return null;
+  }
 
   return (
     <Modal

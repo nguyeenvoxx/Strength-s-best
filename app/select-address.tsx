@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator, SafeAreaView } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
@@ -24,10 +24,11 @@ const SelectAddressScreen: React.FC = () => {
     console.log('🔍 SelectAddress - useEffect triggered, token:', token ? 'Present' : 'Missing');
     console.log('🔍 SelectAddress - isAuthenticated:', isAuthenticated);
     console.log('🔍 SelectAddress - refresh param:', refresh);
+    console.log('🔍 SelectAddress - current user:', user?.name);
     if (token && isAuthenticated) {
       loadAddresses();
     }
-  }, [token, isAuthenticated, refresh]);
+  }, [token, isAuthenticated, refresh, user?.name]);
 
   const loadAddresses = async () => {
     if (!token) {
@@ -49,11 +50,35 @@ const SelectAddressScreen: React.FC = () => {
       const defaultAddress = userAddresses.find((addr: Address) => addr.isDefault) || userAddresses[0];
       if (defaultAddress) {
         setSelectedAddressId(defaultAddress._id || '');
-        console.log('🔍 SelectAddress - Selected address:', defaultAddress._id);
+        console.log('🔍 SelectAddress - Auto-selected address:', defaultAddress.name, defaultAddress._id);
+      } else {
+        console.log('🔍 SelectAddress - No default address found');
       }
     } catch (error: any) {
       console.error('Error loading addresses:', error);
-      Alert.alert('Thông báo', 'Không thể tải danh sách địa chỉ');
+      // Hiển thị thông báo cho lỗi authentication
+      if (error.message?.includes('401') || error.message?.includes('Token') || error.message?.includes('hết hạn')) {
+        setAddresses([]);
+        Alert.alert(
+          'Phiên đăng nhập đã hết hạn',
+          'Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.',
+          [
+            {
+              text: 'Đăng nhập lại',
+              onPress: () => {
+                router.push('/(auth)/sign-in');
+              },
+              style: 'default'
+            },
+            {
+              text: 'Hủy',
+              style: 'cancel'
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Thông báo', 'Không thể tải danh sách địa chỉ');
+      }
     } finally {
       setLoading(false);
     }
@@ -80,18 +105,66 @@ const SelectAddressScreen: React.FC = () => {
   const handleConfirmAddress = async () => {
     console.log('🔍 SelectAddress - Confirming address, selectedAddressId:', selectedAddressId);
     if (!selectedAddressId) {
-      Alert.alert('Thông báo', 'Không tìm thấy địa chỉ đã chọn');
+      Alert.alert('Thông báo', 'Vui lòng chọn một địa chỉ giao hàng');
       return;
     }
+    
     const selectedAddress = addresses.find(addr => addr._id === selectedAddressId);
     console.log('🔍 SelectAddress - Found selected address:', selectedAddress);
+    
     if (selectedAddress) {
-      await AsyncStorage.setItem('selectedDeliveryAddress', JSON.stringify(selectedAddress));
-      console.log('🔍 SelectAddress - Saved to AsyncStorage, navigating to checkout');
-      router.replace('/checkout');
+      try {
+        // Cập nhật tên người nhận với tên user thực tế nếu địa chỉ không có tên
+        const addressToSave = {
+          ...selectedAddress,
+          name: selectedAddress.name || user?.name || 'Người nhận'
+        };
+        
+        // Lưu địa chỉ vào AsyncStorage
+        await AsyncStorage.setItem('selectedDeliveryAddress', JSON.stringify(addressToSave));
+        
+        // Tạo địa chỉ đầy đủ để log
+        const fullAddressForLog = [
+          addressToSave.address,
+          addressToSave.ward,
+          addressToSave.district,
+          addressToSave.province
+        ].filter(Boolean).join(', ');
+        
+        console.log('🔍 SelectAddress - Saved to AsyncStorage:', fullAddressForLog);
+        
+        // Đánh dấu rằng địa chỉ đã được cập nhật
+        await AsyncStorage.setItem('addressUpdated', 'true');
+        
+        // Tạo địa chỉ đầy đủ để hiển thị
+        const fullAddress = [
+          addressToSave.address,
+          addressToSave.ward,
+          addressToSave.district,
+          addressToSave.province
+        ].filter(Boolean).join(', ');
+
+        // Hiển thị thông báo thành công
+        Alert.alert(
+          'Thành công', 
+          `Đã chọn địa chỉ: ${fullAddress}`,
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                console.log('🔍 SelectAddress - Navigating to checkout with updated address');
+                router.replace('/checkout');
+              }
+            }
+          ]
+        );
+      } catch (error) {
+        console.error('❌ Error saving address:', error);
+        Alert.alert('Lỗi', 'Không thể lưu địa chỉ đã chọn. Vui lòng thử lại.');
+      }
     } else {
       console.log('🔍 SelectAddress - Selected address not found in addresses array');
-      Alert.alert('Lỗi', 'Không tìm thấy địa chỉ đã chọn');
+      Alert.alert('Lỗi', 'Không tìm thấy địa chỉ đã chọn. Vui lòng chọn lại.');
     }
   };
 
@@ -104,9 +177,29 @@ const SelectAddressScreen: React.FC = () => {
       await setDefaultAddress(token, addressId);
       await loadAddresses(); // Reload addresses after update
       Alert.alert('Thành công', 'Đã đặt làm địa chỉ mặc định');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Lỗi khi đặt địa chỉ mặc định:', error);
-      Alert.alert('Lỗi', 'Không thể đặt địa chỉ mặc định');
+      if (error.message?.includes('401') || error.message?.includes('Token') || error.message?.includes('hết hạn')) {
+        Alert.alert(
+          'Phiên đăng nhập đã hết hạn',
+          'Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.',
+          [
+            {
+              text: 'Đăng nhập lại',
+              onPress: () => {
+                router.push('/(auth)/sign-in');
+              },
+              style: 'default'
+            },
+            {
+              text: 'Hủy',
+              style: 'cancel'
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Lỗi', 'Không thể đặt địa chỉ mặc định');
+      }
     }
   };
 
@@ -130,13 +223,64 @@ const SelectAddressScreen: React.FC = () => {
               Alert.alert('Thành công', 'Đã xóa địa chỉ');
             } catch (error: any) {
               console.error('Error deleting address:', error);
-              Alert.alert('Thông báo', 'Không thể xóa địa chỉ');
+              if (error.message?.includes('401') || error.message?.includes('Token') || error.message?.includes('hết hạn')) {
+                Alert.alert(
+                  'Phiên đăng nhập đã hết hạn',
+                  'Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.',
+                  [
+                    {
+                      text: 'Đăng nhập lại',
+                      onPress: () => {
+                        router.push('/(auth)/sign-in');
+                      },
+                      style: 'default'
+                    },
+                    {
+                      text: 'Hủy',
+                      style: 'cancel'
+                    }
+                  ]
+                );
+              } else {
+                Alert.alert('Thông báo', 'Không thể xóa địa chỉ');
+              }
             }
           }
         }
       ]
     );
   };
+
+  // Kiểm tra authentication trước khi hiển thị loading
+  if (!token) {
+    return (
+      <View style={[styles.container, getPlatformContainerStyle(), { backgroundColor: colors.background }]}>
+        {/* Header */}
+        <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={() => router.replace('/checkout')} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Chọn địa chỉ nhận hàng</Text>
+          <View style={styles.headerRight} />
+        </View>
+        
+        {/* Authentication Required */}
+        <View style={styles.emptyContainer}>
+          <Ionicons name="lock-closed-outline" size={64} color={colors.textSecondary} />
+          <Text style={[styles.emptyText, { color: colors.text }]}>Yêu cầu đăng nhập</Text>
+          <Text style={[styles.emptySubText, { color: colors.textSecondary }]}>
+            Vui lòng đăng nhập để quản lý địa chỉ của bạn
+          </Text>
+          <TouchableOpacity
+            style={[styles.addButton, { backgroundColor: colors.accent, marginTop: 16 }]}
+            onPress={() => router.push('/(auth)/sign-in')}
+          >
+            <Text style={[styles.addButtonText, { color: '#fff' }]}>Đăng nhập</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   if (loading) {
     return (
@@ -157,7 +301,7 @@ const SelectAddressScreen: React.FC = () => {
   }
 
   return (
-    <View style={[styles.container, getPlatformContainerStyle(), { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.replace('/checkout')} style={styles.backButton}>
@@ -168,10 +312,24 @@ const SelectAddressScreen: React.FC = () => {
       </View>
 
       {/* Address List */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 150 }}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Địa chỉ ({addresses.length})</Text>
         
-        {addresses.length === 0 ? (
+        {!token ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="lock-closed-outline" size={64} color={colors.textSecondary} />
+            <Text style={[styles.emptyText, { color: colors.text }]}>Yêu cầu đăng nhập</Text>
+            <Text style={[styles.emptySubText, { color: colors.textSecondary }]}>
+              Vui lòng đăng nhập để quản lý địa chỉ của bạn
+            </Text>
+            <TouchableOpacity
+              style={[styles.addButton, { backgroundColor: colors.accent, marginTop: 16 }]}
+              onPress={() => router.push('/(auth)/sign-in')}
+            >
+              <Text style={[styles.addButtonText, { color: '#fff' }]}>Đăng nhập</Text>
+            </TouchableOpacity>
+          </View>
+        ) : addresses.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="location-outline" size={48} color={colors.textSecondary} />
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Chưa có địa chỉ nào</Text>
@@ -200,7 +358,9 @@ const SelectAddressScreen: React.FC = () => {
                 </View>
                 
                 <View style={styles.addressInfo}>
-                  <Text style={[styles.addressName, { color: colors.text }]}>{address.name}</Text>
+                  <Text style={[styles.addressName, { color: colors.text }]}>
+                    {address.name || user?.name || 'Người nhận'}
+                  </Text>
                   <Text style={[styles.addressPhone, { color: colors.textSecondary }]}>{address.phone}</Text>
                   <Text style={[styles.addressText, { color: colors.textSecondary }]}>{address.address}</Text>
                   {address.isDefault && (
@@ -242,7 +402,7 @@ const SelectAddressScreen: React.FC = () => {
         )}
       </ScrollView>
 
-      {/* Add New Address Button */}
+      {/* Bottom Buttons */}
       <View style={[styles.bottomContainer, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
         <TouchableOpacity style={[styles.addButton, { backgroundColor: colors.accent }]} onPress={handleAddNewAddress}>
           <Ionicons name="add-circle" size={24} color="#fff" />
@@ -257,12 +417,13 @@ const SelectAddressScreen: React.FC = () => {
           onPress={handleConfirmAddress}
           disabled={!selectedAddressId}
         >
+          <Ionicons name="checkmark-circle" size={24} color="#fff" />
           <Text style={[styles.confirmButtonText, { color: '#fff' }]}>
-            {selectedAddressId ? 'Xác nhận' : 'Vui lòng chọn địa chỉ'}
+            {selectedAddressId ? 'Xác nhận địa chỉ đã chọn' : 'Vui lòng chọn địa chỉ'}
           </Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -270,6 +431,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+    paddingBottom: 100, // Thêm padding bottom để tránh bị che bởi bottom tabs
   },
   header: {
     flexDirection: 'row',
@@ -421,6 +583,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
+    position: 'absolute',
+    bottom: 80, // Tăng khoảng cách từ bottom để tránh bị che bởi bottom tabs
+    left: 0,
+    right: 0,
+    zIndex: 1000,
   },
   addButton: {
     flexDirection: 'row',
@@ -437,17 +604,18 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   confirmButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 16,
     borderRadius: 12,
-    alignItems: 'center',
-  },
-  confirmButtonDisabled: {
-    backgroundColor: '#ccc',
+    marginTop: 12,
   },
   confirmButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+    marginLeft: 8,
   },
   emptyContainer: {
     flex: 1,

@@ -61,6 +61,37 @@ const ChangePasswordScreen: React.FC = () => {
     router.replace('/profile');
   };
 
+  // Kiểm tra authentication
+  if (!token) {
+    return (
+      <View style={[styles.container, getPlatformContainerStyle(), { backgroundColor: colors.background }]}>
+        {/* Header */}
+        <View style={styles.headerContainer}>
+          <TouchableOpacity onPress={() => router.replace('/profile')}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.header, { color: colors.text }]}>Đổi mật khẩu</Text>
+          <View style={styles.placeholder} />
+        </View>
+        
+        {/* Authentication Required */}
+        <View style={[styles.authRequiredContainer, { backgroundColor: colors.card }]}>
+          <Text style={[styles.authRequiredIcon, { color: colors.textSecondary }]}>🔒</Text>
+          <Text style={[styles.authRequiredTitle, { color: colors.text }]}>Yêu cầu đăng nhập</Text>
+          <Text style={[styles.authRequiredMessage, { color: colors.textSecondary }]}>
+            Vui lòng đăng nhập để đổi mật khẩu
+          </Text>
+          <TouchableOpacity
+            style={[styles.authRequiredButton, { backgroundColor: colors.accent }]}
+            onPress={() => router.push('/(auth)/sign-in')}
+          >
+            <Text style={[styles.authRequiredButtonText, { color: '#fff' }]}>Đăng nhập</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, getPlatformContainerStyle(), { backgroundColor: colors.background }]}>
       {/* Header */}
@@ -266,6 +297,40 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     fontSize: 16,
+  },
+  // Authentication required styles
+  authRequiredContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  authRequiredIcon: {
+    fontSize: 64,
+    marginBottom: 16,
+  },
+  authRequiredTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  authRequiredMessage: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  authRequiredButton: {
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 8,
+    minWidth: 150,
+  },
+  authRequiredButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
 

@@ -3,6 +3,7 @@ import { getUserOrders } from '../services/orderApi';
 import { getUserReviews } from '../services/reviewApi';
 import { API_CONFIG } from '../constants/config';
 import { useAuthStore } from './useAuthStore';
+import { handleTokenExpired } from '../services/api';
 
 interface UserStats {
   orderCount: number;
@@ -69,8 +70,18 @@ export const useUserStatsStore = create<UserStatsStore>((set, get) => ({
       });
     } catch (error: any) {
       console.error('Error fetching user stats:', error);
+      
+      // Xử lý token expired nếu có
+      if (error && typeof error === 'object' && 'message' in error) {
+        const errorMessage = (error as any).message;
+        if (errorMessage?.includes('hết hạn') || errorMessage?.includes('TOKEN_EXPIRED')) {
+          handleTokenExpired({ message: errorMessage });
+        }
+      }
+      
+      // Không hiển thị lỗi cho user, chỉ log để debug
       set({ 
-        error: error.message || 'Không thể tải thống kê', 
+        error: null, 
         isLoading: false 
       });
     }

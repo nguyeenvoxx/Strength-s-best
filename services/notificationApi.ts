@@ -1,4 +1,5 @@
 import { API_CONFIG } from './config';
+import { handleTokenExpired } from './api';
 
 export interface Notification {
   _id: string;
@@ -9,6 +10,10 @@ export interface Notification {
   isRead: boolean;
   relatedId?: string;
   relatedModel?: string;
+  navigation?: {
+    route: 'order-detail' | 'product-detail' | 'news-detail' | 'voucher-list' | 'review-list' | 'purchased-orders' | 'profile' | 'home';
+    params: Record<string, string>;
+  };
   icon: string;
   created_at: string;
   updated_at: string;
@@ -44,9 +49,9 @@ export const getNotifications = async (
 ): Promise<NotificationResponse> => {
   const params = new URLSearchParams({
     page: page.toString(),
-    limit: limit.toString()
+    limit: limit.toString(),
   });
-  
+
   if (type) {
     params.append('type', type);
   }
@@ -61,7 +66,29 @@ export const getNotifications = async (
 
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.message || 'Không thể tải thông báo');
+    console.error('Error fetching notifications:', errorData);
+    
+    // Xử lý token expired
+    if (response.status === 401 && handleTokenExpired(errorData)) {
+      return { 
+        status: 'thành công', 
+        data: { 
+          notifications: [], 
+          pagination: { page: 1, limit: 20, total: 0, pages: 0 },
+          unreadCount: 0 
+        } 
+      };
+    }
+    
+    // Không throw error để tránh hiển thị lỗi kỹ thuật cho user
+    return { 
+      status: 'thành công', 
+      data: { 
+        notifications: [], 
+        pagination: { page: 1, limit: 20, total: 0, pages: 0 },
+        unreadCount: 0 
+      } 
+    };
   }
 
   return response.json();
@@ -79,7 +106,15 @@ export const getUnreadCount = async (token: string): Promise<UnreadCountResponse
 
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.message || 'Không thể tải số thông báo chưa đọc');
+    console.error('Error fetching unread count:', errorData);
+    
+    // Xử lý token expired
+    if (response.status === 401 && handleTokenExpired(errorData)) {
+      return { status: 'thành công', data: { unreadCount: 0 } };
+    }
+    
+    // Không throw error để tránh hiển thị lỗi kỹ thuật cho user
+    return { status: 'thành công', data: { unreadCount: 0 } };
   }
 
   return response.json();
@@ -149,6 +184,10 @@ export const createNotification = async (
     relatedId?: string;
     relatedModel?: string;
     icon?: string;
+    navigation?: {
+      route: 'order-detail' | 'product-detail' | 'news-detail' | 'voucher-list' | 'review-list' | 'purchased-orders' | 'profile' | 'home';
+      params: Record<string, string>;
+    };
   }
 ): Promise<any> => {
   const response = await fetch(`${API_CONFIG.BASE_URL}/notifications`, {
@@ -163,6 +202,61 @@ export const createNotification = async (
   if (!response.ok) {
     const errorData = await response.json();
     throw new Error(errorData.message || 'Không thể tạo thông báo');
+  }
+
+  return response.json();
+};
+
+// Tạo thông báo phản hồi đánh giá (cho admin)
+export const createReviewResponseNotification = async (
+  token: string,
+  payload: {
+    reviewId: string;
+    productId: string;
+    productName: string;
+    adminResponse: string;
+    userId: string;
+  }
+): Promise<any> => {
+  const response = await fetch(`${API_CONFIG.BASE_URL}/notifications/review-response`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Không thể tạo thông báo phản hồi đánh giá');
+  }
+
+  return response.json();
+};
+
+// Tạo thông báo cập nhật trạng thái đơn hàng (cho admin)
+export const createOrderStatusNotification = async (
+  token: string,
+  payload: {
+    orderId: string;
+    userId: string;
+    oldStatus: string;
+    newStatus: string;
+  }
+): Promise<any> => {
+  const response = await fetch(`${API_CONFIG.BASE_URL}/notifications/order-status`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Không thể tạo thông báo cập nhật trạng thái đơn hàng');
   }
 
   return response.json();

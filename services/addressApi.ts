@@ -2,6 +2,7 @@
 import axios from 'axios';
 import { API_CONFIG } from '../constants/config';
 import { useAuthStore } from '../store/useAuthStore';
+import { handleTokenExpired } from './api';
 
 export interface Address {
   _id?: string;
@@ -63,11 +64,29 @@ export const getUserAddresses = async (token: string): Promise<Address[]> => {
       return data.data?.addresses || [];
     } else {
       const errorData = await response.json();
-      throw new Error(errorData.message || 'Không thể lấy danh sách địa chỉ');
+      console.error('Error fetching addresses:', errorData);
+      
+      // Xử lý token expired
+      if (response.status === 401 && handleTokenExpired(errorData)) {
+        return [];
+      }
+      
+      // Không throw error để tránh hiển thị lỗi kỹ thuật cho user
+      return [];
     }
   } catch (error) {
     console.error('Error fetching addresses:', error);
-    throw error;
+    
+    // Xử lý token expired nếu có
+    if (error && typeof error === 'object' && 'message' in error) {
+      const errorMessage = (error as any).message;
+      if (errorMessage?.includes('hết hạn') || errorMessage?.includes('TOKEN_EXPIRED')) {
+        handleTokenExpired({ message: errorMessage });
+      }
+    }
+    
+    // Không throw error để tránh hiển thị lỗi kỹ thuật cho user
+    return [];
   }
 };
 

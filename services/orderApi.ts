@@ -1,4 +1,5 @@
 import { API_CONFIG } from './config';
+import { handleTokenExpired } from './api';
 
 export interface OrderItem {
   productId: string | any; // Có thể là string hoặc object
@@ -104,12 +105,29 @@ export const getUserOrders = async (token: string): Promise<Order[]> => {
     } else {
       const errorData = await response.json();
       console.error('Get User Orders Error:', errorData);
-      throw new Error(errorData.message || 'Không thể lấy danh sách đơn hàng');
+      
+      // Xử lý token expired
+      if (response.status === 401 && handleTokenExpired(errorData)) {
+        return [];
+      }
+      
+      // Không throw error để tránh hiển thị lỗi kỹ thuật cho user
+      return [];
     }
   } catch (error) {
     console.error('=== ORDER API: GET USER ORDERS ERROR ===');
     console.error('Error:', error);
-    throw error;
+    
+    // Xử lý token expired nếu có
+    if (error && typeof error === 'object' && 'message' in error) {
+      const errorMessage = (error as any).message;
+      if (errorMessage?.includes('hết hạn') || errorMessage?.includes('TOKEN_EXPIRED')) {
+        handleTokenExpired({ message: errorMessage });
+      }
+    }
+    
+    // Không throw error để tránh hiển thị lỗi kỹ thuật cho user
+    return [];
   }
 };
 

@@ -53,12 +53,33 @@ api.interceptors.response.use(
     });
     
     if (error.response?.status === 401) {
-      // Token expired or invalid, logout user
-      useAuthStore.getState().logout();
+      const errorData = error.response?.data;
+      console.log('🔍 Token error details:', errorData);
+      
+      // Kiểm tra loại lỗi token
+      if (errorData?.code === 'TOKEN_EXPIRED' || errorData?.message?.includes('hết hạn')) {
+        console.log('⏰ Token đã hết hạn, hiển thị modal');
+        useAuthStore.getState().showTokenExpiredModal();
+      } else {
+        console.log('🚫 Token không hợp lệ, logout ngay lập tức');
+        useAuthStore.getState().logout();
+      }
     }
     return Promise.reject(error);
   }
 );
+
+// Helper function để xử lý token expired cho fetch API
+export const handleTokenExpired = (errorData: any) => {
+  console.log('🔍 Handling token expired:', errorData);
+  
+  if (errorData?.code === 'TOKEN_EXPIRED' || errorData?.message?.includes('hết hạn')) {
+    console.log('⏰ Token đã hết hạn, hiển thị modal');
+    useAuthStore.getState().showTokenExpiredModal();
+    return true; // Đã xử lý
+  }
+  return false; // Chưa xử lý
+};
 
 // Interface cho Category từ API
 export interface ApiCategory {

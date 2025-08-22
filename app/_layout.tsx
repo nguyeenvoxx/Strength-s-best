@@ -9,6 +9,8 @@ import { LightColors, DarkColors } from '../constants/Colors';
 import { useTheme } from '../store/ThemeContext';
 import { useCartStore } from '../store/useCartStore';
 import { useFavoriteStore } from '../store/useFavoriteStore';
+import { TokenExpiredModal } from '../components/TokenExpiredModal';
+import { useAuthStore } from '../store/useAuthStore';
 
 export default function RootLayout() {
   return (
@@ -26,6 +28,9 @@ function RootTabsLayout() {
   const colors = isDark ? DarkColors : LightColors;
   const { items } = useCartStore();
   const { favorites } = useFavoriteStore();
+  const showTokenExpiredModal = useAuthStore((state) => state.showTokenExpiredModal);
+  const hideTokenExpiredModal = useAuthStore((state) => state.hideTokenExpiredModal);
+  const logout = useAuthStore((state) => state.logout);
   
   // Tính số lượng sản phẩm khác nhau trong giỏ hàng
   const totalItems = items.length;
@@ -34,7 +39,8 @@ function RootTabsLayout() {
   const totalFavorites = favorites.length;
 
   return (
-    <Tabs
+    <>
+      <Tabs
       screenOptions={{
         tabBarActiveTintColor: '#469B43',
         tabBarInactiveTintColor: '#666666',
@@ -189,7 +195,8 @@ function RootTabsLayout() {
 
       {/* Hidden screens - ẩn hoàn toàn khỏi bottom tabs */}
       <Tabs.Screen name="(auth)" options={{ href: null }} />
-      <Tabs.Screen name="product" options={{ href: null }} />
+      <Tabs.Screen name="index" options={{ href: null }} />
+
       <Tabs.Screen name="product/[id]" options={{ href: null }} />
       <Tabs.Screen name="products" options={{ href: null }} />
       <Tabs.Screen name="checkout" options={{ href: null }} />
@@ -207,7 +214,6 @@ function RootTabsLayout() {
       <Tabs.Screen name="rewards" options={{ href: null }} />
       <Tabs.Screen name="settings" options={{ href: null }} />
       <Tabs.Screen name="notifications" options={{ href: null }} />
-      <Tabs.Screen name="index" options={{ href: null }} />
       <Tabs.Screen name="add-card" options={{ href: null }} />
       <Tabs.Screen name="verify-card" options={{ href: null }} />
       <Tabs.Screen name="my-cards" options={{ href: null }} />
@@ -221,7 +227,10 @@ function RootTabsLayout() {
       <Tabs.Screen name="help/shipping-info" options={{ href: null }} />
       <Tabs.Screen name="help/security-policy" options={{ href: null }} />
       <Tabs.Screen name="help/contact" options={{ href: null }} />
-      <Tabs.Screen name="contact" options={{ href: null }} />
     </Tabs>
+    
+    {/* Token Expired Modal */}
+    <TokenExpiredModal />
+    </>
   );
 }

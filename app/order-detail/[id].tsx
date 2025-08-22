@@ -18,7 +18,7 @@ import { getOrderDetailById, OrderDetail, cancelOrder } from '../../services/ord
 import { useTheme } from '../../store/ThemeContext';
 import { LightColors, DarkColors } from '../../constants/Colors';
 import ReviewModal from '../../components/ReviewModal';
-import { getUserReviews } from '../../services/reviewApi';
+import { getUserReviews, checkReviewStatus } from '../../services/reviewApi';
 
 interface OrderDetailItem {
   _id: string;
@@ -33,7 +33,7 @@ const OrderDetailScreen: React.FC = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
   const orderId = params.id as string;
-  const { token } = useAuthStore();
+  const { token, user } = useAuthStore();
   const { theme } = useTheme();
   const colors = theme === 'dark' ? DarkColors : LightColors;
 
@@ -66,6 +66,18 @@ const OrderDetailScreen: React.FC = () => {
       loadUserReviews();
     }
   }, [order]);
+
+  // Tự động đóng popup nếu phát hiện đã đánh giá
+  useEffect(() => {
+    if (reviewModalVisible && selectedProduct && selectedOrderDetailId) {
+      const productId = selectedProduct._id || selectedProduct;
+      if (hasUserReviewedSync(productId, selectedOrderDetailId)) {
+        console.log('🔍 Auto-closing review modal - already reviewed');
+        setReviewModalVisible(false);
+        Alert.alert('Thông báo', 'Bạn đã đánh giá sản phẩm này rồi');
+      }
+    }
+  }, [reviewModalVisible, selectedProduct, selectedOrderDetailId, userReviews]);
 
   const loadOrderDetail = async () => {
     try {
@@ -101,9 +113,23 @@ const OrderDetailScreen: React.FC = () => {
 
   const loadUserReviews = async () => {
     try {
-      const reviews = await getUserReviews(token!);
-      setUserReviews(reviews.reviews || []);
-    } catch (error) {
+      console.log('🔍 Loading user reviews...');
+      const result = await getUserReviews(token!, 1, 100);
+      console.log('🔍 User reviews response:', result);
+      setUserReviews(result.reviews);
+      console.log('🔍 Set user reviews:', result.reviews);
+      
+      // Debug: Log all reviews to check structure
+      if (result.reviews && result.reviews.length > 0) {
+        console.log('🔍 All user reviews structure:', result.reviews.map((r: any) => ({
+          _id: r._id,
+          idProduct: r.idProduct?._id || r.idProduct,
+          idOrderDetail: r.idOrderDetail?._id || r.idOrderDetail,
+          rating: r.rating,
+          review: r.review
+        })));
+      }
+    } catch (error: any) {
       console.error('Error loading user reviews:', error);
     }
   };
@@ -139,15 +165,21 @@ const OrderDetailScreen: React.FC = () => {
     );
   };
 
-  const handleReviewProduct = (product: any, orderDetailId: string) => {
+  const handleReviewProduct = async (product: any, orderDetailId: string) => {
     const productId = product._id || product;
-    const key = `${productId}_${orderDetailId}`;
     
-    // Kiểm tra xem đã đánh giá chưa
-    if (reviewedItems.has(key)) {
+    // Kiểm tra xem đã đánh giá chưa (cả local và database)
+    const hasReviewed = await hasUserReviewed(productId, orderDetailId);
+    if (hasReviewed) {
       Alert.alert('Thông báo', 'Bạn đã đánh giá sản phẩm này rồi');
       return;
     }
+    
+    console.log('🔍 Opening review modal for:', {
+      productId,
+      orderDetailId,
+      productName: product.nameProduct || product.name
+    });
     
     setSelectedProduct(product);
     setSelectedOrderDetailId(orderDetailId);
@@ -171,11 +203,100 @@ const OrderDetailScreen: React.FC = () => {
     loadUserReviews();
   };
 
-  const hasUserReviewed = (productId: string, orderDetailId: string) => {
+  // Version sync để sử dụng trong render
+  const hasUserReviewedSync = (productId: string, orderDetailId: string): boolean => {
     const key = `${productId}_${orderDetailId}`;
-    const hasReviewed = reviewedItems.has(key);
     
-    return hasReviewed;
+    // Kiểm tra trong state local (đã đánh giá trong session này)
+    if (reviewedItems.has(key)) {
+      console.log('🔍 Found in local state:', key);
+      return true;
+    }
+    
+    // Kiểm tra trong database (đã đánh giá trước đó)
+    const hasReviewedInDB = userReviews.some(review => {
+      const reviewProductId = review.idProduct?._id || review.idProduct;
+      const reviewOrderDetailId = review.idOrderDetail?._id || review.idOrderDetail;
+      
+      const productMatch = reviewProductId === productId || reviewProductId?.toString() === productId?.toString();
+      const orderDetailMatch = reviewOrderDetailId === orderDetailId || reviewOrderDetailId?.toString() === orderDetailId?.toString();
+      
+      return productMatch && orderDetailMatch;
+    });
+    
+    if (hasReviewedInDB) {
+      // Thêm vào state local để cache
+      setReviewedItems(prev => {
+        const newSet = new Set(prev);
+        newSet.add(key);
+        return newSet;
+      });
+      console.log('🔍 Found in database, added to local state:', key);
+      return true;
+    }
+    
+    return false;
+  };
+
+  // Version async để sử dụng trong event handlers
+  const hasUserReviewed = async (productId: string, orderDetailId: string): Promise<boolean> => {
+    const key = `${productId}_${orderDetailId}`;
+    
+    // Kiểm tra trong state local (đã đánh giá trong session này)
+    if (reviewedItems.has(key)) {
+      console.log('🔍 Found in local state:', key);
+      return true;
+    }
+    
+    // Kiểm tra trong database (đã đánh giá trước đó)
+    const hasReviewedInDB = userReviews.some(review => {
+      const reviewProductId = review.idProduct?._id || review.idProduct;
+      const reviewOrderDetailId = review.idOrderDetail?._id || review.idOrderDetail;
+      
+      const productMatch = reviewProductId === productId || reviewProductId?.toString() === productId?.toString();
+      const orderDetailMatch = reviewOrderDetailId === orderDetailId || reviewOrderDetailId?.toString() === orderDetailId?.toString();
+      
+      return productMatch && orderDetailMatch;
+    });
+    
+    if (hasReviewedInDB) {
+      // Thêm vào state local để cache
+      setReviewedItems(prev => {
+        const newSet = new Set(prev);
+        newSet.add(key);
+        return newSet;
+      });
+      console.log('🔍 Found in database, added to local state:', key);
+      return true;
+    }
+    
+    // Kiểm tra bằng API nếu không tìm thấy trong local state và userReviews
+    try {
+      const result = await checkReviewStatus(token!, productId, orderDetailId);
+      if (result.hasReviewed) {
+        // Thêm vào state local để cache
+        setReviewedItems(prev => {
+          const newSet = new Set(prev);
+          newSet.add(key);
+          return newSet;
+        });
+        console.log('🔍 Found via API, added to local state:', key);
+        return true;
+      }
+    } catch (error) {
+      console.error('🔍 Error checking review status via API:', error);
+    }
+    
+    console.log('🔍 Checking review status:', {
+      productId,
+      orderDetailId,
+      key,
+      hasReviewed: false,
+      reviewedItemsCount: reviewedItems.size,
+      userReviewsCount: userReviews.length
+    });
+    
+    return false;
   };
 
   const formatPrice = (price: number) => {
@@ -428,6 +549,7 @@ const OrderDetailScreen: React.FC = () => {
               {String(((order as any)?.shippingAddress?.fullName 
                 || (order as any)?.shippingAddress?.name 
                 || (order as any)?.fullName 
+                || user?.name
                 || '').toString().trim()) || 'Người nhận'}
             </Text>
             <Text style={[styles.addressPhone, { color: colors.textSecondary }]}>
@@ -447,7 +569,7 @@ const OrderDetailScreen: React.FC = () => {
           {order.items.map((item, index) => {
             const productId = item.productId?._id || item.productId;
             const orderDetailId = item._id;
-            const hasReviewed = hasUserReviewed(productId, orderDetailId);
+            const hasReviewed = hasUserReviewedSync(productId, orderDetailId);
             
             return (
             <View key={item._id} style={styles.itemContainer}>
@@ -576,6 +698,7 @@ const OrderDetailScreen: React.FC = () => {
           onClose={() => setReviewModalVisible(false)}
           product={selectedProduct}
           orderDetailId={selectedOrderDetailId}
+          hasReviewed={hasUserReviewedSync(selectedProduct._id || selectedProduct, selectedOrderDetailId)}
           onReviewSubmitted={handleReviewSubmitted}
         />
       )}

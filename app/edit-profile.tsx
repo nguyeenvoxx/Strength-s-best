@@ -15,13 +15,13 @@ const EditProfileScreen: React.FC = () => {
   const token = useAuthStore((state) => state.token);
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
-  // Chuẩn hóa số điện thoại về E.164 VN: +84XXXXXXXXX (9 số)
+  // Chuẩn hóa số điện thoại về format VN: 0XXXXXXXXX (10 số)
   function formatPhone(raw: string | undefined): string {
     if (!raw) return '';
     const p = raw.replace(/\s+/g, '');
-    if (/^\+84\d{9}$/.test(p)) return p;
-    if (/^0\d{9}$/.test(p)) return '+84' + p.slice(1);
-    if (/^\d{9}$/.test(p)) return '+84' + p; // nhập thiếu số 0 đầu
+    if (/^0\d{9}$/.test(p)) return p;
+    if (/^\+84\d{9}$/.test(p)) return '0' + p.slice(3); // Chuyển +84 thành 0
+    if (/^\d{9}$/.test(p)) return '0' + p; // nhập thiếu số 0 đầu
     return p;
   }
   const [phone, setPhone] = useState(user?.phoneNumber || '');
@@ -177,6 +177,37 @@ const EditProfileScreen: React.FC = () => {
       );
     }
   };
+
+  // Kiểm tra authentication
+  if (!token) {
+    return (
+      <View style={[styles.container, getPlatformContainerStyle(), { backgroundColor: colors.background }]}>
+        {/* Header */}
+        <View style={styles.headerContainer}>
+          <TouchableOpacity onPress={() => router.replace('/profile')}>
+            <Text style={[styles.backButton, { color: colors.text }]}>‹</Text>
+          </TouchableOpacity>
+          <Text style={[styles.header, { color: colors.text }]}>Chỉnh sửa hồ sơ</Text>
+          <View style={styles.placeholder} />
+        </View>
+        
+        {/* Authentication Required */}
+        <View style={[styles.authRequiredContainer, { backgroundColor: colors.card }]}>
+          <Text style={[styles.authRequiredIcon, { color: colors.textSecondary }]}>🔒</Text>
+          <Text style={[styles.authRequiredTitle, { color: colors.text }]}>Yêu cầu đăng nhập</Text>
+          <Text style={[styles.authRequiredMessage, { color: colors.textSecondary }]}>
+            Vui lòng đăng nhập để chỉnh sửa thông tin cá nhân
+          </Text>
+          <TouchableOpacity
+            style={[styles.authRequiredButton, { backgroundColor: colors.accent }]}
+            onPress={() => router.push('/(auth)/sign-in')}
+          >
+            <Text style={[styles.authRequiredButtonText, { color: '#fff' }]}>Đăng nhập</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, getPlatformContainerStyle(), { backgroundColor: colors.background }]}>
@@ -379,6 +410,40 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     fontSize: 16,
+  },
+  // Authentication required styles
+  authRequiredContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  authRequiredIcon: {
+    fontSize: 64,
+    marginBottom: 16,
+  },
+  authRequiredTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  authRequiredMessage: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  authRequiredButton: {
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 8,
+    minWidth: 150,
+  },
+  authRequiredButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
 

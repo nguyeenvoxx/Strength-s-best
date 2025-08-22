@@ -117,7 +117,6 @@ const SettingsScreen = () => {
           subtitle: 'Đánh giá trên App Store',
           icon: 'star-outline',
           onPress: () => {
-            // Mở App Store để đánh giá
             Alert.alert('Đánh giá', 'Mở App Store để đánh giá ứng dụng?');
           },
         },
@@ -205,35 +204,30 @@ const SettingsScreen = () => {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Cài đặt</Text>
-        <View style={styles.placeholder} />
+        <View style={styles.headerRight} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
-        {settingsSections.map((section, sectionIndex) => (
-          <View key={sectionIndex} style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {settingsSections.map((section) => (
+          <View key={section.title} style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
               {section.title}
             </Text>
-            {section.items.map((item) => renderSettingItem(item))}
+            <View style={styles.sectionContent}>
+              {section.items.map(renderSettingItem)}
+            </View>
           </View>
         ))}
 
         {/* Logout Button */}
-        <View style={styles.section}>
+        <View style={styles.logoutSection}>
           <TouchableOpacity
             style={[styles.logoutButton, { backgroundColor: colors.danger }]}
             onPress={handleLogout}
           >
-            <Ionicons name="log-out-outline" size={20} color="#fff" />
+            <Ionicons name="log-out-outline" size={20} color="#ffffff" />
             <Text style={styles.logoutButtonText}>Đăng xuất</Text>
           </TouchableOpacity>
-        </View>
-
-        {/* App Version */}
-        <View style={styles.versionContainer}>
-          <Text style={[styles.versionText, { color: colors.textSecondary }]}>
-            Phiên bản 1.0.0
-          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -250,21 +244,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    height: 56,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
   backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 20,
+    padding: 4,
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: 'bold',
   },
-  placeholder: {
-    width: 40,
+  headerRight: {
+    width: 32,
   },
   content: {
     flex: 1,
@@ -274,27 +265,31 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
-    marginBottom: 12,
+    marginBottom: 8,
     paddingHorizontal: 4,
   },
-  settingItem: {
+  sectionContent: {
     borderRadius: 12,
-    marginBottom: 8,
-    padding: 16,
+    overflow: 'hidden',
+  },
+  settingItem: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
   settingItemContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    padding: 16,
   },
   iconContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    justifyContent: 'center',
+    marginRight: 12,
   },
   settingItemText: {
     flex: 1,
@@ -306,28 +301,24 @@ const styles = StyleSheet.create({
   },
   settingItemSubtitle: {
     fontSize: 14,
-    lineHeight: 18,
+  },
+  logoutSection: {
+    marginTop: 32,
+    marginBottom: 32,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
     borderRadius: 12,
-    marginTop: 8,
   },
   logoutButtonText: {
-    color: '#fff',
+    color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
-  },
-  versionContainer: {
-    alignItems: 'center',
-    paddingVertical: 20,
-  },
-  versionText: {
-    fontSize: 14,
   },
 });
 

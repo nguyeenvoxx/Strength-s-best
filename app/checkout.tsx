@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
@@ -134,6 +135,33 @@ const CheckoutScreen: React.FC = () => {
       setUserVouchers(userVouchersData);
     }
   }, [userVouchersData]);
+
+  // Kiểm tra và cập nhật địa chỉ từ AsyncStorage khi component mount hoặc focus
+  useFocusEffect(
+    useCallback(() => {
+      const checkAndUpdateAddress = async () => {
+        try {
+          const addressUpdated = await AsyncStorage.getItem('addressUpdated');
+          if (addressUpdated === 'true') {
+            // Xóa flag để tránh cập nhật lại
+            await AsyncStorage.removeItem('addressUpdated');
+            
+            // Lấy địa chỉ đã chọn từ AsyncStorage
+            const savedAddress = await AsyncStorage.getItem('selectedDeliveryAddress');
+            if (savedAddress) {
+              const address = JSON.parse(savedAddress);
+              console.log('📍 Checkout - Updating address from AsyncStorage:', address);
+              setSelectedAddress(address);
+            }
+          }
+        } catch (error) {
+          console.error('❌ Error checking address update:', error);
+        }
+      };
+
+      checkAndUpdateAddress();
+    }, [])
+  );
 
   // Đồng bộ danh sách thẻ và tự động chọn thẻ hợp lệ khi cần
   useEffect(() => {
@@ -733,7 +761,11 @@ const CheckoutScreen: React.FC = () => {
         {/* Address Section - Di chuyển lên đầu */}
         <AddressSelector
           selectedAddress={selectedAddress}
-          onAddressSelect={setSelectedAddress}
+          onAddressSelect={(address) => {
+            // Cập nhật địa chỉ ngay lập tức để hiển thị mượt mà
+            setSelectedAddress(address);
+            console.log('📍 Địa chỉ đã được cập nhật:', address.name, address.address);
+          }}
         />
 
         {/* Order Items */}

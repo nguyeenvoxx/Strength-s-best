@@ -1,14 +1,11 @@
 import React, { useEffect } from 'react';
-import { useRouter } from 'expo-router';
-import { View, ActivityIndicator, Text } from 'react-native';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { router } from 'expo-router';
 import { useSettingStore } from '../store/useSettingStore';
-import { useAuthStore } from '../store/useAuthStore';
 
 export default function Index() {
-  const router = useRouter();
   const { isFirstTime, hasHydrated } = useSettingStore();
-  const { isAuthenticated } = useAuthStore();
-  
+
   useEffect(() => {
     // Đợi store được hydrate xong
     if (!hasHydrated) return;
@@ -17,14 +14,11 @@ export default function Index() {
     const timer = setTimeout(() => {
       try {
         if (isFirstTime) {
-          // Lần đầu sử dụng - chuyển đến welcome
+          // Lần đầu sử dụng - chuyển đến splash
           router.replace('/(auth)/splash');
-        } else if (isAuthenticated) {
-          // Đã đăng nhập - chuyển đến home
-          router.replace('/home');
         } else {
-          // Chưa đăng nhập - chuyển đến sign-in
-          router.replace('/(auth)/sign-in');
+          // Không phải lần đầu - chuyển đến home
+          router.replace('/home');
         }
       } catch (error) {
         console.error('Navigation error:', error);
@@ -32,12 +26,20 @@ export default function Index() {
     }, 1000);
     
     return () => clearTimeout(timer);
-  }, [router, isFirstTime, hasHydrated, isAuthenticated]);
-  
+  }, [isFirstTime, hasHydrated]);
+
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+    <View style={styles.container}>
       <ActivityIndicator size="large" color="#469B43" />
-      <Text style={{ marginTop: 10, color: '#666' }}>Đang tải...</Text>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+});

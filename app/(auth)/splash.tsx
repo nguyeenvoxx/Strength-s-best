@@ -18,6 +18,12 @@ const SplashScreen: React.FC = () => {
     router.replace('./sign-in');
   };
 
+  const handleGuest = () => {
+    // Đánh dấu không còn là lần đầu tiên
+    setIsFirstTime(false);
+    router.replace('/home');
+  };
+
   return (
     <View style={styles.container}>
       <Image source={require('../../assets/images/logo.png')} style={styles.logo} />
@@ -40,7 +46,7 @@ const SplashScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
       
-      <TouchableOpacity onPress={handleSignIn}>
+      <TouchableOpacity onPress={handleGuest}>
         <Text style={styles.guestText}>Bạn sẽ tiếp tục là khách</Text>
       </TouchableOpacity>
     </View>

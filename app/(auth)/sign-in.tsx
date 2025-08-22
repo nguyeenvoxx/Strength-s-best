@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   signInButton: {
-    backgroundColor: '#000',
+    backgroundColor: '#28a745',
     paddingVertical: 15,
     paddingHorizontal: 40,
     borderRadius: 5,

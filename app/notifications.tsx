@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useFocusEffect } from '@react-navigation/native';
+import { handleNotificationNavigation } from '../utils/notificationNavigation';
 
 interface Notification {
   _id: string;
@@ -26,6 +27,10 @@ interface Notification {
   isRead: boolean;
   relatedId?: string;
   relatedModel?: string;
+  navigation?: {
+    route: 'order-detail' | 'product-detail' | 'news-detail' | 'voucher-list' | 'review-list' | 'purchased-orders' | 'profile' | 'home';
+    params: Record<string, string>;
+  };
   icon: string;
   created_at: string;
   updated_at: string;
@@ -36,7 +41,7 @@ const NotificationsScreen = () => {
   const isDark = theme === 'dark';
   const colors = isDark ? DarkColors : LightColors;
   const router = useRouter();
-    const {
+  const {
     notifications,
     unreadCount,
     isLoading,
@@ -86,6 +91,12 @@ const NotificationsScreen = () => {
         return 'settings-outline';
       case 'news':
         return 'newspaper-outline';
+      case 'voucher':
+        return 'gift-outline';
+      case 'product':
+        return 'cube-outline';
+      case 'review':
+        return 'star-outline';
       default:
         return 'notifications-outline';
     }
@@ -101,6 +112,12 @@ const NotificationsScreen = () => {
         return '#2196F3';
       case 'news':
         return '#9C27B0';
+      case 'voucher':
+        return '#E91E63';
+      case 'product':
+        return '#607D8B';
+      case 'review':
+        return '#FFC107';
       default:
         return colors.accent;
     }
@@ -122,7 +139,146 @@ const NotificationsScreen = () => {
     }
   };
 
+  // Xử lý navigation khi nhấn vào thông báo
+  const handleNotificationPress = async (notification: Notification) => {
+    if (!token) return;
 
+    try {
+      console.log('🔍 Notification pressed:', notification.title);
+      console.log('🔍 Notification type:', notification.type);
+      console.log('🔍 Notification navigation:', notification.navigation);
+      console.log('🔍 Notification navigation route:', notification.navigation?.route);
+      console.log('🔍 Notification navigation params:', notification.navigation?.params);
+      console.log('🔍 Has navigation data:', !!notification.navigation);
+      
+      // Đánh dấu thông báo đã đọc
+      await markAsRead(token, notification._id);
+
+      // Xử lý navigation trực tiếp
+      if (notification.navigation) {
+        const { route, params } = notification.navigation;
+        console.log('🔍 Processing navigation:', { route, params });
+        
+        // Chuyển đổi Map params thành object nếu cần
+        const paramsObj = params instanceof Map ? Object.fromEntries(params) : params;
+        console.log('🔍 Params object:', paramsObj);
+        
+        switch (route) {
+          case 'product-detail':
+            if (paramsObj.productId) {
+              // Nếu có reviewId và scrollToReview, thêm params để scroll đến review
+              if (paramsObj.reviewId && paramsObj.scrollToReview === 'true') {
+                console.log('🔍 Navigating to product detail with review scroll:', {
+                  productId: paramsObj.productId,
+                  reviewId: paramsObj.reviewId,
+                  scrollToReview: paramsObj.scrollToReview
+                });
+                router.push({
+                  pathname: './product/[id]',
+                  params: { 
+                    id: paramsObj.productId,
+                    scrollToReview: 'true',
+                    reviewId: paramsObj.reviewId
+                  }
+                } as any);
+              } else {
+                console.log('🔍 Navigating to product detail:', paramsObj.productId);
+                router.push({
+                  pathname: './product/[id]',
+                  params: { id: paramsObj.productId }
+                } as any);
+              }
+            } else {
+              console.log('🔍 No productId, navigating to products');
+              router.push('./products');
+            }
+            break;
+            
+          case 'order-detail':
+            if (paramsObj.orderId) {
+              console.log('🔍 Navigating to order detail:', paramsObj.orderId);
+              router.push({
+                pathname: './order-detail/[id]',
+                params: { id: paramsObj.orderId }
+              } as any);
+            } else {
+              console.log('🔍 No orderId, navigating to purchased orders');
+              router.push('./purchased-orders');
+            }
+            break;
+            
+          case 'news-detail':
+            if (paramsObj.newsId) {
+              console.log('🔍 Navigating to news detail:', paramsObj.newsId);
+              router.push({
+                pathname: './news-detail',
+                params: { newsId: paramsObj.newsId }
+              } as any);
+            } else {
+              console.log('🔍 No newsId, navigating to news');
+              router.push('./news');
+            }
+            break;
+            
+          case 'voucher-list':
+            console.log('🔍 Navigating to voucher list');
+            router.push('./rewards');
+            break;
+            
+          case 'purchased-orders':
+            console.log('🔍 Navigating to purchased orders');
+            router.push('./purchased-orders');
+            break;
+            
+          case 'profile':
+            console.log('🔍 Navigating to profile');
+            router.push('./profile');
+            break;
+            
+          case 'home':
+            console.log('🔍 Navigating to home');
+            router.push('./home');
+            break;
+            
+          default:
+            console.log('🔍 Unknown route, navigating to home');
+            router.push('./home');
+            break;
+        }
+      } else {
+        // Fallback navigation dựa trên type
+        console.log('🔍 No navigation data, using fallback type:', notification.type);
+        switch (notification.type) {
+          case 'order':
+            router.push('./purchased-orders');
+            break;
+          case 'product':
+            router.push('./products');
+            break;
+          case 'news':
+            router.push('./news');
+            break;
+          case 'voucher':
+            router.push('./rewards');
+            break;
+          case 'review':
+            router.push('./products');
+            break;
+          case 'promotion':
+            router.push('./home');
+            break;
+          case 'system':
+            router.push('./profile');
+            break;
+          default:
+            router.push('./home');
+            break;
+        }
+      }
+    } catch (error) {
+      console.error('Lỗi khi xử lý thông báo:', error);
+    }
+  };
 
   const renderNotification = ({ item }: { item: Notification }) => (
     <TouchableOpacity
@@ -131,7 +287,7 @@ const NotificationsScreen = () => {
         { backgroundColor: colors.card },
         !item.isRead && { borderLeftWidth: 4, borderLeftColor: getNotificationColor(item.type) }
       ]}
-      onPress={() => token && markAsRead(token, item._id)}
+      onPress={() => handleNotificationPress(item)}
     >
       <View style={styles.notificationContent}>
         <View style={[
@@ -195,7 +351,25 @@ const NotificationsScreen = () => {
         </TouchableOpacity>
       </View>
 
-      {isLoading ? (
+      {!token ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="lock-closed-outline" size={64} color={colors.textSecondary} />
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>
+            Yêu cầu đăng nhập
+          </Text>
+          <Text style={[styles.emptyMessage, { color: colors.textSecondary }]}>
+            Vui lòng đăng nhập để xem thông báo của bạn
+          </Text>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: '#28a745' }]}
+            onPress={() => router.push('/(auth)/sign-in')}
+          >
+            <Text style={[styles.retryButtonText, { color: '#fff' }]}>
+              Đăng nhập
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.accent} />
           <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
@@ -212,7 +386,7 @@ const NotificationsScreen = () => {
             {error}
           </Text>
           <TouchableOpacity 
-            style={[styles.retryButton, { backgroundColor: colors.accent }]}
+            style={[styles.retryButton, { backgroundColor: '#28a745' }]}
             onPress={clearError}
           >
             <Text style={[styles.retryButtonText, { color: '#fff' }]}>

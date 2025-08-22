@@ -1,4 +1,5 @@
 import { API_CONFIG } from '../constants/config';
+import { handleTokenExpired } from './api';
 
 export interface Review {
   _id: string;
@@ -85,7 +86,42 @@ export const getUserReviews = async (token: string, page = 1, limit = 10): Promi
     };
   } else {
     const errorData = await response.json();
-    throw new Error(errorData.message || 'Không thể lấy đánh giá');
+    console.error('Error fetching user reviews:', errorData);
+    
+    // Xử lý token expired
+    if (response.status === 401 && handleTokenExpired(errorData)) {
+      return { reviews: [], total: 0 };
+    }
+    
+    // Không throw error để tránh hiển thị lỗi kỹ thuật cho user
+    return { reviews: [], total: 0 };
+  }
+};
+
+// Kiểm tra trạng thái đánh giá cho một sản phẩm và order detail cụ thể
+export const checkReviewStatus = async (token: string, productId: string, orderDetailId: string): Promise<{ hasReviewed: boolean, review: Review | null }> => {
+  const response = await fetch(`${API_CONFIG.BASE_URL}/product-reviews/check-status/${productId}/${orderDetailId}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (response.ok) {
+    const result = await response.json();
+    return result.data;
+  } else {
+    const errorData = await response.json();
+    console.error('Error checking review status:', errorData);
+    
+    // Xử lý token expired
+    if (response.status === 401 && handleTokenExpired(errorData)) {
+      return { hasReviewed: false, review: null };
+    }
+    
+    // Không throw error để tránh hiển thị lỗi kỹ thuật cho user
+    return { hasReviewed: false, review: null };
   }
 };
 

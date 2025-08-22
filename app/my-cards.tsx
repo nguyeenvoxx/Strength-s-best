@@ -41,13 +41,19 @@ const MyCardsScreen: React.FC = () => {
   const loadCards = async () => {
     try {
       setLoading(true);
+      
+      // Kiểm tra authentication
+      if (!token) {
+        setCards([]);
+        return;
+      }
   
-      const cards = await getUserCards(token!);
+      const cards = await getUserCards(token);
       // Nếu chưa có thẻ nào, thử đồng bộ từ Stripe (fallback khi webhook chưa tới)
       if (!cards || cards.length === 0) {
         try {
-          await syncStripePaymentMethods(token!);
-          const synced = await getUserCards(token!);
+          await syncStripePaymentMethods(token);
+          const synced = await getUserCards(token);
           setCards(synced);
         } catch (e) {
           setCards(cards || []);
@@ -57,7 +63,12 @@ const MyCardsScreen: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Error loading cards:', error);
-      Alert.alert('Thông báo', 'Không thể tải danh sách thẻ');
+      // Không hiển thị alert cho lỗi authentication
+      if (error.message?.includes('401') || error.message?.includes('Token')) {
+        setCards([]);
+      } else {
+        Alert.alert('Thông báo', 'Không thể tải danh sách thẻ');
+      }
     } finally {
       setLoading(false);
     }
@@ -222,7 +233,23 @@ const MyCardsScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      {cards.length === 0 ? (
+      {!token ? (
+        <View style={[styles.emptyContainer, styles.centered]}>
+          <Ionicons name="lock-closed-outline" size={64} color={colors.textSecondary} />
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>
+            Yêu cầu đăng nhập
+          </Text>
+          <Text style={[styles.emptyDescription, { color: colors.textSecondary }]}>
+            Vui lòng đăng nhập để xem và quản lý thẻ tín dụng của bạn
+          </Text>
+          <TouchableOpacity
+            style={[styles.addCardButton, { backgroundColor: '#28a745' }]}
+            onPress={() => router.push('/(auth)/sign-in')}
+          >
+            <Text style={styles.addCardButtonText}>Đăng nhập</Text>
+          </TouchableOpacity>
+        </View>
+      ) : cards.length === 0 ? (
         <View style={[styles.emptyContainer, styles.centered]}>
           <Ionicons name="card-outline" size={64} color={colors.textSecondary} />
           <Text style={[styles.emptyTitle, { color: colors.text }]}>

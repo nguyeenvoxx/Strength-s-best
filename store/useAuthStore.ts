@@ -23,6 +23,7 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
   isAuthenticated: boolean;
+  showTokenExpiredModal: boolean;
 }
 
 interface AuthActions {
@@ -35,6 +36,8 @@ interface AuthActions {
   clearError: () => void;
   setUser: (user: User) => void;
   setToken: (token: string) => void;
+  showTokenExpiredModal: () => void;
+  hideTokenExpiredModal: () => void;
 }
 
 type AuthStore = AuthState & AuthActions;
@@ -47,6 +50,7 @@ export const useAuthStore = create<AuthStore>()(
       isLoading: false,
       error: null,
       isAuthenticated: false,
+      showTokenExpiredModal: false,
 
       login: async (credentials: LoginRequest) => {
         try {
@@ -196,6 +200,14 @@ export const useAuthStore = create<AuthStore>()(
         const cleanToken = token.trim();
         console.log('🔍 AuthStore - Setting token, length:', cleanToken.length);
         set({ token: cleanToken, isAuthenticated: true });
+      },
+
+      showTokenExpiredModal: () => {
+        set({ showTokenExpiredModal: true });
+      },
+
+      hideTokenExpiredModal: () => {
+        set({ showTokenExpiredModal: false });
       },
     }),
     {

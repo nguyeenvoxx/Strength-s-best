@@ -20,7 +20,9 @@ import { useFavoriteStore } from '../../store/useFavoriteStore';
 import { useCartStore } from '../../store/useCartStore';
 import { getProductImages, formatPrice, getShortDescription } from '../../utils/productUtils';
 import { useTheme } from '../../store/ThemeContext';
-import { getReviewsByProduct, likeReview, unlikeReview, checkLikeStatus } from '../../services/api';
+import { LightColors, DarkColors } from '../../constants/Colors';
+import { getReviewsByProduct, likeReview, unlikeReview, checkLikeStatus } from '../../services/reviewApi';
+import { useRealtimeUpdates } from '../../services/realtimeApi';
 
 const { width } = Dimensions.get('window');
 
@@ -35,41 +37,39 @@ interface Section {
 }
 
 const ProductScreen = () => {
-  const { id, scrollTo } = useLocalSearchParams();
+  const { id, scrollToReview, reviewId } = useLocalSearchParams();
   const router = useRouter();
   const { theme } = useTheme();
-  const colors = theme === 'dark' ? {
-    background: '#1a1a1a',
-    card: '#2d2d2d',
-    text: '#ffffff',
-    textSecondary: '#cccccc',
-    accent: '#5CB85C',
-    border: '#404040'
-  } : {
-    background: '#f5f5f5',
-    card: '#ffffff',
-    text: '#333333',
-    textSecondary: '#666666',
-    accent: '#469B43',
-    border: '#e0e0e0'
-  };
-
-  const { currentProduct, fetchProductById, fetchRelatedProducts, relatedProducts, isLoading } = useProductStore();
+  const isDark = theme === 'dark';
+  const colors = isDark ? DarkColors : LightColors;
   const { isAuthenticated } = useAuthStore();
+  const { currentProduct, fetchProductById, fetchRelatedProducts, relatedProducts, isLoading } = useProductStore();
   const { addToFavorites, removeFromFavorites, checkFavoriteStatus } = useFavoriteStore();
   const { addToCart } = useCartStore();
+  const { subscribe, unsubscribe, triggerEvent } = useRealtimeUpdates();
 
+  // State
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteId, setFavoriteId] = useState<string | null>(null);
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [showCartModal, setShowCartModal] = useState(false);
   const [confirmedLargeQuantity, setConfirmedLargeQuantity] = useState(false);
   const [reviews, setReviews] = useState<any[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [likedReviews, setLikedReviews] = useState<Set<string>>(new Set());
+  const [hasScrolledToReview, setHasScrolledToReview] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+  const reviewRefs = useRef<{ [key: string]: any }>({});
+
+  // Xử lý reviewId từ params
+  const targetReviewId = Array.isArray(reviewId) ? reviewId[0] : reviewId;
+
+  // Debug logs để kiểm tra params
+  console.log('🔍 Product Screen Params:', { id, scrollToReview, reviewId, targetReviewId });
+  console.log('🔍 Reviews loaded:', reviews.length);
+  console.log('🔍 Show all reviews:', showAllReviews);
 
   // Tính toán giới hạn tối đa cho quantity - chỉ giới hạn theo tồn kho
   const maxQuantity = currentProduct ? (currentProduct.quantity || 0) : 0;
@@ -100,17 +100,17 @@ const ProductScreen = () => {
     try {
       setReviewsLoading(true);
       const response = await getReviewsByProduct(id as string, 1, 10);
-      setReviews(response.data.reviews || []);
+      setReviews(response.reviews || []);
       
-      // Load like status cho từng review
+      // Load like status cho từng review (chỉ khi đã đăng nhập)
       if (isAuthenticated) {
         const token = useAuthStore.getState().token;
         if (token) {
           const likedSet = new Set<string>();
-          for (const review of response.data.reviews || []) {
+          for (const review of response.reviews || []) {
             try {
-              const likeStatus = await checkLikeStatus(review._id);
-              if (likeStatus.data.isLiked) {
+              const likeStatus = await checkLikeStatus(token, review._id);
+              if (likeStatus.isLiked) {
                 likedSet.add(review._id);
               }
             } catch (error) {
@@ -122,6 +122,7 @@ const ProductScreen = () => {
       }
     } catch (error) {
       console.error('Error loading reviews:', error);
+      // Không hiển thị alert cho lỗi load reviews vì có thể do chưa đăng nhập
     } finally {
       setReviewsLoading(false);
     }
@@ -137,9 +138,12 @@ const ProductScreen = () => {
     try {
       const isCurrentlyLiked = likedReviews.has(reviewId);
       
+      const token = useAuthStore.getState().token;
+      if (!token) return;
+      
       if (isCurrentlyLiked) {
         // Unlike
-        await unlikeReview(reviewId);
+        await unlikeReview(token, reviewId);
         setLikedReviews(prev => {
           const newSet = new Set(prev);
           newSet.delete(reviewId);
@@ -154,7 +158,7 @@ const ProductScreen = () => {
         ));
       } else {
         // Like
-        await likeReview(reviewId);
+        await likeReview(token, reviewId);
         setLikedReviews(prev => new Set([...prev, reviewId]));
         
         // Update review helpfulCount
@@ -174,6 +178,70 @@ const ProductScreen = () => {
     loadProduct();
   }, [id]);
 
+  // Setup polling để kiểm tra phản hồi admin mới
+  useEffect(() => {
+    if (!isAuthenticated || !id) return;
+
+    // Polling interval để kiểm tra phản hồi admin mới
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await getReviewsByProduct(id as string, 1, 10);
+                     const newReviews = response.reviews || [];
+        
+                     // So sánh với reviews hiện tại để tìm phản hồi admin mới
+             setReviews(prevReviews => {
+               const updatedReviews = prevReviews.map(prevReview => {
+                 const newReview = newReviews.find((r: any) => r._id === prevReview._id);
+                 if (newReview && (newReview as any).adminReplies && (newReview as any).adminReplies.length > ((prevReview as any).adminReplies?.length || 0)) {
+                               // Có phản hồi admin mới
+                 const newReplies = (newReview as any).adminReplies.slice(((prevReview as any).adminReplies?.length || 0));
+              
+              // Hiển thị thông báo cho user
+              Alert.alert(
+                'Phản hồi mới',
+                `Admin đã phản hồi đánh giá của bạn về sản phẩm "${(currentProduct as any)?.nameProduct || 'Sản phẩm'}"`,
+                [
+                  {
+                    text: 'Xem ngay',
+                    onPress: () => {
+                      // Scroll đến review có phản hồi
+                      setShowAllReviews(true);
+                      setTimeout(() => {
+                        const reviewElement = reviewRefs.current[newReview._id];
+                        if (reviewElement) {
+                          reviewElement.measureLayout(
+                            scrollViewRef.current?.getInnerViewNode(),
+                            (x: number, y: number) => {
+                              scrollViewRef.current?.scrollTo({ y, animated: true });
+                            },
+                            () => console.log('Failed to measure review position')
+                          );
+                        }
+                      }, 500);
+                    }
+                  },
+                  { text: 'Đóng', style: 'cancel' }
+                ]
+              );
+              
+              return newReview;
+            }
+            return prevReview;
+          });
+          
+          return updatedReviews;
+        });
+      } catch (error) {
+        console.error('Error polling for admin replies:', error);
+      }
+    }, 10000); // Kiểm tra mỗi 10 giây
+
+    // Cleanup interval
+    return () => {
+      clearInterval(pollInterval);
+    };
+  }, [isAuthenticated, id, (currentProduct as any)?.nameProduct]);
+
   // Reset quantity về 1 khi sản phẩm thay đổi
   useEffect(() => {
     setQuantity(1);
@@ -182,16 +250,114 @@ const ProductScreen = () => {
     setShowAllReviews(false);
   }, [id]);
 
-  // Nếu có yêu cầu cuộn tới phần reviews (sau khi người dùng gửi đánh giá)
+  // Reset scroll state khi product thay đổi
   useEffect(() => {
-    if (scrollTo === 'reviews' && scrollViewRef.current) {
-      // chờ 1 frame để đảm bảo UI render xong
-      setTimeout(() => {
-        // cuộn tương đối xuống gần khu vực reviews
-        scrollViewRef.current?.scrollTo({ y: 1000, animated: true });
-      }, 300);
+    setHasScrolledToReview(false);
+    console.log('🔍 Product changed, reset scroll state');
+  }, [id]);
+
+  // Thêm useEffect để scroll đến review khi có params
+  useEffect(() => {
+    console.log('🔍 useEffect triggered with:', { scrollToReview, targetReviewId, reviewsLength: reviews.length, hasScrolledToReview });
+    
+    if (scrollToReview === 'true' && targetReviewId && reviews.length > 0 && !hasScrolledToReview) {
+      console.log('🔍 Tìm review để scroll:', targetReviewId);
+      console.log('📋 Danh sách reviews:', reviews.map(r => ({ id: r._id, name: r.idUser?.name })));
+      
+      // Đánh dấu đã scroll để tránh scroll lại
+      setHasScrolledToReview(true);
+      
+      // Đợi một chút để reviews được load và render
+      const timer = setTimeout(() => {
+        const targetReview = reviews.find(review => review._id === targetReviewId);
+        console.log('🎯 Target review found:', targetReview ? 'YES' : 'NO');
+        
+        if (targetReview) {
+          // Tìm index của review trong danh sách hiển thị
+          const displayReviews = showAllReviews ? reviews : reviews.slice(0, 3);
+          const reviewIndex = displayReviews.findIndex(review => review._id === targetReviewId);
+          console.log('📍 Review index:', reviewIndex);
+          
+          if (reviewIndex !== -1) {
+            // Approach 1: Scroll đến phần reviews trước
+            console.log('📏 Scroll đến phần reviews...');
+            scrollViewRef.current?.scrollTo({
+              y: 1000, // Scroll đến phần reviews
+              animated: true
+            });
+            
+            // Approach 2: Sau đó scroll đến review cụ thể
+            setTimeout(() => {
+              const estimatedReviewHeight = 250; // Chiều cao ước tính của mỗi review
+              const estimatedOffset = reviewIndex * estimatedReviewHeight;
+              
+              console.log('📏 Scroll đến review cụ thể:', estimatedOffset);
+              scrollViewRef.current?.scrollTo({
+                y: 1000 + estimatedOffset,
+                animated: true
+              });
+            }, 500);
+          } else {
+            // Nếu review không trong danh sách hiển thị, mở tất cả reviews
+            console.log('🔄 Mở tất cả reviews để tìm review target');
+            setShowAllReviews(true);
+            
+            // Đợi thêm một chút để UI update
+            setTimeout(() => {
+              const newDisplayReviews = reviews;
+              const newReviewIndex = newDisplayReviews.findIndex(review => review._id === targetReviewId);
+              if (newReviewIndex !== -1) {
+                const estimatedReviewHeight = 250; // Chiều cao ước tính của mỗi review
+                const estimatedOffset = newReviewIndex * estimatedReviewHeight;
+                console.log('📏 Scroll to position (all reviews):', estimatedOffset);
+                
+                // Scroll đến phần reviews trước
+                scrollViewRef.current?.scrollTo({
+                  y: 1000,
+                  animated: true
+                });
+                
+                // Sau đó scroll đến review cụ thể
+                setTimeout(() => {
+                  scrollViewRef.current?.scrollTo({
+                    y: 1000 + estimatedOffset,
+                    animated: true
+                  });
+                }, 500);
+              }
+            }, 1000);
+          }
+        } else {
+          console.log('❌ Không tìm thấy review với ID:', targetReviewId);
+          // Fallback: scroll đến phần reviews
+          console.log('🔄 Fallback: scroll đến phần reviews');
+          scrollViewRef.current?.scrollTo({
+            y: 1000,
+            animated: true
+          });
+        }
+      }, 2000); // Tăng thời gian chờ
+
+      return () => clearTimeout(timer);
+    } else {
+      console.log('🔍 useEffect conditions not met:', { 
+        scrollToReview, 
+        hasTargetReviewId: !!targetReviewId, 
+        reviewsLength: reviews.length,
+        hasScrolledToReview
+      });
     }
-  }, [scrollTo, reviews.length]);
+  }, [scrollToReview, targetReviewId, reviews, showAllReviews, hasScrolledToReview]);
+
+  // Thêm useEffect riêng để kiểm tra params khi component mount
+  useEffect(() => {
+    console.log('🔍 Component mount check - Params:', { scrollToReview, targetReviewId });
+    
+    // Nếu có params scrollToReview nhưng chưa có reviews, đợi reviews load
+    if (scrollToReview === 'true' && targetReviewId && reviews.length === 0) {
+      console.log('🔍 Waiting for reviews to load...');
+    }
+  }, []); // Chỉ chạy một lần khi component mount
 
   // Check favorite status when product loads
   useEffect(() => {
@@ -284,6 +450,9 @@ const ProductScreen = () => {
       
       // Xử lý kết quả từ API
       if (result.success) {
+        // Reset số lượng về 1 sau khi thêm vào giỏ hàng thành công
+        setQuantity(1);
+        
         // Kiểm tra nếu là số lượng lớn
         if (result.isLargeQuantity) {
           Alert.alert(
@@ -314,6 +483,8 @@ const ProductScreen = () => {
                   // Tự động điều chỉnh về số lượng tối đa
                   setQuantity(result.availableQuantity || 0);
                   await addToCart(token, currentProduct._id, result.availableQuantity || 0);
+                  // Reset số lượng về 1 sau khi thêm vào giỏ hàng
+                  setQuantity(1);
                   // Không hiển thị thông báo khi đã đạt tối đa
                   setShowCartModal(false);
                 } catch (error: any) {
@@ -711,7 +882,15 @@ const ProductScreen = () => {
           ) : reviews.length > 0 ? (
             <View style={styles.reviewsContent}>
               {(showAllReviews ? reviews : reviews.slice(0, 3)).map((review, index) => (
-                <View key={review._id || index} style={[styles.reviewItem, { borderBottomColor: colors.border }]}>
+                <View 
+                  key={review._id || index} 
+                  ref={ref => {
+                    if (ref) {
+                      reviewRefs.current[review._id] = ref;
+                    }
+                  }}
+                  style={[styles.reviewItem, { borderBottomColor: colors.border }]}
+                >
                   {/* Review Header */}
                   <View style={styles.reviewHeader}>
                     <View style={styles.reviewerInfo}>
